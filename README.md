@@ -85,8 +85,11 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
 
 ## Deployment
 
-Vercel, from `main`. Set `PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY`
-in the project environment.
+Vercel, from `main`: https://fll-app-tawny.vercel.app (project `fll-app`,
+GitHub-connected, every push to `main` deploys). `PUBLIC_SUPABASE_URL` and
+`PUBLIC_SUPABASE_ANON_KEY` are set in the project environment; until the
+production Supabase project exists they are placeholders, so the login screen
+renders but sign-in cannot succeed.
 
 ## Project layout
 
