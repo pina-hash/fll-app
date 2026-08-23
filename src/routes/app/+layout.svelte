@@ -22,7 +22,8 @@
 		{ href: '/app/board', label: 'Board' },
 		{ href: '/app/meeting', label: 'Meeting' },
 		{ href: '/app/teams', label: 'Teams' },
-		{ href: '/app/tasks', label: 'Tasks' }
+		{ href: '/app/tasks', label: 'Tasks' },
+		{ href: '/app/library', label: 'Library' }
 	];
 
 	let isMentor = $derived(data.principal.kind === 'mentor');

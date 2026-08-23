@@ -20,11 +20,13 @@ const TABLES = [
 	'meeting_phases',
 	'meetings',
 	'mentors',
+	'missions',
 	'phase_templates',
 	'role_assignments',
 	'students',
 	'tasks',
 	'team_board_devices',
+	'team_mission_notes',
 	'teams'
 ];
 

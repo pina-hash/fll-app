@@ -318,6 +318,45 @@ export type Database = {
         }
         Relationships: []
       }
+      missions: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          name: string
+          points_label: string
+          position_x_mm: number | null
+          position_y_mm: number | null
+          scoring: Json
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          points_label: string
+          position_x_mm?: number | null
+          position_y_mm?: number | null
+          scoring?: Json
+          sort_order: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          points_label?: string
+          position_x_mm?: number | null
+          position_y_mm?: number | null
+          scoring?: Json
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       phase_templates: {
         Row: {
           id: string
@@ -554,6 +593,45 @@ export type Database = {
             foreignKeyName: "team_board_devices_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: true
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_mission_notes: {
+        Row: {
+          id: string
+          mission_id: string
+          note: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          mission_id: string
+          note?: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          mission_id?: string
+          note?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_mission_notes_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_mission_notes_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },

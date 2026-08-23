@@ -42,6 +42,7 @@
 		onStuck?: (note: string, taskId: string | null) => void;
 		onDismissFailure?: (id: string) => void;
 		teamHref?: string;
+		libraryHref?: string;
 	}
 
 	let {
@@ -62,7 +63,8 @@
 		onEvidence,
 		onStuck,
 		onDismissFailure,
-		teamHref = '/app/me/team'
+		teamHref = '/app/me/team',
+		libraryHref = '/app/library'
 	}: Props = $props();
 
 	let running = $derived(Boolean(meeting?.started_at && !meeting?.ended_at));
@@ -247,6 +249,7 @@
 				</ul>
 			{/if}
 			<a class="sr__teamlink" href={teamHref}>See what my team is doing</a>
+			<a class="sr__teamlink" href={libraryHref}>Look something up</a>
 		</section>
 
 		<div class="sr__stuckbar">
