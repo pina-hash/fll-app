@@ -44,6 +44,38 @@ supabase db push                # apply pending files to the linked project (nev
 supabase gen types typescript --local > src/lib/supabase/database.types.ts
 ```
 
+### Supabase CLI credentials
+
+- **Never run a bare `supabase` command in this repo.** Read
+  `SUPABASE_ACCESS_TOKEN` out of `.env` and put it in the environment of that
+  one command:
+
+  ```bash
+  SUPABASE_ACCESS_TOKEN="$(grep '^SUPABASE_ACCESS_TOKEN=' .env | cut -d= -f2- | tr -d '\r\n"')" supabase projects list
+  ```
+
+- **WHY: a bare command does not fail, it succeeds against the wrong account.**
+  With the variable unset the CLI falls through to the machine's global login,
+  which lives in Windows Credential Manager -- ambient state shared by every
+  repo on this machine and silently re-pointed by any `supabase login` run
+  anywhere else, including in `idea-app` and `frc-app`. There is no prompt and
+  no error; the command just reads or writes someone else's projects. The
+  failure mode that bites is a create/unpause landing in the wrong org, or
+  refused by that org's active-project cap -- and by then the damage is
+  remote, not local.
+- **`.env` is the repo's own answer to "which account is this."** It is
+  gitignored (`.gitignore:16`), it travels with the checkout, and it is the
+  only credential statement that cannot drift when a sibling repo logs in.
+  Pinning it per command is what makes this repo's Supabase identity a
+  property of the repo instead of a property of the laptop.
+- Applies to every `supabase` invocation that talks to the hosted API
+  (`projects`, `orgs`, `link`, `db push`, `secrets`, `gen types --linked`).
+  Purely local commands (`start`, `db reset`, `migration up`,
+  `gen types --local`) do not need the token, but set it anyway rather than
+  keeping two habits.
+- The WSL wrapper scripts are covered by the same rule: the token is exported
+  inside the script, because the Windows environment does not cross into WSL.
+
 ### Machine and toolchain
 
 - **Docker is not installed on Windows; the local stack runs inside WSL2 Ubuntu.** Docker Engine and the Supabase CLI (2.115.0, pinned to match the Windows CLI) are installed there; run `supabase start|db reset|migration up|gen types` from WSL in `/mnt/c/fll-app-sk`. Ports forward to Windows, so `npm run dev` and `npx vitest run` on Windows talk to `127.0.0.1:54321/54322` as usual.
