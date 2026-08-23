@@ -198,6 +198,38 @@
 		return (tier === 'primary' ? row.primary_student_id : row.second_student_id) ?? '';
 	}
 
+	// --- team board device ---------------------------------------------------
+	let boardPin = $state('');
+	let confirmBoardOff = $state(false);
+
+	function enableBoard(event: SubmitEvent) {
+		event.preventDefault();
+		if (!/^[0-9]{6}$/.test(boardPin)) {
+			message = 'A board PIN is 6 digits.';
+			return;
+		}
+		const pin = boardPin;
+		boardPin = '';
+		return call(
+			'board',
+			async () => data.supabase.rpc('team_board_enable', { p_team_id: data.team.id, p_pin: pin }),
+			`Board ready. Open /board on the iPad, type ${data.team.join_code} and that PIN.`
+		);
+	}
+
+	async function disableBoard() {
+		if (!confirmBoardOff) {
+			confirmBoardOff = true;
+			return;
+		}
+		confirmBoardOff = false;
+		await call(
+			'boardoff',
+			async () => data.supabase.rpc('team_board_disable', { p_team_id: data.team.id }),
+			'Board turned off. The iPad is signed out.'
+		);
+	}
+
 	function clearPins() {
 		forgetPins();
 		pins = {};
@@ -312,6 +344,46 @@
 				</li>
 			{/each}
 		</ul>
+	</section>
+
+	<section class="card">
+		<h2>Team board iPad</h2>
+		<p class="muted small">
+			The spare iPad on the table, for students with no device. It shows the phase, the clock, who is here and the
+			open jobs, and anyone can tap a job done from it. It is a device, not a person: it holds no role, is never
+			checked in and appears on no roster.
+		</p>
+		{#if data.boardDevice}
+			<p class="notice" role="status">
+				This team has a board. On the iPad open <code>/board</code>, type <code>{data.team.join_code}</code> and the
+				PIN you set.
+			</p>
+			<form onsubmit={enableBoard} class="tp__form">
+				<label class="field">
+					<span>Change the board PIN</span>
+					<input class="input" bind:value={boardPin} inputmode="numeric" maxlength="6" placeholder="6 digits" />
+				</label>
+				<button class="btn btn--secondary" type="submit" disabled={busy === 'board'}>Set new PIN</button>
+			</form>
+			{#if confirmBoardOff}
+				<div class="tp__row">
+					<button class="btn btn--primary" disabled={busy === 'boardoff'} onclick={disableBoard}>
+						Yes, turn the board off
+					</button>
+					<button class="btn btn--ghost" onclick={() => (confirmBoardOff = false)}>Keep it</button>
+				</div>
+			{:else}
+				<button class="btn btn--ghost" onclick={disableBoard}>Turn the board off</button>
+			{/if}
+		{:else}
+			<form onsubmit={enableBoard} class="tp__form">
+				<label class="field">
+					<span>Board PIN</span>
+					<input class="input" bind:value={boardPin} inputmode="numeric" maxlength="6" placeholder="6 digits" />
+				</label>
+				<button class="btn btn--primary" type="submit" disabled={busy === 'board'}>Turn the board on</button>
+			</form>
+		{/if}
 	</section>
 
 	<section class="card">

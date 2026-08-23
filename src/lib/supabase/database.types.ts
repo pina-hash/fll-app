@@ -527,6 +527,38 @@ export type Database = {
           },
         ]
       }
+      team_board_devices: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          id: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          id?: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          id?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_board_devices_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           accent: Database["public"]["Enums"]["team_accent"]
@@ -568,11 +600,13 @@ export type Database = {
       _app_day_start: { Args: { p_date: string }; Returns: string }
       _app_timezone: { Args: never; Returns: string }
       _app_today: { Args: never; Returns: string }
+      _board_email: { Args: { p_join_code: string }; Returns: string }
       _generate_join_code: { Args: never; Returns: string }
       _next_team_accent: {
         Args: never
         Returns: Database["public"]["Enums"]["team_accent"]
       }
+      _resolve_current_meeting_id: { Args: never; Returns: string }
       _student_email: {
         Args: { p_join_code: string; p_slug: string }
         Returns: string
@@ -583,6 +617,7 @@ export type Database = {
       }
       auth_whoami: { Args: never; Returns: Json }
       board_live_summary: { Args: { p_meeting_id?: string }; Returns: Json }
+      current_board_team_id: { Args: never; Returns: string }
       current_mentor_id: { Args: never; Returns: string }
       current_student_id: { Args: never; Returns: string }
       current_student_team_id: { Args: never; Returns: string }
@@ -598,6 +633,7 @@ export type Database = {
         }
         Returns: Json
       }
+      meeting_current: { Args: never; Returns: Json }
       meeting_end: { Args: { p_meeting_id: string }; Returns: Json }
       meeting_start: { Args: { p_meeting_id: string }; Returns: Json }
       role_assign: {
@@ -631,6 +667,11 @@ export type Database = {
       student_reactivate: { Args: { p_student_id: string }; Returns: Json }
       student_reset_pin: {
         Args: { p_new_pin: string; p_student_id: string }
+        Returns: Json
+      }
+      team_board_disable: { Args: { p_team_id: string }; Returns: Json }
+      team_board_enable: {
+        Args: { p_pin: string; p_team_id: string }
         Returns: Json
       }
       team_create: {

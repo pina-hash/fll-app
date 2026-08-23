@@ -31,7 +31,20 @@ export interface StudentPrincipal {
 	accent: TeamAccent;
 }
 
-export type Principal = MentorPrincipal | StudentPrincipal;
+/**
+ * The shared iPad on the table. It is a DEVICE, not a person: it has a team
+ * and nothing else, which is exactly what 0010's policies grant it.
+ */
+export interface BoardPrincipal {
+	kind: 'board';
+	deviceId: string;
+	teamId: string;
+	teamName: string;
+	joinCode: string;
+	accent: TeamAccent;
+}
+
+export type Principal = MentorPrincipal | StudentPrincipal | BoardPrincipal;
 
 function str(v: unknown): string | null {
 	return typeof v === 'string' && v.length > 0 ? v : null;
@@ -70,6 +83,21 @@ export function parsePrincipal(raw: unknown): Principal | null {
 			// An accent this code does not recognise falls back rather than
 			// rejecting the principal: a wrong colour is a blemish, a null
 			// principal is a student locked out of their own board.
+			accent: TEAM_ACCENTS.includes(r.accent as TeamAccent) ? (r.accent as TeamAccent) : 'cyan'
+		};
+	}
+	if (r.kind === 'board') {
+		const deviceId = str(r.device_id);
+		const teamId = str(r.team_id);
+		const teamName = str(r.team_name);
+		const joinCode = str(r.join_code);
+		if (!deviceId || !teamId || !teamName || !joinCode) return null;
+		return {
+			kind: 'board',
+			deviceId,
+			teamId,
+			teamName,
+			joinCode,
 			accent: TEAM_ACCENTS.includes(r.accent as TeamAccent) ? (r.accent as TeamAccent) : 'cyan'
 		};
 	}

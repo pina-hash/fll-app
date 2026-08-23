@@ -162,17 +162,28 @@ export function watchTables(
 	channelName: string,
 	onChange: () => void
 ): () => void {
+	// One phase change is three row events (the outgoing phase, the incoming
+	// phase, the meeting pointer). Debouncing turns that into one refetch,
+	// which on twenty student phones is the difference between a burst and a
+	// stampede.
+	let timer: ReturnType<typeof setTimeout> | null = null;
+	const schedule = () => {
+		if (timer) clearTimeout(timer);
+		timer = setTimeout(onChange, REFETCH_DEBOUNCE_MS);
+	};
+
 	const channel = supabase.channel(channelName);
 	for (const table of tables) {
-		channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => onChange());
+		channel.on('postgres_changes', { event: '*', schema: 'public', table }, schedule);
 	}
 	channel.subscribe((status) => {
-		if (status === 'SUBSCRIBED') onChange();
+		if (status === 'SUBSCRIBED') schedule();
 	});
-	const onOnline = () => onChange();
+	const onOnline = () => schedule();
 	window.addEventListener('online', onOnline);
 	return () => {
 		window.removeEventListener('online', onOnline);
+		if (timer) clearTimeout(timer);
 		supabase.removeChannel(channel);
 	};
 }

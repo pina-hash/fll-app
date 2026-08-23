@@ -47,7 +47,7 @@ sessions from a console; students (ages 9-13) work a team board from tablets.
 
 1. **This repo's foundation (done):** scaffold, schema (0001-0008), RLS, both auth paths, login screen, placeholder `/app` shell.
 2. **Mentor console (done):** schema 0009, the live board, meeting and phase control, provisioning (teams, roster, PINs, roles, printable cards) and task creation.
-3. **Student runtime** (next): the team board, tasks, blockers, evidence upload, the local-first write queue.
+3. **Student runtime (done):** schema 0010, check-in, My Screen, the Team tab, evidence capture, Team Board mode for the shared iPad, and the local-first write queue.
 
 ---
 
@@ -143,6 +143,7 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
 - **Helpers named inside a `using` clause are granted EXECUTE to `authenticated`** (`is_mentor`, `is_admin_mentor`, `current_mentor_id`, `current_student_id`, `current_student_team_id`). They are SECURITY DEFINER so a policy on `students` can ask which team the caller is on without recursing. Private helpers are `_`-prefixed, revoked from public, and granted to nobody.
 - **Every definer function pins `set search_path = ''`** and schema-qualifies every name (`extensions.crypt`, `auth.uid()`). Asserted by the catalog test.
 - **No `FORCE ROW LEVEL SECURITY`.** The definer RPCs write as the owner; forcing RLS would break them.
+- **AN RLS-FILTERED WRITE IS NOT AN ERROR, AND "no error" IS NOT "it landed".** An UPDATE or DELETE whose rows RLS excludes comes back from PostgREST as 204 with zero rows and `error === null`. Any client that reports success from the absence of an error will tell a student their work saved when it did not. Ask for the rows back (`.select()`) and treat an empty array as a refusal. A denied READ is empty for the same reason, which is deliberate (see Auth); a denied WRITE has to be noticed.
 - **Divergence from idea-app, deliberate:** idea-app has zero client write grants; this repo's feature tables accept RLS-governed direct writes (tasks, blockers, evidence, attendance, role assignments, meetings) because the spec calls for it and because a local-first write queue replays idempotent upserts against tables, not RPCs. Auth-sensitive writes (anything touching `auth.users`: student creation, PIN reset, deactivation; team creation, which mints a code) stay behind SECURITY DEFINER RPCs that re-check the caller in their own body.
 
 ### RPC shape
@@ -161,21 +162,26 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
 
 A nullable `timestamptz` per noun -- `mentors.deactivated_at`, `students.deactivated_at`, `teams.archived_at` -- and **the filter is stated where the read is**: the identity helpers (so a deactivated account loses every policy at once), `team_login_roster`, `auth_whoami`, `student_create`. A new read over one of those tables states its own `... is null`. The work surface (tasks, blockers, evidence, attendance) hard-deletes; mentors only. Deactivating a student also bans the auth user and drops its sessions (`student_deactivate`); the stamp alone would leave the PIN working.
 
-### Local-first write queue (not built yet; the schema is shaped for it)
+### Local-first write queue (built: `src/lib/student/queue.svelte.ts`)
 
 - Every insert grant includes `id`: the device mints the uuid, so a replayed insert is a conflict, not a duplicate, and a queued update already knows its target.
 - `updated_at` is server-stamped on every mutable table; clients never send it.
 - Natural unique keys make retries upserts: `attendance (meeting_id, student_id)`, `evidence.storage_path`.
 - Nothing depends on a server-generated sequence.
+- **EVERY STUDENT WRITE GOES THROUGH THE QUEUE**, which puts it in IndexedDB before it touches the wire and keeps it there until the server accepts it. Photos are stored as Blobs, not strings: losing a captured photo is the failure the whole thing exists to prevent.
+- **Transient and permanent are different.** A fetch that never reached the server keeps the op queued and retried; a SQLSTATE from Postgres marks it FAILED and shows it. `23505` is neither, it is the idempotency working, and counts as success.
+- **`invalidateAll()` IS UNSAFE ON ANY PATH THAT CAN RUN OFFLINE.** Re-running a server load over a dead connection makes SvelteKit fall back to a full document reload, which on a phone blanks the student's screen and looks like lost work. Use `safeInvalidateAll()` (`src/lib/student/refresh.ts`), which refuses to run when the queue has reported the server unreachable, and give the UI an optimistic overlay so a tap responds without a refetch at all.
+- **`navigator.onLine` is not the question.** A phone joined to an access point with no uplink says it is online. Only the queue knows, because only the queue has tried; it owns the reachability flag.
 
 ---
 
 ## Auth
 
-Two populations, one Auth instance. The boundary for both is `0002`'s trigger on `auth.users`; everything in the dashboard is a convenience.
+THREE populations, one Auth instance. The boundary for all of them is `0002`'s trigger on `auth.users` (replaced in `0010`); everything in the dashboard is a convenience.
 
 - **Mentors:** Google only, boscotech.edu only. First sign-in inserts the `mentors` row; any other Google domain, or any email-provider account, is refused inside the insert, which aborts GoTrue and the sign-in. The first mentor row is the admin (under an advisory lock). `is_admin` is edited by admins through RLS; `_mentors_guard_update` stops self-demotion, self-deactivation and demoting the last admin.
 - **Students:** no real email, no self-registration. `student_create` (mentor-only RPC) writes `auth.users` + `auth.identities` + `students` in one transaction, raising a transaction-local flag (`fll.creating_student`) that the trigger requires for any `@fll.invalid` address. Address = `{join_code lowercased}-{slug}@fll.invalid`; `.invalid` is RFC 2606 reserved. Slug = lowercased first name + last initial in `[a-z0-9]`, deduped per team with a numeric suffix, STORED so a rename never changes a login. PIN = 6 digits (GoTrue's 6-character minimum).
+- **Board devices:** the spare iPad on a table. `team_board_enable` (mentor-only) mints `{code}-board.device@fll.invalid` with a 6-digit PIN and a `team_board_devices` row; the trigger accepts that address only while `fll.creating_board` is raised. A BOARD IS A DEVICE, NOT A PERSON: it reads its own team and closes its own team's tasks, and that is all. It is on no roster, holds no role, is never checked in, cannot raise a blocker as somebody and cannot upload evidence. The dot in `board.device` is what makes the address uncollidable with a student slug (`[a-z0-9]`).
 - **A PIN CANNOT BE READ BACK, EVER.** It is bcrypt in `auth.users.encrypted_password` from the moment it is set, so any screen that wants to show a PIN can only show one it just minted. `src/lib/console/pins.ts` parks those in `sessionStorage` for the printable roster card. Do not add a recoverable-PIN column; the answer to a stale card is a reset.
 - **PIN reset is SQL:** `student_reset_pin` writes `auth.users.encrypted_password = extensions.crypt(pin, extensions.gen_salt('bf', 10))` and deletes `auth.sessions` for the user. **Proved end to end against GoTrue v2.195** (`tests/student-auth.test.ts`: sign in, reset, old PIN refused, new PIN accepted, old refresh token dead). The admin-API fallback was not needed and does not exist.
 - **The login screen** (`/login`): student types the team code -> `team_login_roster` (anon RPC: team id + name + `first_name`/`last_initial`/`slug` per active student, nothing else) -> taps a name -> PIN -> `signInWithPassword` with the address built by `src/lib/auth/student-identity.ts`, which mirrors `public._student_email` and is held to it by `tests/login-roster.test.ts`. Mentors: `signInWithOAuth({ provider: 'google', queryParams: { hd: 'boscotech.edu' } })`.
@@ -204,6 +210,7 @@ Two populations, one Auth instance. The boundary for both is `0002`'s trigger on
 - **Generated types** (`src/lib/supabase/database.types.ts`) are regenerated after every migration bundle and committed.
 - **Sign-out is a POST** (`/auth/signout`); never a GET a prefetch could fire.
 - **MENTOR-ONLY SURFACES LIVE IN `src/routes/app/(mentor)/`**, whose `+layout.server.ts` answers 403 to a student. A new console page goes inside that group and inherits the guard rather than writing its own. The route guard is the OUTER boundary; the inner one is the database, where every console RPC re-checks `is_mentor()` in its own body. Neither is trusted alone, and `tests/console-mentor-only.test.ts` asserts both directions.
+- **THE THREE POPULATIONS EACH HAVE THEIR OWN ROUTE SHAPE.** Mentors live in `src/routes/app/(mentor)/` (403 to anyone else). Students live in `src/routes/app/(student)/` (mentors are redirected to their console, board devices are refused). The shared iPad lives at `src/routes/board/`, OUTSIDE `/app`, because `/app` bounces an unauthenticated request to the personal login screen and a kiosk must never do that mid-meeting. `src/routes/app/+layout.svelte` renders bare for students and boards: they carry their own header and fill the screen.
 - **A dev-only surface is guarded by `dev` from `$app/environment` and answers 404 otherwise** (`src/routes/dev/live-board/`). A harness mounts the REAL component with fixture props; if it renders its own copy of the markup it is testing nothing. Prove the link the way HISTORY 0009 did: change something observable inside the component, watch the harness move, restore byte-identically.
 
 ---
@@ -218,6 +225,7 @@ The token layer is `src/lib/design-system/` (pure CSS custom properties: `fonts`
 - Everything animated is gated behind `prefers-reduced-motion: no-preference` (`motion.css`: the classes are the gate).
 - **A TEAM'S COLOUR IS DATA, AND ONLY THE STYLESHEET KNOWS WHAT IT LOOKS LIKE.** `teams.accent` is an enum (`cyan`, `chartreuse`, `magenta`, `amber`); the server prints it as `data-accent="..."` and `team-accents.css` turns that into `--team-accent`, `--team-accent-ink`, `--team-accent-wash`, `--team-accent-shadow`. Never write a team colour as an inline style and never store a hex string in a column.
 - **`.btn--small` is a DESKTOP affordance.** It exists so a dense table row on a laptop is not all button; `@media (pointer: coarse)` puts it back to 44px. Any new compact control does the same.
+- **THE STUDENT RUNTIME IS 375px FIRST AND THE WHOLE SCREEN IS THE TEAM'S ACCENT**, not a stripe on a card: a glance across a table of phones should say whose is whose. Every student-facing control is a 56px slab; a link they are meant to tap is a button, not a line of text. The reading level is fourth grade -- "Nobody is in this seat", not "role unfilled"; "I'm here", not "Check in". The team board is landscape-first and sized to be read from a metre away (`clamp()` on every heading).
 - **The Live Board is phone-first; every other console surface is desktop-first master-detail.** Both ends are checked regardless: a pass at 1440px is not a pass at 375px. A grid item defaults to `min-width: auto`, so any track holding a deliberately wide child (a table with a `min-width`) states `min-width: 0` or the page scrolls sideways.
 
 ---

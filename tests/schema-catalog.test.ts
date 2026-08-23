@@ -24,12 +24,14 @@ const TABLES = [
 	'role_assignments',
 	'students',
 	'tasks',
+	'team_board_devices',
 	'teams'
 ];
 
 const RPCS = [
 	'auth_whoami',
 	'board_live_summary',
+	'meeting_current',
 	'meeting_advance_phase',
 	'meeting_create',
 	'meeting_end',
@@ -40,19 +42,22 @@ const RPCS = [
 	'student_deactivate',
 	'student_reactivate',
 	'student_reset_pin',
+	'team_board_disable',
+	'team_board_enable',
 	'team_create',
 	'team_login_roster',
 	'team_regenerate_join_code',
 	'team_resolve_roles',
 	'is_mentor',
 	'is_admin_mentor',
+	'current_board_team_id',
 	'current_mentor_id',
 	'current_student_id',
 	'current_student_team_id'
 ];
 
 describe('tables', () => {
-	test('the eleven tables exist and every one of them has row level security enabled', async () => {
+	test('every table exists and every one of them has row level security enabled', async () => {
 		const rows = await sql<{ relname: string; relrowsecurity: boolean }[]>`
 			select c.relname, c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace
 			where n.nspname = 'public' and c.relkind = 'r' order by 1`;

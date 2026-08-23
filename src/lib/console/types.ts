@@ -137,7 +137,7 @@ function accent(v: unknown): TeamAccent {
 	return TEAM_ACCENTS.includes(v as TeamAccent) ? (v as TeamAccent) : 'cyan';
 }
 
-function parsePhase(raw: unknown): BoardPhase | null {
+export function parsePhase(raw: unknown): BoardPhase | null {
 	const r = obj(raw);
 	const id = r && str(r.id);
 	if (!r || !id) return null;
@@ -151,7 +151,7 @@ function parsePhase(raw: unknown): BoardPhase | null {
 	};
 }
 
-function parseMeeting(raw: unknown): BoardMeeting | null {
+export function parseMeeting(raw: unknown): BoardMeeting | null {
 	const r = obj(raw);
 	const id = r && str(r.id);
 	if (!r || !id) return null;

@@ -13,7 +13,7 @@ import type { PageServerLoad } from './$types';
  * header warns about.
  */
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
-	const [teamRes, studentsRes, rolesRes] = await Promise.all([
+	const [teamRes, studentsRes, rolesRes, boardRes] = await Promise.all([
 		supabase
 			.from('teams')
 			.select('id, name, join_code, accent, fll_team_number, archived_at')
@@ -25,7 +25,8 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 			.eq('team_id', params.teamId)
 			.order('first_name')
 			.order('last_initial'),
-		supabase.rpc('team_resolve_roles', { p_team_id: params.teamId })
+		supabase.rpc('team_resolve_roles', { p_team_id: params.teamId }),
+		supabase.from('team_board_devices').select('id, created_at').eq('team_id', params.teamId).maybeSingle()
 	]);
 
 	if (!teamRes.data) error(404, 'No such team.');
@@ -34,6 +35,7 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		team: teamRes.data,
 		students: studentsRes.data ?? [],
 		roles: parseResolvedRoles(rolesRes.data),
-		rolesError: rolesRes.error?.message ?? null
+		rolesError: rolesRes.error?.message ?? null,
+		boardDevice: boardRes.data ?? null
 	};
 };

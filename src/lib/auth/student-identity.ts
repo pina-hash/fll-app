@@ -57,6 +57,17 @@ export function studentEmail(joinCode: string, slug: string): string {
 	return `${normalizeJoinCode(joinCode).toLowerCase()}-${slug}@fll.invalid`;
 }
 
+/**
+ * The TEAM BOARD device's address: `{join_code lowercased}-board.device@fll.invalid`.
+ * Mirrors `public._board_email(join_code)` (0010).
+ *
+ * The dot in `board.device` is deliberate. A student slug is `[a-z0-9]` only
+ * (0004), so no roster, however it is named, can ever produce this address.
+ */
+export function boardEmail(joinCode: string): string {
+	return `${normalizeJoinCode(joinCode).toLowerCase()}-board.device@fll.invalid`;
+}
+
 /** "Alex P." for a roster tile. */
 export function displayName(firstName: string, lastInitial: string): string {
 	return `${firstName} ${lastInitial}.`;

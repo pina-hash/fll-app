@@ -4,10 +4,14 @@
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 
+	// Only the mentor shell renders this; students and board devices are bare
+	// (see `bare` below) and carry their own header.
 	let who = $derived(
 		data.principal.kind === 'mentor'
 			? `${data.principal.displayName}${data.principal.isAdmin ? ' · admin' : ''}`
-			: `${data.principal.firstName} ${data.principal.lastInitial}. · ${data.principal.teamName}`
+			: data.principal.kind === 'student'
+				? `${data.principal.firstName} ${data.principal.lastInitial}. · ${data.principal.teamName}`
+				: data.principal.teamName
 	);
 
 	/**
@@ -22,11 +26,19 @@
 	];
 
 	let isMentor = $derived(data.principal.kind === 'mentor');
+	/**
+	 * A student screen and a board device are FULL BLEED: their own header, their
+	 * own colour, no console chrome. The shell exists for the mentor console.
+	 */
+	let bare = $derived(data.principal.kind !== 'mentor');
 	let current = $derived(page.url.pathname);
 	const isActive = (href: string) => current === href || current.startsWith(href + '/');
 </script>
 
-<div class="shell">
+{#if bare}
+	{@render children()}
+{:else}
+	<div class="shell">
 	<header class="shell__bar">
 		<a class="shell__brand" href="/app"><span class="glow">BIOGLOW</span> <span class="muted small">2026-27</span></a>
 		<div class="shell__who">
@@ -48,7 +60,8 @@
 	<main class="shell__main" class:shell__main--wide={isMentor}>
 		{@render children()}
 	</main>
-</div>
+	</div>
+{/if}
 
 <style>
 	.shell {
