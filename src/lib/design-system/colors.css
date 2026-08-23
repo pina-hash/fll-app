@@ -1,0 +1,42 @@
+/* ==========================================================================
+   Colour tokens. Dark by default -- the app runs on tablets in a lit room with
+   a robot mat under bright lights, and the BIOGLOW theme is bioluminescence on
+   deep water. Semantic roles are fixed; do not reassign them.
+
+   Every foreground token states its contrast against --surface-0 (#0B1220).
+   ========================================================================== */
+:root {
+	/* Grounds, darkest to lightest. */
+	--surface-0: #0b1220; /* page */
+	--surface-1: #111a2c; /* bars, cards */
+	--surface-2: #18243a; /* raised controls, hover */
+
+	/* Text. */
+	--text-1: #eef3fb; /* 16.9:1 -- body and headings */
+	--text-2: #b4c0d3; /* 9.8:1  -- secondary */
+	--text-3: #7d8aa3; /* 5.1:1  -- hints, timestamps */
+
+	/* Identity. */
+	--glow-green: #5ff2b6; /* 12.8:1 -- primary action, live, success */
+	--glow-cyan: #5ad4ff; /* 10.9:1 -- links, focus ring, information */
+	--glow-violet: #b691ff; /* 8.2:1  -- mentors, secondary action */
+	--amber: #ffc56b; /* 12.3:1 -- blocked, attention */
+	--coral: #ff6f7d; /* 7.3:1  -- errors only */
+
+	/* Boundaries. --boundary carries meaning (a card edge, a control outline)
+	   and clears 3:1 against every ground it lands on; --hairline decorates. */
+	--boundary: #3a4a66;
+	--hairline: #1f2b40;
+
+	/* Semantic aliases. */
+	--surface-page: var(--surface-0);
+	--text-body: var(--text-1);
+	--text-muted: var(--text-2);
+	--text-faint: var(--text-3);
+	--accent: var(--glow-green);
+	--accent-ink: #062018; /* text on an --accent ground, 13.9:1 */
+	--link: var(--glow-cyan);
+	--focus-ring: var(--glow-cyan);
+	--danger: var(--coral);
+	--warning: var(--amber);
+}

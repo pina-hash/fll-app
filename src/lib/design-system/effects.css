@@ -1,0 +1,31 @@
+/* Spacing, radii, glows. Layered CSS only -- no image binaries. */
+:root {
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.5rem;
+	--space-6: 2.25rem;
+	--space-7: 3.5rem;
+
+	--radius-control: 0.625rem;
+	--radius-card: 1rem;
+	--radius-tile: 0.875rem;
+
+	/* Bioluminescent glows: one per identity colour, used on the thing that
+	   is LIVE (the current phase, the primary action), never as decoration. */
+	--glow-green-shadow: 0 0 0.75rem rgba(95, 242, 182, 0.45), 0 0 2rem rgba(95, 242, 182, 0.2);
+	--glow-cyan-shadow: 0 0 0.75rem rgba(90, 212, 255, 0.45), 0 0 2rem rgba(90, 212, 255, 0.2);
+	--glow-violet-shadow: 0 0 0.75rem rgba(182, 145, 255, 0.45), 0 0 2rem rgba(182, 145, 255, 0.2);
+
+	--shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
+
+	/* The page backdrop: deep water with a faint upward light. */
+	--backdrop-deep: radial-gradient(120% 80% at 50% 110%, rgba(95, 242, 182, 0.12), transparent 60%),
+		radial-gradient(80% 60% at 20% -10%, rgba(90, 212, 255, 0.1), transparent 60%),
+		var(--surface-0);
+
+	/* A focus ring a child can see from across the table. */
+	--focus-outline: 3px solid var(--focus-ring);
+	--focus-offset: 2px;
+}

@@ -1,0 +1,27 @@
+/* Type tokens. A face is named through its token, never as a literal. */
+:root {
+	--font-display: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+	--font-body: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', 'Cascadia Mono', 'Consolas', monospace;
+
+	--fw-regular: 400;
+	--fw-semibold: 600;
+	--fw-bold: 700;
+	--fw-black: 800;
+
+	/* Sized for a tablet at arm's length: body never below 17px. */
+	--fs-hero: clamp(2.5rem, 8vw, 3.5rem);
+	--fs-h1: 1.9rem;
+	--fs-h2: 1.45rem;
+	--fs-h3: 1.15rem;
+	--fs-body: 1.0625rem;
+	--fs-small: 0.9375rem;
+	--fs-label: 0.8125rem;
+
+	--lh-tight: 1.15;
+	--lh-body: 1.5;
+
+	--track-label: 0.08em;
+	--track-wide: 0.12em;
+	--track-hero: 0.2em;
+}

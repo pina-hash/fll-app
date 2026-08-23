@@ -1,0 +1,4 @@
+/* Two faces, loaded once. Nunito for everything a nine-year-old reads at arm's
+   length on a tablet; JetBrains Mono for codes, PINs and clocks, where glyph
+   shape (a distinct 0, 1, I, O) is the whole point. */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');

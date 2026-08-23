@@ -1,0 +1,12 @@
+/* ==========================================================================
+   FLL BIOGLOW design system — token entry point.
+   Imported once at the top of src/app.css. Load order matters: fonts first,
+   then colors, type, effects, motion. Pages design against these custom
+   properties; nothing outside this folder defines a colour or a font face.
+   ========================================================================== */
+
+@import './fonts.css';
+@import './colors.css';
+@import './typography.css';
+@import './effects.css';
+@import './motion.css';
