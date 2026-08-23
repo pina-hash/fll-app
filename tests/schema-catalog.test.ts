@@ -17,17 +17,23 @@ const TABLES = [
 	'attendance',
 	'blockers',
 	'evidence',
+	'launch_missions',
+	'launches',
+	'mat_config',
 	'meeting_phases',
 	'meetings',
 	'mentors',
 	'missions',
 	'phase_templates',
 	'role_assignments',
+	'strategies',
 	'students',
 	'tasks',
 	'team_board_devices',
 	'team_mission_notes',
-	'teams'
+	'team_robots',
+	'teams',
+	'waypoints'
 ];
 
 const RPCS = [
@@ -44,6 +50,8 @@ const RPCS = [
 	'student_deactivate',
 	'student_reactivate',
 	'student_reset_pin',
+	'strategy_can_edit',
+	'strategy_snapshot',
 	'team_board_disable',
 	'team_board_enable',
 	'team_create',

@@ -187,6 +187,116 @@ export type Database = {
           },
         ]
       }
+      launch_missions: {
+        Row: {
+          created_at: string
+          id: string
+          launch_id: string
+          mission_id: string
+          scoring_lines: number[]
+          sort_order: number
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          launch_id: string
+          mission_id: string
+          scoring_lines?: number[]
+          sort_order?: number
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          launch_id?: string
+          mission_id?: string
+          scoring_lines?: number[]
+          sort_order?: number
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "launch_missions_launch_id_team_id_fkey"
+            columns: ["launch_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "launches"
+            referencedColumns: ["id", "team_id"]
+          },
+          {
+            foreignKeyName: "launch_missions_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      launches: {
+        Row: {
+          attachment_name: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          strategy_id: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_name?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          strategy_id: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_name?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          strategy_id?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "launches_strategy_id_team_id_fkey"
+            columns: ["strategy_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id", "team_id"]
+          },
+        ]
+      }
+      mat_config: {
+        Row: {
+          id: boolean
+          launch_area_h_mm: number | null
+          launch_area_w_mm: number | null
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          launch_area_h_mm?: number | null
+          launch_area_w_mm?: number | null
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          launch_area_h_mm?: number | null
+          launch_area_w_mm?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meeting_phases: {
         Row: {
           ended_at: string | null
@@ -432,6 +542,41 @@ export type Database = {
           },
         ]
       }
+      strategies: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          team_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          team_id: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          team_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategies_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           auth_user_id: string
@@ -637,6 +782,50 @@ export type Database = {
           },
         ]
       }
+      team_robots: {
+        Row: {
+          between_launches_s: number
+          created_at: string
+          dwell_s: number
+          id: string
+          length_mm: number
+          speed_cm_s: number
+          team_id: string
+          updated_at: string
+          width_mm: number
+        }
+        Insert: {
+          between_launches_s?: number
+          created_at?: string
+          dwell_s?: number
+          id?: string
+          length_mm?: number
+          speed_cm_s?: number
+          team_id: string
+          updated_at?: string
+          width_mm?: number
+        }
+        Update: {
+          between_launches_s?: number
+          created_at?: string
+          dwell_s?: number
+          id?: string
+          length_mm?: number
+          speed_cm_s?: number
+          team_id?: string
+          updated_at?: string
+          width_mm?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_robots_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           accent: Database["public"]["Enums"]["team_accent"]
@@ -669,6 +858,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      waypoints: {
+        Row: {
+          created_at: string
+          id: string
+          launch_id: string
+          sort_order: number
+          team_id: string
+          updated_at: string
+          x_mm: number
+          y_mm: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          launch_id: string
+          sort_order?: number
+          team_id: string
+          updated_at?: string
+          x_mm: number
+          y_mm: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          launch_id?: string
+          sort_order?: number
+          team_id?: string
+          updated_at?: string
+          x_mm?: number
+          y_mm?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waypoints_launch_id_team_id_fkey"
+            columns: ["launch_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "launches"
+            referencedColumns: ["id", "team_id"]
+          },
+        ]
       }
     }
     Views: {
@@ -729,6 +959,11 @@ export type Database = {
           p_team_id: string
           p_tier: Database["public"]["Enums"]["role_tier"]
         }
+        Returns: Json
+      }
+      strategy_can_edit: { Args: { p_team_id: string }; Returns: boolean }
+      strategy_snapshot: {
+        Args: { p_label?: string; p_team_id: string }
         Returns: Json
       }
       student_create: {

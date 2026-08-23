@@ -42,6 +42,7 @@
 		onStuck?: (note: string, taskId: string | null) => void;
 		onDismissFailure?: (id: string) => void;
 		teamHref?: string;
+		planHref?: string;
 		libraryHref?: string;
 	}
 
@@ -64,6 +65,7 @@
 		onStuck,
 		onDismissFailure,
 		teamHref = '/app/me/team',
+		planHref = '/app/me/plan',
 		libraryHref = '/app/library'
 	}: Props = $props();
 
@@ -249,7 +251,8 @@
 				</ul>
 			{/if}
 			<a class="sr__teamlink" href={teamHref}>See what my team is doing</a>
-			<a class="sr__teamlink" href={libraryHref}>Look something up</a>
+			<a class="sr__teamlink" href={planHref}>Plan our robot runs</a>
+				<a class="sr__teamlink" href={libraryHref}>Look something up</a>
 		</section>
 
 		<div class="sr__stuckbar">

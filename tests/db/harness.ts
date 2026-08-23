@@ -240,6 +240,9 @@ export async function cleanupRun(): Promise<void> {
 			await tx`delete from public.evidence where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.blockers where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.tasks where team_id = any(${teamIds}::uuid[])`;
+			// Launches, launch_missions and waypoints cascade from strategies.
+			await tx`delete from public.strategies where team_id = any(${teamIds}::uuid[])`;
+			await tx`delete from public.team_robots where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.team_mission_notes where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.role_assignments where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.attendance a using public.students s

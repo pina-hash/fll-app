@@ -23,6 +23,7 @@
 		{ href: '/app/meeting', label: 'Meeting' },
 		{ href: '/app/teams', label: 'Teams' },
 		{ href: '/app/tasks', label: 'Tasks' },
+		{ href: '/app/plan', label: 'Plan' },
 		{ href: '/app/library', label: 'Library' }
 	];
 

@@ -30,15 +30,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/supabase/database.types';
 import type { TaskStatus } from '$lib/console/types';
+import { applyPlannerOp, isPlannerOp, type PlannerOp } from '$lib/planner/ops';
+import { classifyPostgrest } from './postgrest';
 import { setReachable } from './refresh';
 
 const DB_NAME = 'fll-student-queue';
 const DB_VERSION = 1;
 const OPS = 'ops';
 const BLOBS = 'blobs';
-
-/** Postgres says "you already have this row". For a replay that is success. */
-const DUPLICATE = '23505';
 
 export type QueuedOp =
 	| { kind: 'task_status'; taskId: string; status: TaskStatus }
@@ -53,7 +52,9 @@ export type QueuedOp =
 			storagePath: string;
 			caption: string | null;
 			contentType: string;
-	  };
+	  }
+	/** The route planner's edits; applied by src/lib/planner/ops.ts. */
+	| PlannerOp;
 
 export interface QueueRecord {
 	/** The client-minted uuid. Also the primary key of any row this op inserts. */
@@ -91,16 +92,6 @@ function tx<T>(db: IDBDatabase, stores: string[], mode: IDBTransactionMode, run:
 		req.onsuccess = () => resolve(req.result);
 		req.onerror = () => reject(req.error);
 	});
-}
-
-/** A SQLSTATE from Postgres means the server decided; anything else is the wire. */
-function isPermanent(error: { code?: string | null; message?: string } | null): boolean {
-	const code = error?.code ?? '';
-	return /^[0-9A-Z]{5}$/.test(code) && code !== DUPLICATE;
-}
-
-function isDuplicate(error: { code?: string | null } | null): boolean {
-	return error?.code === DUPLICATE;
 }
 
 export class WriteQueue {
@@ -278,6 +269,10 @@ export class WriteQueue {
 	async #apply(record: QueueRecord): Promise<'done' | 'transient' | { message: string }> {
 		const sb = this.#supabase;
 		const op = record.op;
+		// Planner edits carry their own application and judgement rules
+		// (including the zero-rows-back probe); ops.ts catches its own fetch
+		// failures and answers 'transient'.
+		if (isPlannerOp(op)) return applyPlannerOp(sb, op);
 		try {
 			if (op.kind === 'task_status') {
 				const { error } = await sb.from('tasks').update({ status: op.status }).eq('id', op.taskId);
@@ -334,10 +329,7 @@ export class WriteQueue {
 	}
 
 	#classify(error: { code?: string | null; message?: string } | null): 'done' | 'transient' | { message: string } {
-		if (!error) return 'done';
-		if (isDuplicate(error)) return 'done';
-		if (isPermanent(error)) return { message: error.message ?? 'The server refused this.' };
-		return 'transient';
+		return classifyPostgrest(error);
 	}
 }
 
