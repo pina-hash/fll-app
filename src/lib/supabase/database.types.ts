@@ -529,6 +529,7 @@ export type Database = {
       }
       teams: {
         Row: {
+          accent: Database["public"]["Enums"]["team_accent"]
           archived_at: string | null
           created_at: string
           fll_team_number: number | null
@@ -538,6 +539,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accent?: Database["public"]["Enums"]["team_accent"]
           archived_at?: string | null
           created_at?: string
           fll_team_number?: number | null
@@ -547,6 +549,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accent?: Database["public"]["Enums"]["team_accent"]
           archived_at?: string | null
           created_at?: string
           fll_team_number?: number | null
@@ -562,7 +565,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _app_day_start: { Args: { p_date: string }; Returns: string }
+      _app_timezone: { Args: never; Returns: string }
+      _app_today: { Args: never; Returns: string }
       _generate_join_code: { Args: never; Returns: string }
+      _next_team_accent: {
+        Args: never
+        Returns: Database["public"]["Enums"]["team_accent"]
+      }
       _student_email: {
         Args: { p_join_code: string; p_slug: string }
         Returns: string
@@ -572,17 +582,38 @@ export type Database = {
         Returns: string
       }
       auth_whoami: { Args: never; Returns: Json }
+      board_live_summary: { Args: { p_meeting_id?: string }; Returns: Json }
       current_mentor_id: { Args: never; Returns: string }
       current_student_id: { Args: never; Returns: string }
       current_student_team_id: { Args: never; Returns: string }
       is_admin_mentor: { Args: never; Returns: boolean }
       is_mentor: { Args: never; Returns: boolean }
+      meeting_advance_phase: { Args: { p_meeting_id: string }; Returns: Json }
       meeting_create: {
         Args: {
           p_kind: Database["public"]["Enums"]["meeting_kind"]
           p_meeting_date: string
           p_planned_end_at?: string
           p_planned_start_at: string
+        }
+        Returns: Json
+      }
+      meeting_end: { Args: { p_meeting_id: string }; Returns: Json }
+      meeting_start: { Args: { p_meeting_id: string }; Returns: Json }
+      role_assign: {
+        Args: {
+          p_role: Database["public"]["Enums"]["team_role"]
+          p_student_id: string
+          p_team_id: string
+          p_tier: Database["public"]["Enums"]["role_tier"]
+        }
+        Returns: Json
+      }
+      role_unassign: {
+        Args: {
+          p_role: Database["public"]["Enums"]["team_role"]
+          p_team_id: string
+          p_tier: Database["public"]["Enums"]["role_tier"]
         }
         Returns: Json
       }
@@ -603,15 +634,38 @@ export type Database = {
         Returns: Json
       }
       team_create: {
-        Args: { p_fll_team_number?: number; p_name: string }
+        Args: {
+          p_accent?: Database["public"]["Enums"]["team_accent"]
+          p_fll_team_number?: number
+          p_name: string
+        }
         Returns: Json
       }
       team_login_roster: { Args: { p_join_code: string }; Returns: Json }
+      team_regenerate_join_code: { Args: { p_team_id: string }; Returns: Json }
+      team_resolve_roles: {
+        Args: { p_meeting_id?: string; p_on_date?: string; p_team_id: string }
+        Returns: {
+          active_name: string
+          active_student_id: string
+          active_tier: Database["public"]["Enums"]["role_tier"]
+          has_second: boolean
+          primary_name: string
+          primary_present: boolean
+          primary_student_id: string
+          role: Database["public"]["Enums"]["team_role"]
+          second_name: string
+          second_present: boolean
+          second_student_id: string
+          unfilled: boolean
+        }[]
+      }
     }
     Enums: {
       meeting_kind: "friday" | "saturday"
       role_tier: "primary" | "second"
       task_status: "open" | "active" | "blocked" | "done"
+      team_accent: "cyan" | "chartreuse" | "magenta" | "amber"
       team_role:
         | "lead_builder"
         | "lead_programmer"
@@ -751,6 +805,7 @@ export const Constants = {
       meeting_kind: ["friday", "saturday"],
       role_tier: ["primary", "second"],
       task_status: ["open", "active", "blocked", "done"],
+      team_accent: ["cyan", "chartreuse", "magenta", "amber"],
       team_role: [
         "lead_builder",
         "lead_programmer",

@@ -29,13 +29,21 @@ const TABLES = [
 
 const RPCS = [
 	'auth_whoami',
+	'board_live_summary',
+	'meeting_advance_phase',
 	'meeting_create',
+	'meeting_end',
+	'meeting_start',
+	'role_assign',
+	'role_unassign',
 	'student_create',
 	'student_deactivate',
 	'student_reactivate',
 	'student_reset_pin',
 	'team_create',
 	'team_login_roster',
+	'team_regenerate_join_code',
+	'team_resolve_roles',
 	'is_mentor',
 	'is_admin_mentor',
 	'current_mentor_id',
@@ -141,6 +149,18 @@ describe('realtime', () => {
 });
 
 describe('seed', () => {
+	test('every live team has an accent, and the four seeded teams have four different ones', async () => {
+		const rows = await sql<{ name: string; accent: string }[]>`
+			select name, accent::text from public.teams
+			where name in ('Red Team', 'Blue Team', 'Green Team', 'Gold Team') order by name`;
+		expect(rows).toHaveLength(4);
+		expect(new Set(rows.map((r) => r.accent)).size).toBe(4);
+		// The stylesheet keys off these four strings and nothing else.
+		expect(rows.every((r) => ['cyan', 'chartreuse', 'magenta', 'amber'].includes(r.accent))).toBe(true);
+		const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from public.teams where accent is null`;
+		expect(n).toBe(0);
+	});
+
 	test('the local seed left one admin mentor, four teams and both phase templates', async () => {
 		const [{ admins }] = await sql<{ admins: number }[]>`select count(*)::int as admins from public.mentors where is_admin`;
 		expect(admins).toBeGreaterThanOrEqual(1);

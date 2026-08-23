@@ -1,0 +1,66 @@
+/* ==========================================================================
+   TEAM ACCENTS. A team's accent is DATA: `teams.accent` is an enum in the
+   database (0009), the server prints it as a `data-accent` attribute, and
+   this file is the only place that turns it into colour. Nothing writes a
+   team colour as an inline style, so the palette stays inside the design
+   system and a team's identity is one attribute away from every descendant.
+
+   Four tokens per accent:
+     --team-accent        the glow itself, on any of the three grounds
+     --team-accent-ink    text ON that glow (a filled chip, a solid button)
+     --team-accent-wash   a barely-there tint of the glow, for a card ground
+     --team-accent-shadow the bioluminescent halo, for the LIVE thing only
+
+   Measured against --surface-0 / --surface-1 / --surface-2:
+     cyan       11.0 / 10.2 / 9.1   ink on accent 9.8
+     chartreuse 14.5 / 13.5 / 12.1  ink on accent 13.0
+     magenta     8.1 /  7.5 / 6.7   ink on accent 7.9
+     amber      12.0 / 11.1 / 10.0  ink on accent 10.8
+   ========================================================================== */
+
+[data-accent] {
+	/* An element with an unknown accent still renders: it falls back to the
+	   app's own green rather than to an unstyled colour. */
+	--team-accent: var(--glow-green);
+	--team-accent-ink: var(--accent-ink);
+	--team-accent-wash: rgba(95, 242, 182, 0.08);
+	--team-accent-shadow: var(--glow-green-shadow);
+}
+
+[data-accent='cyan'] {
+	--team-accent: var(--glow-cyan);
+	--team-accent-ink: #03212e;
+	--team-accent-wash: rgba(90, 212, 255, 0.09);
+	--team-accent-shadow: 0 0 0.75rem rgba(90, 212, 255, 0.45), 0 0 2rem rgba(90, 212, 255, 0.18);
+}
+
+[data-accent='chartreuse'] {
+	--team-accent: var(--glow-chartreuse);
+	--team-accent-ink: #182103;
+	--team-accent-wash: rgba(201, 242, 77, 0.09);
+	--team-accent-shadow: 0 0 0.75rem rgba(201, 242, 77, 0.4), 0 0 2rem rgba(201, 242, 77, 0.16);
+}
+
+[data-accent='magenta'] {
+	--team-accent: var(--glow-magenta);
+	--team-accent-ink: #2a0722;
+	--team-accent-wash: rgba(255, 122, 224, 0.09);
+	--team-accent-shadow: 0 0 0.75rem rgba(255, 122, 224, 0.45), 0 0 2rem rgba(255, 122, 224, 0.18);
+}
+
+[data-accent='amber'] {
+	--team-accent: var(--amber);
+	--team-accent-ink: #2b1a02;
+	--team-accent-wash: rgba(255, 197, 107, 0.09);
+	--team-accent-shadow: 0 0 0.75rem rgba(255, 197, 107, 0.42), 0 0 2rem rgba(255, 197, 107, 0.16);
+}
+
+/* A small square of a team's accent, for a list row or a legend. */
+.accent-dot {
+	display: inline-block;
+	width: 0.75rem;
+	height: 0.75rem;
+	flex: none;
+	border-radius: 0.25rem;
+	background: var(--team-accent);
+}

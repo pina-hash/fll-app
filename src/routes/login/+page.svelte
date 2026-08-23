@@ -109,7 +109,7 @@
 	<header class="login__brand">
 		<p class="eyebrow">Bosco Tech · FIRST LEGO League</p>
 		<h1 class="glow">BIOGLOW</h1>
-		<p class="muted">2026–27 season</p>
+		<p class="muted">2026-27 season</p>
 	</header>
 
 	{#if notice}

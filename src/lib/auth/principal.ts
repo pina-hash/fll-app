@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/supabase/database.types';
+import { TEAM_ACCENTS, type TeamAccent } from '$lib/console/types';
 
 export interface MentorPrincipal {
 	kind: 'mentor';
@@ -26,6 +27,8 @@ export interface StudentPrincipal {
 	teamId: string;
 	teamName: string;
 	joinCode: string;
+	/** The team's glow accent, for theming the student runtime. */
+	accent: TeamAccent;
 }
 
 export type Principal = MentorPrincipal | StudentPrincipal;
@@ -63,7 +66,11 @@ export function parsePrincipal(raw: unknown): Principal | null {
 			grade: typeof r.grade === 'number' ? r.grade : null,
 			teamId,
 			teamName,
-			joinCode
+			joinCode,
+			// An accent this code does not recognise falls back rather than
+			// rejecting the principal: a wrong colour is a blemish, a null
+			// principal is a student locked out of their own board.
+			accent: TEAM_ACCENTS.includes(r.accent as TeamAccent) ? (r.accent as TeamAccent) : 'cyan'
 		};
 	}
 	return null;

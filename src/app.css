@@ -151,6 +151,15 @@ code {
 	padding: 0 var(--space-3);
 	font-size: var(--fs-small);
 }
+/* A "small" button is a DESKTOP affordance: it exists so a dense table row on
+   a laptop is not all button. On a touch device every target goes back to the
+   44px minimum, because the mentor is tapping this one-handed while walking
+   between tables and the students are nine. */
+@media (pointer: coarse) {
+	.btn--small {
+		min-height: 2.75rem;
+	}
+}
 
 .field {
 	display: grid;

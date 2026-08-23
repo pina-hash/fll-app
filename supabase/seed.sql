@@ -9,7 +9,7 @@
 --      Google sign-in, so 0002's trigger is what makes the mentors row (and
 --      what makes it the admin, as the first one). It also gets a local-only
 --      password so tests and dev tooling can sign in without Google;
---   2. four teams with generated join codes;
+--   2. four teams with generated join codes and their glow accents;
 --   3. the standard phase template for both meeting kinds:
 --        Friday,   90 min: Huddle 10, Role Blocks 60, Mat Run 15, Close 5
 --        Saturday, 120 min: Huddle 10, Role Blocks 75, Mat Time 25, Close 10
@@ -65,20 +65,33 @@ $$;
 -- ---------------------------------------------------------------------------
 -- 2. Four teams. Direct insert (the seed runs as postgres, not as a mentor);
 --    join codes come from the same generator team_create uses.
+--
+--    The accent is stated per team rather than left to 0009's generic
+--    backfill, which only guarantees DISTINCT accents, not ones that read
+--    sensibly next to a placeholder team name. Restated on every run so a
+--    database that was already backfilled lands on the same mapping.
 -- ---------------------------------------------------------------------------
 do $$
 declare
-	v_name text;
+	v_pair text[];
 	v_n int := 0;
 begin
-	foreach v_name in array array['Red Team', 'Blue Team', 'Green Team', 'Gold Team'] loop
-		if not exists (select 1 from public.teams t where t.name = v_name) then
-			insert into public.teams (name, join_code)
-			values (v_name, public._generate_join_code());
+	foreach v_pair slice 1 in array array[
+		array['Red Team', 'magenta'],
+		array['Blue Team', 'cyan'],
+		array['Green Team', 'chartreuse'],
+		array['Gold Team', 'amber']
+	] loop
+		if not exists (select 1 from public.teams t where t.name = v_pair[1]) then
+			insert into public.teams (name, join_code, accent)
+			values (v_pair[1], public._generate_join_code(), v_pair[2]::public.team_accent);
 			v_n := v_n + 1;
+		else
+			update public.teams t set accent = v_pair[2]::public.team_accent
+			where t.name = v_pair[1] and t.accent is distinct from v_pair[2]::public.team_accent;
 		end if;
 	end loop;
-	raise notice 'seed: % of 4 teams created.', v_n;
+	raise notice 'seed: % of 4 teams created; accents set on all four.', v_n;
 end
 $$;
 

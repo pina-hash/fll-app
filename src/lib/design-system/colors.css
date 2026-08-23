@@ -3,7 +3,10 @@
    a robot mat under bright lights, and the BIOGLOW theme is bioluminescence on
    deep water. Semantic roles are fixed; do not reassign them.
 
-   Every foreground token states its contrast against --surface-0 (#0B1220).
+   Every foreground token states its measured contrast against --surface-0
+   (#0b1220). The four TEAM accents live here too, but the mapping from a team
+   to its accent is in team-accents.css, keyed off the `data-accent` attribute
+   the database fills in.
    ========================================================================== */
 :root {
 	/* Grounds, darkest to lightest. */
@@ -18,14 +21,21 @@
 
 	/* Identity. */
 	--glow-green: #5ff2b6; /* 12.8:1 -- primary action, live, success */
-	--glow-cyan: #5ad4ff; /* 10.9:1 -- links, focus ring, information */
+	--glow-cyan: #5ad4ff; /* 11.0:1 -- links, focus ring, information */
 	--glow-violet: #b691ff; /* 8.2:1  -- mentors, secondary action */
-	--amber: #ffc56b; /* 12.3:1 -- blocked, attention */
+	--amber: #ffc56b; /* 12.0:1 -- blocked, attention */
 	--coral: #ff6f7d; /* 7.3:1  -- errors only */
 
+	/* The two accents that exist ONLY to identify a team. They are not
+	   semantic anywhere else: nothing in the app means "chartreuse". */
+	--glow-chartreuse: #c9f24d; /* 14.5:1 */
+	--glow-magenta: #ff7ae0; /* 8.1:1  */
+
 	/* Boundaries. --boundary carries meaning (a card edge, a control outline)
-	   and clears 3:1 against every ground it lands on; --hairline decorates. */
-	--boundary: #3a4a66;
+	   and clears 3:1 against every ground it lands on: 3.81:1 on --surface-0,
+	   3.54:1 on --surface-1, 3.16:1 on --surface-2. --hairline decorates and
+	   is not held to that; do not raise it. */
+	--boundary: #5c7199;
 	--hairline: #1f2b40;
 
 	/* Semantic aliases. */
