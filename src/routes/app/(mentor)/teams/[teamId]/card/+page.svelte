@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import FirstName from '$lib/brand/FirstName.svelte';
+	import { SEASON } from '$lib/brand/rules';
 	import { knownPins, mintPin, rememberPin } from '$lib/console/pins';
 	import { ROLE_SHORT, type TeamRole } from '$lib/console/types';
 	import type { PageData } from './$types';
@@ -105,7 +107,7 @@
 	<article class="sheet" data-accent={data.team.accent}>
 		<header class="sheet__head">
 			<div>
-				<p class="sheet__eyebrow">Bosco Tech FIRST LEGO League · BIOGLOW 2026-27</p>
+				<p class="sheet__eyebrow">Bosco Tech · <FirstName name="season" /> · {SEASON.years}</p>
 				<h2 class="sheet__name">{data.team.name}</h2>
 			</div>
 			<div class="sheet__code">

@@ -1,13 +1,26 @@
-/* Type tokens. A face is named through its token, never as a literal. */
+/* ==========================================================================
+   TYPE TOKENS. A face is named through its token, never as a literal.
+
+   Roboto for everything, because it is the FIRST brand face (Branding &
+   Design Guidelines p29) and Arial is the guide's own named substitute, so
+   the fallback stack is the guide's fallback stack. Roboto Condensed 700 is
+   the display face for short all-caps labels, which is the weight the brand
+   system uses it for. See fonts.css for the licensing note.
+
+   THE WEIGHT LADDER CHANGED. The old scale ran to 800 ("black"), which Roboto
+   does not ship in the weights the brand names; the brand's ladder is
+   Regular / Italic / Bold / Bold Italic / Bold Condensed. --fw-black is kept
+   as an alias of bold so no call site has to change, and it means bold.
+   ========================================================================== */
 :root {
-	--font-display: 'Nunito', 'Segoe UI', system-ui, sans-serif;
-	--font-body: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+	--font-display: 'Roboto Condensed', 'Roboto', Arial, system-ui, sans-serif;
+	--font-body: 'Roboto', Arial, system-ui, sans-serif;
 	--font-mono: 'JetBrains Mono', 'Cascadia Mono', 'Consolas', monospace;
 
 	--fw-regular: 400;
-	--fw-semibold: 600;
+	--fw-semibold: 500;
 	--fw-bold: 700;
-	--fw-black: 800;
+	--fw-black: 700;
 
 	/* Sized for a tablet at arm's length: body never below 17px. */
 	--fs-hero: clamp(2.5rem, 8vw, 3.5rem);

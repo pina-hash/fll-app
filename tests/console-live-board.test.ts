@@ -120,7 +120,13 @@ describe('the payload', () => {
 		// which is why every assertion in this file is scoped by team id.
 		const mine = [quiet, blocked, short, busy].map((t) => cardFor(summary, t));
 		expect(mine.every(Boolean)).toBe(true);
-		expect(mine.every((c) => ['cyan', 'chartreuse', 'magenta', 'amber'].includes(c.accent))).toBe(true);
+		// A team's accent is one of the eleven it may CHOOSE, or null before it
+		// has chosen (0018). Both are real; a string outside the enum is not.
+		const PALETTE = [
+			'bark', 'orange', 'olive', 'lime', 'green', 'sage',
+			'teal', 'violet', 'purple', 'orchid', 'magenta'
+		];
+		expect(mine.every((c) => c.accent === null || PALETTE.includes(c.accent))).toBe(true);
 	});
 
 	test('present over roster counts only active students checked in to THIS meeting', async () => {

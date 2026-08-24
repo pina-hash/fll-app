@@ -24,10 +24,12 @@ import type { PageServerLoad } from './$types';
  * reprintable.
  */
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
-	const [teamRes, studentsRes, rolesRes, boardRes, stateRes, parentRes] = await Promise.all([
+	const [teamRes, studentsRes, rolesRes, boardRes, stateRes, parentRes, accentRes] = await Promise.all([
 		supabase
 			.from('teams')
-			.select('id, name, join_code, accent, fll_team_number, archived_at')
+			.select(
+				'id, name, short_name, join_code, accent, accent_proposed, accent_proposed_by, fll_team_number, archived_at'
+			)
 			.eq('id', params.teamId)
 			.maybeSingle(),
 		supabase
@@ -42,7 +44,11 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		supabase
 			.from('student_parent_access')
 			.select('student_id, token, issued_at, revoked_at, last_opened_at, open_count')
-			.eq('team_id', params.teamId)
+			.eq('team_id', params.teamId),
+		// Which colours exist and who holds them: ONE statement, in SQL
+		// (team_accent_options, 0018), so a stale page cannot invent a swatch
+		// or hide one that has just been taken.
+		supabase.rpc('team_accent_options')
 	]);
 
 	if (!teamRes.data) error(404, 'No such team.');
@@ -57,6 +63,11 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		boardDevice: boardRes.data ?? null,
 		rosterStates: states,
 		rosterState: states.find((s) => s.team_id === params.teamId) ?? null,
-		parentLinks: parentRes.data ?? []
+		parentLinks: parentRes.data ?? [],
+		accentOptions: (accentRes.data ?? []) as {
+			accent: import('$lib/console/types').TeamAccent;
+			taken_by_team_id: string | null;
+			taken_by: string | null;
+		}[]
 	};
 };

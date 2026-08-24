@@ -303,10 +303,10 @@
 		color: var(--text-3);
 	}
 	.mlist__item[data-status='live'] {
-		border-color: var(--glow-green);
+		border-color: var(--success);
 	}
 	.mlist__item[data-status='live'] .mlist__status {
-		color: var(--glow-green);
+		color: var(--success-text);
 	}
 
 	.mc__detail {
@@ -315,7 +315,7 @@
 		align-content: start;
 	}
 	.mc__now[data-state='running'] {
-		border-color: var(--glow-green);
+		border-color: var(--success);
 	}
 	.mc__phase {
 		margin-bottom: 0;
@@ -325,12 +325,12 @@
 		font-size: var(--fs-hero);
 		font-weight: var(--fw-bold);
 		font-variant-numeric: tabular-nums;
-		color: var(--glow-green);
+		color: var(--success-text);
 		margin: var(--space-2) 0;
 		line-height: 1;
 	}
 	.mc__clock--over {
-		color: var(--amber);
+		color: var(--warning);
 	}
 	.mc__actions {
 		display: flex;
@@ -362,10 +362,10 @@
 		flex: 1 1 10rem;
 	}
 	.phase--now {
-		border-color: var(--glow-green);
+		border-color: var(--success);
 	}
 	.phase--now .phase__name {
-		color: var(--glow-green);
+		color: var(--success-text);
 	}
 	.phase--done .phase__name {
 		color: var(--text-3);

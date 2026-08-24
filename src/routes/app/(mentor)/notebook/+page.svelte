@@ -54,7 +54,7 @@
 		color: var(--team-accent-ink, var(--text-1));
 	}
 	.nbp__todo {
-		color: var(--amber);
+		color: var(--warning);
 		font-weight: var(--fw-bold);
 	}
 </style>

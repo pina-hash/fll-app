@@ -1267,7 +1267,7 @@
 		gap: var(--space-1);
 	}
 	.rp__zoom--on {
-		color: var(--glow-green);
+		color: var(--success-text);
 		border-color: var(--boundary);
 		background: var(--surface-2);
 	}
@@ -1284,12 +1284,12 @@
 		min-width: 2.5rem;
 	}
 	.rp__uncalibrated {
-		color: var(--amber);
+		color: var(--warning);
 		margin: 0;
 	}
 	.rp__uncalibrated-notice {
-		color: var(--amber);
-		border-color: var(--amber);
+		color: var(--warning);
+		border-color: var(--warning);
 	}
 	.rp__picture {
 		display: grid;
@@ -1344,7 +1344,7 @@
 		opacity: 0.8;
 	}
 	.rp__mission-chip--on .rp__mission-btn {
-		border-color: var(--team-accent, var(--glow-cyan));
+		border-color: var(--team-accent, var(--link));
 		background: var(--team-accent-wash, var(--surface-2));
 	}
 	.rp__mission-name {
@@ -1375,7 +1375,7 @@
 		overflow: hidden;
 	}
 	.rp__time-seg {
-		background: var(--team-accent, var(--glow-cyan));
+		background: var(--team-accent, var(--link));
 		min-width: 2px;
 	}
 	.rp__time-gap {
@@ -1423,7 +1423,7 @@
 		overflow: hidden;
 	}
 	.rp__launch--on {
-		border-color: var(--team-accent, var(--glow-cyan));
+		border-color: var(--team-accent, var(--link));
 	}
 	.rp__launch-head {
 		display: flex;
@@ -1447,7 +1447,7 @@
 		align-items: center;
 		justify-content: center;
 		border-radius: 50%;
-		background: var(--team-accent, var(--glow-cyan));
+		background: var(--team-accent, var(--link));
 		color: var(--team-accent-ink, var(--accent-ink));
 		font-weight: var(--fw-black);
 	}

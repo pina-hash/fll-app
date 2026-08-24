@@ -250,7 +250,7 @@
 	.open__title {
 		margin: 0;
 		font-size: var(--fs-hero);
-		color: var(--glow-green);
+		color: var(--success-text);
 	}
 	.open__sub {
 		margin: 0;
@@ -333,10 +333,10 @@
 		font-weight: var(--fw-bold);
 		font-variant-numeric: tabular-nums;
 		line-height: 1;
-		color: var(--glow-green);
+		color: var(--success-text);
 	}
 	.bd__clock--over {
-		color: var(--amber);
+		color: var(--warning);
 	}
 
 	.bd__roster {
@@ -413,7 +413,7 @@
 		min-height: 3.5rem;
 		border-radius: var(--radius-control);
 		border: none;
-		background: var(--glow-green);
+		background: var(--success);
 		color: var(--accent-ink);
 		font: inherit;
 		font-size: clamp(1rem, 1.6vw, 1.3rem);
@@ -422,8 +422,8 @@
 	}
 	.btask__done:disabled {
 		background: var(--surface-1);
-		border: 2px solid var(--amber);
-		color: var(--amber);
+		border: 2px solid var(--warning);
+		color: var(--warning);
 		cursor: default;
 	}
 
@@ -437,13 +437,13 @@
 	}
 	.bd__net {
 		font-weight: var(--fw-bold);
-		color: var(--glow-green);
+		color: var(--success-text);
 	}
 	.bd__net[data-state='offline'] {
-		color: var(--coral);
+		color: var(--danger-text);
 	}
 	.bd__net[data-state='syncing'] {
-		color: var(--amber);
+		color: var(--warning);
 	}
 	/* The mat is across the room from the board; this is the one link a child
 	   walking past taps. Sized to be hit while holding a robot. */

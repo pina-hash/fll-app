@@ -7,11 +7,11 @@
  * know what a stack trace is. A payload this code cannot understand has to
  * become "this link is not working" rather than a 500.
  */
-import type { TeamAccent } from '$lib/console/types';
+import { isTeamAccent, type TeamAccent } from '$lib/console/types';
 
 export interface ParentTeam {
 	name: string;
-	accent: TeamAccent;
+	accent: TeamAccent | null;
 	fll_team_number: number | null;
 }
 
@@ -75,8 +75,6 @@ export interface ParentView {
 	roster: ParentRosterEntry[];
 }
 
-const ACCENTS: TeamAccent[] = ['cyan', 'chartreuse', 'magenta', 'amber'];
-
 function obj(v: unknown): Record<string, unknown> | null {
 	return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
 }
@@ -109,7 +107,7 @@ export function parseParentView(raw: unknown): ParentView | null {
 		server_now: maybeStr(r.server_now) ?? new Date().toISOString(),
 		team: {
 			name: maybeStr(team.name) ?? 'Team',
-			accent: ACCENTS.includes(team.accent as TeamAccent) ? (team.accent as TeamAccent) : 'cyan',
+			accent: isTeamAccent(team.accent) ? team.accent : null,
 			fll_team_number: maybeNum(team.fll_team_number)
 		},
 		student: {

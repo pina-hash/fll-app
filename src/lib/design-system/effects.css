@@ -1,4 +1,14 @@
-/* Spacing, radii, glows. Layered CSS only -- no image binaries. */
+/* ==========================================================================
+   Spacing, radii, elevation. Layered CSS only -- no image binaries.
+
+   THE GLOWS ARE GONE. The old system was bioluminescence on deep water: every
+   identity colour carried a coloured halo, and the page had a radial backdrop.
+   Neither survives a brand review. The FIRST guidelines forbid putting a mark
+   on "busy or distracting backgrounds and colors", a coloured glow behind a
+   surface that also carries a lockup is exactly that, and a halo in a brand
+   accent is the closest thing to recolouring one. Elevation is now a plain
+   neutral shadow and the page ground is flat white.
+   ========================================================================== */
 :root {
 	--space-1: 0.25rem;
 	--space-2: 0.5rem;
@@ -12,20 +22,15 @@
 	--radius-card: 1rem;
 	--radius-tile: 0.875rem;
 
-	/* Bioluminescent glows: one per identity colour, used on the thing that
-	   is LIVE (the current phase, the primary action), never as decoration. */
-	--glow-green-shadow: 0 0 0.75rem rgba(95, 242, 182, 0.45), 0 0 2rem rgba(95, 242, 182, 0.2);
-	--glow-cyan-shadow: 0 0 0.75rem rgba(90, 212, 255, 0.45), 0 0 2rem rgba(90, 212, 255, 0.2);
-	--glow-violet-shadow: 0 0 0.75rem rgba(182, 145, 255, 0.45), 0 0 2rem rgba(182, 145, 255, 0.2);
+	/* Elevation, neutral. Nothing tinted, nothing coloured. */
+	--shadow-card: 0 1px 2px rgba(35, 31, 32, 0.06), 0 6px 16px rgba(35, 31, 32, 0.08);
+	--shadow-raised: 0 1px 3px rgba(35, 31, 32, 0.1), 0 10px 24px rgba(35, 31, 32, 0.12);
 
-	--shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
+	/* The page ground is the brand's own white. No gradient, no wash: a
+	   lockup has to sit on a plain background. */
+	--backdrop-deep: var(--surface-0);
 
-	/* The page backdrop: deep water with a faint upward light. */
-	--backdrop-deep: radial-gradient(120% 80% at 50% 110%, rgba(95, 242, 182, 0.12), transparent 60%),
-		radial-gradient(80% 60% at 20% -10%, rgba(90, 212, 255, 0.1), transparent 60%),
-		var(--surface-0);
-
-	/* A focus ring a child can see from across the table. */
+	/* A focus ring a child can see from across the table, in FIRST blue. */
 	--focus-outline: 3px solid var(--focus-ring);
 	--focus-offset: 2px;
 }

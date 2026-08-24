@@ -1,5 +1,7 @@
 /* ==========================================================================
-   FLL BIOGLOW design system: the token entry point.
+   The design system's token entry point, built on the official FIRST and
+   FIRST LEGO League palettes and the Roboto family (see colors.css and
+   fonts.css for the sources and the measurements).
    Imported once at the top of src/app.css. Load order matters: fonts first,
    then colors, type, effects, motion. Pages design against these custom
    properties; nothing outside this folder defines a colour or a font face.

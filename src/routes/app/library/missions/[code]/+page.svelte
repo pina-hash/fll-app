@@ -109,7 +109,7 @@
 	.back {
 		display: inline-block;
 		margin-bottom: var(--space-3);
-		color: var(--glow-cyan);
+		color: var(--link);
 	}
 	h1 {
 		margin: var(--space-1) 0 var(--space-4);
@@ -128,7 +128,7 @@
 		gap: var(--space-3);
 	}
 	.scoring li.bonus {
-		color: var(--glow-cyan);
+		color: var(--link);
 	}
 	.points {
 		font-weight: var(--fw-bold);
@@ -137,11 +137,11 @@
 	.caveats {
 		margin-top: var(--space-3);
 		padding-left: var(--space-4);
-		color: var(--amber);
+		color: var(--warning);
 	}
 	.prompt {
 		margin-top: var(--space-4);
-		border-color: var(--glow-violet);
+		border-color: var(--accent);
 	}
 	.notes {
 		margin-top: var(--space-6);

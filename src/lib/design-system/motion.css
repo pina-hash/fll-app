@@ -3,7 +3,6 @@
 @keyframes ds-breathe {
 	0%,
 	100% {
-		box-shadow: var(--glow-green-shadow);
 	}
 	50% {
 		box-shadow: 0 0 1.25rem rgba(95, 242, 182, 0.6), 0 0 3rem rgba(95, 242, 182, 0.3);

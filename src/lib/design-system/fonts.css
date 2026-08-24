@@ -1,4 +1,38 @@
-/* Two faces, loaded once. Nunito for everything a nine-year-old reads at arm's
-   length on a tablet; JetBrains Mono for codes, PINs and clocks, where glyph
-   shape (a distinct 0, 1, I, O) is the whole point. */
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+/* ==========================================================================
+   THE BRAND FACE IS ROBOTO, AND IT IS FREELY LICENSED, SO NOTHING IS
+   SUBSTITUTED FOR IT.
+
+   FIRST Branding & Design Guidelines, "FIRST FONTS" (p29): the Roboto font
+   family, in "Regular, Italic, Bold, Bold Italic, and Bold Condensed", is the
+   primary font of the FIRST branding system, and the guide itself says the
+   weights "can be accessed free of charge along with additional font weights
+   at fonts.google.com/specimen/Roboto." Arial is named as the permitted
+   substitute (p30) and is the fallback below for a device with neither.
+   Roboto ships under the SIL Open Font License 1.1, which permits web use and
+   self-hosting, so there is no licensing reason to reach for a lookalike.
+
+   SELF-HOSTED, NOT HOTLINKED. The previous stylesheet pulled its faces from
+   fonts.googleapis.com at runtime. This app is local-first by design: a
+   student's tablet has to work in a gym with no uplink, and a webfont request
+   that never returns is a screen of fallback metrics mid-meeting. @fontsource
+   vendors the same files into the bundle, so the faces are as offline as the
+   rest of the app. It also removes a third-party request from every page,
+   which is the right default for a tool used by nine-year-olds.
+
+   Bold Condensed is a separate family on Google Fonts (Roboto Condensed);
+   it is loaded at 700 only, for the places the brand uses it: short all-caps
+   labels where the full-width face would wrap.
+
+   The mono face is NOT a brand concern. It exists for join codes, PINs and
+   clocks, where a distinct 0/O and 1/l/I is the whole point, and it is
+   self-hosted for the same offline reason.
+   ========================================================================== */
+
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/400-italic.css';
+@import '@fontsource/roboto/500.css';
+@import '@fontsource/roboto/700.css';
+@import '@fontsource/roboto/700-italic.css';
+@import '@fontsource/roboto-condensed/700.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/700.css';

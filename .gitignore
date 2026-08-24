@@ -36,3 +36,7 @@ supabase/.branches
 # reaches the app only by a mentor uploading it into the private 'mat' bucket.
 # See CLAUDE.md > Skill Hub content > COPYRIGHT.
 local-assets/
+# local-assets/brand/ holds FIRST's own brand guideline PDFs and the official
+# logo archives they were extracted from. The extracted LOGO FILES are tracked,
+# in static/brand/, under the registered-team permission; the PDFs and the
+# archives are not ours to redistribute.

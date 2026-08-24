@@ -23,7 +23,7 @@
 	import type { ConnectionState } from './queue.svelte';
 
 	interface Props {
-		team: { name: string; accent: TeamAccent; joinCode: string };
+		team: { name: string; accent: TeamAccent | null; joinCode: string };
 		me: { studentId: string; firstName: string; lastInitial: string };
 		meeting: BoardMeeting | null;
 		/** Server-corrected wall clock, in milliseconds. */
@@ -371,25 +371,25 @@
 		width: 0.6rem;
 		height: 0.6rem;
 		border-radius: 999px;
-		background: var(--glow-green);
+		background: var(--success);
 	}
 	.sr__net[data-state='syncing'] {
-		color: var(--amber);
-		border-color: var(--amber);
+		color: var(--warning);
+		border-color: var(--warning);
 	}
 	.sr__net[data-state='syncing'] .sr__netdot {
-		background: var(--amber);
+		background: var(--warning);
 	}
 	.sr__net[data-state='offline'] {
-		color: var(--coral);
-		border-color: var(--coral);
+		color: var(--danger-text);
+		border-color: var(--danger);
 	}
 	.sr__net[data-state='offline'] .sr__netdot {
-		background: var(--coral);
+		background: var(--danger);
 	}
 
 	.sr__failed {
-		border: 2px solid var(--coral);
+		border: 2px solid var(--danger);
 		border-radius: var(--radius-card);
 		padding: var(--space-3);
 		background: rgba(255, 111, 125, 0.12);
@@ -397,7 +397,7 @@
 	.sr__failed h2 {
 		margin: 0 0 var(--space-2);
 		font-size: var(--fs-h3);
-		color: var(--coral);
+		color: var(--danger-text);
 	}
 	.sr__failedrow {
 		display: flex;
@@ -448,7 +448,7 @@
 		font-family: var(--font-display);
 		font-size: var(--fs-hero);
 		font-weight: var(--fw-black);
-		box-shadow: var(--team-accent-shadow);
+		box-shadow: var(--shadow-raised);
 		cursor: pointer;
 	}
 	.sr__checkbtn:active {
@@ -479,7 +479,7 @@
 		line-height: 1;
 	}
 	.sr__clock--over {
-		color: var(--amber);
+		color: var(--warning);
 	}
 	.sr__phasesub {
 		margin: var(--space-1) 0 0;
@@ -516,8 +516,8 @@
 		padding: var(--space-3);
 		border-radius: var(--radius-control);
 		background: rgba(255, 197, 107, 0.16);
-		border: 2px solid var(--amber);
-		color: var(--amber);
+		border: 2px solid var(--warning);
+		color: var(--warning);
 		font-size: var(--fs-h3);
 		font-weight: var(--fw-bold);
 	}
@@ -575,8 +575,8 @@
 		font-weight: var(--fw-bold);
 	}
 	.tk__tag--photo {
-		border-color: var(--amber);
-		color: var(--amber);
+		border-color: var(--warning);
+		color: var(--warning);
 	}
 	.tk__actions {
 		display: flex;
@@ -612,12 +612,12 @@
 		color: var(--team-accent);
 	}
 	.btn2--photo {
-		border-color: var(--amber);
-		color: var(--amber);
+		border-color: var(--warning);
+		color: var(--warning);
 	}
 	.btn2--done {
-		background: var(--glow-green);
-		border-color: var(--glow-green);
+		background: var(--success);
+		border-color: var(--success);
 		color: var(--accent-ink);
 	}
 
@@ -650,9 +650,9 @@
 		width: 100%;
 		min-height: 4.5rem;
 		border-radius: var(--radius-card);
-		border: 3px solid var(--amber);
+		border: 3px solid var(--warning);
 		background: rgba(255, 197, 107, 0.18);
-		color: var(--amber);
+		color: var(--warning);
 		font-family: var(--font-display);
 		font-size: var(--fs-h1);
 		font-weight: var(--fw-black);
@@ -708,7 +708,7 @@
 		margin-top: var(--space-3);
 	}
 	.sheet__ok {
-		color: var(--glow-green);
+		color: var(--success-text);
 		font-weight: var(--fw-bold);
 	}
 	.sr__file {

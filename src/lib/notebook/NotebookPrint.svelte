@@ -7,10 +7,13 @@
 	 * and chrome. The PDF path is the browser's own Print > Save as PDF, which
 	 * every judging-room laptop already has.
 	 *
-	 * PAPER IS LIGHT. The app is dark for tablets in a lit room; a printed
-	 * page is ink on white, so this component paints its own paper palette
-	 * inline and does not consume the dark theme.
+	 * PAPER IS LIGHT, AND SO IS THE APP NOW. This component still paints its
+	 * own paper palette inline rather than consuming the tokens, because a
+	 * judging-room printer must not depend on a stylesheet that could change:
+	 * the sheet is ink on white whatever the app is wearing.
 	 */
+	import FirstName from '$lib/brand/FirstName.svelte';
+	import { SEASON } from '$lib/brand/rules';
 	import {
 		NOTEBOOK_SECTIONS,
 		OUTCOME_LABEL,
@@ -73,7 +76,7 @@
 
 	<article class="np__paper">
 		<header class="np__cover">
-			<p class="np__season">FIRST LEGO League Challenge · BIOGLOW 2026-27</p>
+			<p class="np__season"><FirstName name="season" /> · {SEASON.years}</p>
 			<h1 class="np__title">{team.name}</h1>
 			{#if team.fllTeamNumber}<p class="np__number">Team {team.fllTeamNumber}</p>{/if}
 			<p class="np__doctype">Engineering Notebook</p>
@@ -255,8 +258,8 @@
 		cursor: pointer;
 	}
 	.np__toolbtn--go {
-		border-color: var(--glow-green, #7dff9a);
-		color: var(--glow-green, #7dff9a);
+		border-color: var(--success, #00a651);
+		color: var(--success-text, #046b37);
 	}
 
 	.np__paper {

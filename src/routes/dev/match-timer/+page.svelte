@@ -20,7 +20,7 @@
 	type Scenario = 'fresh' | 'season' | 'board';
 	let scenario = $state<Scenario>('season');
 	let connection = $state<ConnectionState>('online');
-	let accent = $state<TeamAccent>('cyan');
+	let accent = $state<TeamAccent>('teal');
 	let log = $state<string[]>([]);
 
 	function record(run: LoggedRun) {
@@ -159,7 +159,7 @@
 
 		<fieldset class="grp">
 			<legend>Accent</legend>
-			{#each ['cyan', 'chartreuse', 'magenta', 'amber'] as value (value)}
+			{#each ['teal', 'chartreuse', 'magenta', 'amber'] as value (value)}
 				<label class="opt">
 					<input type="radio" name="accent" checked={accent === value} onchange={() => (accent = value as TeamAccent)} />
 					<span>{value}</span>

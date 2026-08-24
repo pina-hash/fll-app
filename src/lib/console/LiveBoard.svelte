@@ -183,7 +183,7 @@
 		box-shadow: var(--shadow-card);
 	}
 	.board__phase[data-state='running'] {
-		border-color: var(--glow-green);
+		border-color: var(--success);
 	}
 	.board__phase-line {
 		display: flex;
@@ -210,10 +210,10 @@
 		font-size: var(--fs-h1);
 		font-weight: var(--fw-bold);
 		font-variant-numeric: tabular-nums;
-		color: var(--glow-green);
+		color: var(--success-text);
 	}
 	.board__clock--over {
-		color: var(--amber);
+		color: var(--warning);
 	}
 	.board__bar {
 		height: 0.5rem;
@@ -225,10 +225,10 @@
 	.board__bar span {
 		display: block;
 		height: 100%;
-		background: var(--glow-green);
+		background: var(--success);
 	}
 	.board__bar--over span {
-		background: var(--amber);
+		background: var(--warning);
 	}
 
 	.board__conn {
@@ -245,19 +245,19 @@
 		width: 0.5rem;
 		height: 0.5rem;
 		border-radius: 999px;
-		background: var(--glow-green);
+		background: var(--success);
 	}
 	.board__conn[data-connection='reconnecting'] {
-		color: var(--amber);
+		color: var(--warning);
 	}
 	.board__conn[data-connection='reconnecting'] .board__conn-dot {
-		background: var(--amber);
+		background: var(--warning);
 	}
 	.board__conn[data-connection='offline'] {
-		color: var(--coral);
+		color: var(--danger-text);
 	}
 	.board__conn[data-connection='offline'] .board__conn-dot {
-		background: var(--coral);
+		background: var(--danger);
 	}
 
 	/* --- team cards -------------------------------------------------------- */
@@ -282,9 +282,9 @@
 		min-height: 8rem;
 	}
 	.tcard--loud {
-		border-color: var(--amber);
+		border-color: var(--warning);
 		border-left-color: var(--team-accent);
-		box-shadow: 0 0 0 1px var(--amber) inset;
+		box-shadow: 0 0 0 1px var(--warning) inset;
 	}
 	.tcard__head {
 		display: flex;
@@ -335,13 +335,13 @@
 		background: rgba(255, 111, 125, 0.16);
 	}
 	.stat--alarm .stat__value {
-		color: var(--coral);
+		color: var(--danger-text);
 	}
 	.stat--warn {
 		background: rgba(255, 197, 107, 0.14);
 	}
 	.stat--warn .stat__value {
-		color: var(--amber);
+		color: var(--warning);
 	}
 
 	.tcard__foot {
@@ -351,11 +351,11 @@
 		gap: var(--space-2);
 	}
 	.tcard__flag--alarm {
-		color: var(--coral);
+		color: var(--danger-text);
 		font-weight: var(--fw-bold);
 	}
 	.tcard__flag--warn {
-		color: var(--amber);
+		color: var(--warning);
 		font-weight: var(--fw-semibold);
 	}
 
@@ -372,10 +372,10 @@
 		@keyframes tcard-loud {
 			0%,
 			100% {
-				box-shadow: 0 0 0 1px var(--amber) inset;
+				box-shadow: 0 0 0 1px var(--warning) inset;
 			}
 			50% {
-				box-shadow: 0 0 0 1px var(--amber) inset, 0 0 1.5rem rgba(255, 197, 107, 0.28);
+				box-shadow: 0 0 0 1px var(--warning) inset, 0 0 1.5rem rgba(255, 197, 107, 0.28);
 			}
 		}
 	}

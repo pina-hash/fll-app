@@ -134,6 +134,20 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
 - **This Postgres image grants the API roles nothing useful by default.** The `postgres` role's default ACL on `public` gives `anon`/`authenticated`/`service_role` only TRUNCATE/REFERENCES/TRIGGER/MAINTAIN. Every table therefore states its own grants: `revoke all ... from anon, authenticated; grant all ... to service_role; grant select ... to authenticated;` plus column-level write grants. A table without a `service_role` grant is invisible to the admin API and to every positive control in the tests.
 - `supabase/seed.sql` is **local-only** (placeholder admin, four teams, the phase templates). `db push` never sends it; do not make production depend on it.
 - **A DERIVED ANSWER IS DEFINED ONCE, IN SQL.** "Who is active in role R for team T today" is `team_resolve_roles()` (0009) and nothing else; the live board, the team drill-in and the roster pane all call it. A second implementation in TypeScript would drift within a season. The same rule made `board_live_summary()` one call rather than six client queries. When a screen needs a number that is a rule and not a row, the rule goes in the database. Since then: `team_join_open()` (is this team taking sign-ups, with both its bounds), `team_size_cap()` (the number 6), and `match_run_history()` (the best-score trendline as a window function, not a running maximum three screens each accumulate).
+- **A TEAM IS A NUMBER; ITS COLOUR IS A CLAIM AND ITS NAME IS FILTERED.**
+  `teams.name` is "Team 1" through "Team 4" and is the identity everywhere;
+  `teams.short_name` is what the team called itself and is always secondary
+  (`TeamName.svelte` is the one component that lays those two out, so they
+  never swap places between screens). `teams.accent` is NULLABLE -- a team
+  that has not chosen has no colour, which is a real state -- and unique
+  across live teams via a partial index, so a colour is taken once and a race
+  resolves in Postgres rather than in a screen. Any member proposes
+  (`team_propose_accent`), the Run Captain or a mentor confirms
+  (`team_confirm_accent`, delegating to `strategy_can_edit()` rather than
+  re-deriving that rule), a mentor overrides (`team_set_accent`). NOBODY holds
+  an update grant on `teams.accent`. **The palette excludes red and blue
+  because the mat's launch areas are red and blue**; 0018's header says so at
+  length, and widening the enum is a decision about the mat.
 - **DATES GO THROUGH `_app_today()` / `_app_day_start()`, NEVER `current_date`.** The season's timezone is `America/Los_Angeles`, pinned in `_app_timezone()` (0009) and mirrored by `SEASON_TZ` in `src/lib/console/clock.ts`. A Friday session runs 16:30-18:00 local, which is 23:30-01:00 UTC: `current_date` splits half of every Friday meeting onto the next day. Where a meeting is in scope, prefer its own window (`started_at` to `now()`) over any date at all.
 
 ### RLS and grants
@@ -229,18 +243,54 @@ THREE populations, one Auth instance. The boundary for all of them is `0002`'s t
 
 ## Visual theme
 
-The token layer is `src/lib/design-system/` (pure CSS custom properties: `fonts`, `colors`, `typography`, `effects`, `motion`, `team-accents`, entered through `index.css`), imported once by `src/app.css`, which holds the shared classes (`.card`, `.btn`, `.field`, `.input`, `.tile`, text roles). **Do not invent colours or name a font face as a literal**; design against the tokens.
+The token layer is `src/lib/design-system/` (pure CSS custom properties:
+`fonts`, `colors`, `typography`, `effects`, `motion`, `team-accents`, entered
+through `index.css`), imported once by `src/app.css`, which holds the shared
+classes (`.card`, `.btn`, `.field`, `.input`, `.tile`, text roles). **Do not
+invent colours or name a font face as a literal**; design against the tokens.
+Everything in the palette comes from the official FIRST and FIRST LEGO League
+guidelines: see "FIRST branding" below, and `colors.css` for the sources and
+the measured contrast of every token.
 
-- Dark by default (tablets in a lit room; bioluminescence on deep water). `--glow-green` is the primary action and "live"; `--glow-cyan` is links and focus; `--glow-violet` is the mentor register; `--amber` is blocked/attention; `--coral` is errors only.
-- `--boundary` carries meaning and clears 3:1 on every ground it lands on (measured 3.81 / 3.54 / 3.16 against `--surface-0` / `-1` / `-2`); `--hairline` decorates and is not held to that. Do not raise `--hairline`. If you change `--boundary`, re-measure rather than assume.
-- Touch targets are 44px minimum (`.btn`, `.tile`, `.input`); body text never below 17px. The users are nine.
-- Everything animated is gated behind `prefers-reduced-motion: no-preference` (`motion.css`: the classes are the gate).
-- **A TEAM'S COLOUR IS DATA, AND ONLY THE STYLESHEET KNOWS WHAT IT LOOKS LIKE.** `teams.accent` is an enum (`cyan`, `chartreuse`, `magenta`, `amber`); the server prints it as `data-accent="..."` and `team-accents.css` turns that into `--team-accent`, `--team-accent-ink`, `--team-accent-wash`, `--team-accent-shadow`. Never write a team colour as an inline style and never store a hex string in a column.
-- **`.btn--small` is a DESKTOP affordance.** It exists so a dense table row on a laptop is not all button; `@media (pointer: coarse)` puts it back to 44px. Any new compact control does the same.
-- **THE STUDENT RUNTIME IS 375px FIRST AND THE WHOLE SCREEN IS THE TEAM'S ACCENT**, not a stripe on a card: a glance across a table of phones should say whose is whose. Every student-facing control is a 56px slab; a link they are meant to tap is a button, not a line of text. The reading level is fourth grade -- "Nobody is in this seat", not "role unfilled"; "I'm here", not "Check in". The team board is landscape-first and sized to be read from a metre away (`clamp()` on every heading).
-- **The Live Board is phone-first; every other console surface is desktop-first master-detail.** Both ends are checked regardless: a pass at 1440px is not a pass at 375px. A grid item defaults to `min-width: auto`, so any track holding a deliberately wide child (a table with a `min-width`) states `min-width: 0` or the page scrolls sideways.
-
----
+- **Light by default, on the brand's own white**, with FIRST black as the
+  ink. The accents are built for white; on black they measure 1.82 to 3.72.
+  FLL purple is the primary action, FIRST blue is links and focus, FLL green
+  is live/done, FIRST red is errors, and the brand gray is the thin rule the
+  FLL lockup guidelines prescribe.
+- **No glows, no coloured backdrops.** A mark may not sit on a busy or
+  distracting background, and a halo in a brand accent is the nearest thing
+  to recolouring one. Elevation is a neutral shadow.
+- `--boundary` carries meaning and clears 3:1 on every ground it lands on
+  (measured 4.38 / 4.02 / 3.65 against `--surface-0` / `-1` / `-2`);
+  `--hairline` decorates and is not held to that. Do not raise `--hairline`.
+  If you change `--boundary`, re-measure rather than assume.
+- Touch targets are 44px minimum (`.btn`, `.tile`, `.input`); body text never
+  below 17px. The users are nine.
+- Everything animated is gated behind `prefers-reduced-motion: no-preference`
+  (`motion.css`: the classes are the gate).
+- **A TEAM'S COLOUR IS DATA, AND ONLY THE STYLESHEET KNOWS WHAT IT LOOKS
+  LIKE.** `teams.accent` is an enum of eleven values (or null, before a team
+  chooses); the server prints it as `data-accent="..."` and
+  `team-accents.css` turns that into `--team-accent`, `--team-accent-ink`,
+  `--team-accent-wash`. Never write a team colour as an inline style and
+  never store a hex string in a column. A team accent is functional colour,
+  never brand expression, and never touches a FIRST mark.
+- **`.btn--small` is a DESKTOP affordance.** It exists so a dense table row on
+  a laptop is not all button; `@media (pointer: coarse)` puts it back to 44px.
+  Any new compact control does the same.
+- **THE STUDENT RUNTIME IS 375px FIRST AND THE WHOLE SCREEN IS THE TEAM'S
+  ACCENT**, not a stripe on a card: a glance across a table of phones should
+  say whose is whose. Every student-facing control is a 56px slab; a link they
+  are meant to tap is a button, not a line of text. The reading level is
+  fourth grade -- "Nobody is in this seat", not "role unfilled"; "I'm here",
+  not "Check in". The team board is landscape-first and sized to be read from
+  a metre away (`clamp()` on every heading).
+- **The Live Board is phone-first; every other console surface is
+  desktop-first master-detail.** Both ends are checked regardless: a pass at
+  1440px is not a pass at 375px. A grid item defaults to `min-width: auto`, so
+  any track holding a deliberately wide child (a table with a `min-width`, a
+  fixed-width preview frame) states `min-width: 0` or
+  `grid-template-columns: minmax(0, 1fr)`, or the page scrolls sideways.
 
 ## Skill Hub content
 
@@ -288,9 +338,12 @@ The route planner can draw the real field layout under its schematic. That
 picture is FIRST and LEGO copyrighted and this repo is public, so the rules
 below are about DISTRIBUTION first and accuracy second. Both are load-bearing.
 
-- **NO FIRST OR LEGO ARTWORK IS EVER TRACKED, BUNDLED, OR PUBLICLY SERVED.**
+- **NO FIRST OR LEGO *SEASON OR GAME* ARTWORK IS EVER TRACKED, BUNDLED, OR
+  PUBLICLY SERVED** -- field layouts, mat graphics, mission model renders,
+  building instructions, season lockups.
   Not in git, not in `static/`, not in a component as a data URI, not on any
-  public URL. The working copy lives in `local-assets/`, which is gitignored
+  public URL. (The official LOGO files are the deliberate exception and ARE
+  tracked; see "FIRST branding" below for why and under what permission.) The working copy lives in `local-assets/`, which is gitignored
   for exactly this reason, and is used only to develop and test against. The
   ONE path into the app is a mentor uploading it to `teams/<team_id>/field`
   in the private `mat` bucket, read back by a signed URL that expires in ten
@@ -342,6 +395,73 @@ below are about DISTRIBUTION first and accuracy second. Both are load-bearing.
   three sentences now share one grid cell, so the box is as tall as the
   longest at any width. A `min-height` cannot fix this: the wrap point
   depends on the width.
+
+---
+
+## FIRST branding
+
+The app is a FIRST LEGO League Challenge tool and reads as one. The rules
+below come from three documents that were downloaded and read, not
+remembered: the FIRST Branding & Design Guidelines, the FIRST LEGO League
+Branding & Lockup Guidelines, and the Policy on the Use of FIRST Trademarks
+and Copyrighted Materials. They live in `local-assets/brand/` (gitignored;
+they are FIRST's documents), and `src/lib/brand/rules.ts` quotes the clause
+behind every rule with its page number.
+
+- **THE MARKS ARE TRACKED, AND THEY ARE THE ONLY OFFICIAL ARTWORK THAT IS.**
+  `static/brand/` holds nine files from the official downloads, byte for
+  byte. A currently registered FIRST team may use the FIRST and joint
+  FIRST/LEGO logos for its own team activities without permission or
+  disclaimer (IP policy II.1), on materials including its website, "as long
+  as team identification (team name/number) appears in conjunction with the
+  logo(s)" (Branding & Design Guidelines p32) -- which is why the footer
+  names the club and its teams. This permission covers the LOGOS. It does not
+  cover season artwork, mat graphics or mission models, which stay out.
+- **NOTHING RENDERS A MARK EXCEPT `BrandLogo.svelte`, AND IT ENFORCES RATHER
+  THAN DOCUMENTS.** Its only geometry prop is `height`; there is no width,
+  rotation, crop, colour, radius, filter or background prop and no
+  `class`/`style` passthrough. Below a mark's documented minimum size it
+  refuses. A supporting mark refuses unless a full official logo is on the
+  same surface. The icon alone and the wordmark alone refuse ALWAYS, because
+  FIRST supplies no such file and making one means cropping. An ancestor
+  `filter`, `opacity`, `mix-blend-mode` or rotation is DETECTED after mount
+  and the mark withdrawn, because CSS cannot defend a subtree from those.
+  Adding a prop that lets a caller change how a mark looks is the one change
+  this component must never accept.
+- **EVERY SURFACE IS A `BrandSurface`, MOUNTED AT THE ROOT LAYOUT.** It
+  carries the verbatim trademark attribution and two full official logos, so
+  a route added next season inherits both without its author knowing the
+  rules exist. It is keyed on the pathname: the mark register and the
+  first-use register are per SURFACE, and carrying either across a
+  client-side navigation would put the ® on the wrong page and let a mark be
+  vouched for by a logo the reader can no longer see.
+- **THE ATTRIBUTION IS QUOTED, NOT WRITTEN.** `TRADEMARK_ATTRIBUTION` is the
+  IP policy's section IV.A joint FIRST/LEGO trademark disclaimer, word for
+  word. The other candidates in that section say the marks are "used by
+  special permission", which this club has not been granted; do not swap one
+  in because it sounds more formal.
+- **`FirstName.svelte` IS THE ONLY THING THAT PRINTS THE NAMES.** FIRST all
+  capitals and italic, LEGO all capitals and never italic, a superscript ®
+  on the first use of each per surface and not after, never plural, never
+  possessive. Season names (CANOPY, BIOGLOW) are unregistered per the IP
+  policy's Attachment A and take ™, and they are TEXT in the surrounding
+  face: setting them differently would create the appearance of a new logo.
+- **THE PALETTE AND THE FACE ARE THE OFFICIAL ONES.** FIRST black, blue,
+  red, gray; FIRST LEGO League purple, green, red; Roboto (and Roboto
+  Condensed), which the guidelines themselves point at Google Fonts for and
+  which is OFL-licensed, self-hosted so a tablet with no uplink still has it.
+  The ground is WHITE because the brand accents are built for white: on black
+  they measure 1.82 to 3.72 and cannot carry text at all.
+- **THREE FUNCTIONAL COLOURS ARE DECLARED NON-BRAND, AND THAT LIST DOES NOT
+  GROW QUIETLY.** `--success-text`, `--danger-text` and `--warning` exist
+  because green (3.19) and red (4.38) cannot clear 4.5:1 as small text and
+  "blocked" has no brand equivalent. Darkening a brand colour and still
+  calling it the brand colour is the thing the guidelines forbid, so these
+  are separate values, never used as brand expression, and never on or near
+  a mark. Team accents are in the same category.
+- **A TEAM ACCENT NEVER TOUCHES A MARK.** `BrandLogo` resets the accent
+  variables on its own wrapper so one cannot be inherited, and the accent
+  palette is measured to sit at least 27.9 dE from every official colour.
 
 ---
 

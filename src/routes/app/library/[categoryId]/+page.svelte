@@ -27,7 +27,7 @@
 	.back {
 		display: inline-block;
 		margin-bottom: var(--space-3);
-		color: var(--glow-cyan);
+		color: var(--link);
 	}
 	h1 {
 		margin: var(--space-1) 0 var(--space-2);

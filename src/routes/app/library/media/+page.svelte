@@ -104,7 +104,7 @@
 	.back {
 		display: inline-block;
 		margin-bottom: var(--space-3);
-		color: var(--glow-cyan);
+		color: var(--link);
 	}
 	h1 {
 		margin: var(--space-1) 0 var(--space-2);
@@ -130,8 +130,8 @@
 		color: var(--text-2);
 	}
 	.chip--on {
-		color: var(--glow-green);
-		border-color: var(--glow-green);
+		color: var(--success-text);
+		border-color: var(--success);
 		background: var(--surface-2);
 	}
 	.series {
@@ -151,7 +151,7 @@
 	.marker {
 		display: inline-block;
 		margin-right: var(--space-2);
-		color: var(--glow-green);
+		color: var(--success-text);
 		font-weight: var(--fw-bold);
 	}
 	.topic-band {

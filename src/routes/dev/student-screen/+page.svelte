@@ -186,9 +186,17 @@
 <style>
 	.wrap {
 		display: grid;
+		/* minmax(0, 1fr), not the implicit `auto`: an auto track sizes to its
+		   widest item, and the phone frame below asks for a fixed 375px. At a
+		   375px viewport that pushed the track 16px past the padding and the
+		   PAGE scrolled sideways. Measured before this line: 16px. */
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--space-4);
 		padding: var(--space-4);
 		align-items: start;
+	}
+	.wrap > * {
+		min-width: 0;
 	}
 	.panel {
 		padding: var(--space-4);
@@ -222,8 +230,10 @@
 	/* A 375px column, so the harness shows the primary target by default even
 	   on a laptop. */
 	.phone {
-		width: 375px;
-		max-width: 100%;
+		/* The harness frames the student runtime at its design width. On a
+		   screen that IS 375px there is no room for the frame as well, so it
+		   gives way rather than scrolling the page. */
+		width: min(375px, 100%);
 		border: 1px solid var(--boundary);
 		border-radius: var(--radius-card);
 		overflow: hidden;

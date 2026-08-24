@@ -1,52 +1,110 @@
 /* ==========================================================================
-   Colour tokens. Dark by default -- the app runs on tablets in a lit room with
-   a robot mat under bright lights, and the BIOGLOW theme is bioluminescence on
-   deep water. Semantic roles are fixed; do not reassign them.
+   COLOUR TOKENS, BUILT FROM THE OFFICIAL PALETTES. Nothing here is invented
+   except where a line says so and explains why.
 
-   Every foreground token states its measured contrast against --surface-0
-   (#0b1220). The four TEAM accents live here too, but the mapping from a team
-   to its accent is in team-accents.css, keyed off the `data-accent` attribute
-   the database fills in.
+   SOURCES, read and quoted rather than remembered:
+     FIRST Branding & Design Guidelines, "FIRST COLOR PALETTE" (p9):
+       "The FIRST color palette is comprised mainly of black with accent
+        colors of blue, red and gray. To maintain brand consistency and avoid
+        confusion, only use the established FIRST colors."
+       blue #0066B3 (PMS 286), red #ED1C24 (PMS 485),
+       gray #9A989A (PMS Cool Gray 7), black #231F20 (PMS Black).
+     FIRST LEGO League Branding & Lockup Guidelines, "COLOR PALETTE" (p12):
+       "comprised mainly of black with accent colors of purple, green, and red"
+       black #231F20, purple #662D91 (PMS 266), green #00A651 (PMS 361),
+       red #ED1C24 (PMS 485).
+
+   WHY THE GROUND IS WHITE AND NOT BLACK. The palettes are "mainly black" as
+   INK, not as background: the guidelines' preferred marks are the full-colour
+   versions, and the reverse versions exist for "black or dark backgrounds"
+   as a special case. The accents are also built for white: measured against
+   #FFFFFF they are 8.94 (purple), 5.91 (blue), 4.38 (red), 3.19 (green);
+   measured against #231F20 the same four are 1.82, 2.76, 3.72 and 5.10, so
+   on a black ground the brand's own accents cannot carry text at all. A
+   white ground is both the brand-accurate choice and the accessible one.
+
+   EVERY NUMBER BELOW IS MEASURED, not asserted. Ratios are WCAG contrast
+   against #FFFFFF unless stated.
    ========================================================================== */
 :root {
-	/* Grounds, darkest to lightest. */
-	--surface-0: #0b1220; /* page */
-	--surface-1: #111a2c; /* bars, cards */
-	--surface-2: #18243a; /* raised controls, hover */
+	/* --- the official palettes, named exactly, used nowhere else as literals */
+	--first-blue: #0066b3; /* 5.91 */
+	--first-red: #ed1c24; /* 4.38 */
+	--first-gray: #9a989a; /* 2.86 -- decorative only, see --rule-gray */
+	--first-black: #231f20; /* 16.30 */
+	--fll-purple: #662d91; /* 8.94 */
+	--fll-green: #00a651; /* 3.19 */
 
-	/* Text. */
-	--text-1: #eef3fb; /* 16.9:1 -- body and headings */
-	--text-2: #b4c0d3; /* 9.8:1  -- secondary */
-	--text-3: #7d8aa3; /* 5.1:1  -- hints, timestamps */
+	/* --- grounds. White page; the steps above it are the two ESTABLISHED
+	   neutrals mixed toward white, so no new hue enters the system. */
+	--surface-0: #ffffff; /* page */
+	--surface-1: #f5f5f5; /* cards, bars   -- black on it 14.95 */
+	--surface-2: #ebeaeb; /* raised, hover -- black on it 13.58 */
 
-	/* Identity. */
-	--glow-green: #5ff2b6; /* 12.8:1 -- primary action, live, success */
-	--glow-cyan: #5ad4ff; /* 11.0:1 -- links, focus ring, information */
-	--glow-violet: #b691ff; /* 8.2:1  -- mentors, secondary action */
-	--amber: #ffc56b; /* 12.0:1 -- blocked, attention */
-	--coral: #ff6f7d; /* 7.3:1  -- errors only */
+	/* --- ink. The two established neutrals, mixed toward black for the
+	   secondary steps, so secondary text clears 4.5 instead of the 2.86 the
+	   brand gray manages on its own. */
+	--text-1: var(--first-black); /* 16.30 -- body and headings */
+	--text-2: #534f51; /* 8.06 / 7.39 / 6.72 on the three grounds */
+	--text-3: #6b696a; /* 5.45 / 5.00 / 4.54 -- clears 4.5 on ALL THREE, which
+	                      is why it is not the brand gray: a hint sitting on a
+	                      raised control has to be readable too. */
 
-	/* The two accents that exist ONLY to identify a team. They are not
-	   semantic anywhere else: nothing in the app means "chartreuse". */
-	--glow-chartreuse: #c9f24d; /* 14.5:1 */
-	--glow-magenta: #ff7ae0; /* 8.1:1  */
+	/* --- semantic roles, each mapped to an official colour.
+	   PRIMARY is FLL purple: this is a FIRST LEGO League tool and purple is
+	   the division palette's signature. LINKS are FIRST blue. */
+	--accent: var(--fll-purple); /* 8.94; white on it 8.94 */
+	--accent-ink: #ffffff; /* text ON --accent */
+	--link: var(--first-blue); /* 5.91 */
+	--focus-ring: var(--first-blue);
 
-	/* Boundaries. --boundary carries meaning (a card edge, a control outline)
-	   and clears 3:1 against every ground it lands on: 3.81:1 on --surface-0,
-	   3.54:1 on --surface-1, 3.16:1 on --surface-2. --hairline decorates and
-	   is not held to that; do not raise it. */
-	--boundary: #5c7199;
-	--hairline: #1f2b40;
+	/* SUCCESS / LIVE is FLL green. At 3.19 on white it clears 3:1 for a
+	   border or a large label and NOTHING ELSE: green never carries small
+	   text on white. As a fill it takes BLACK ink (5.10), not white (3.19). */
+	--success: var(--fll-green);
+	--success-ink: var(--first-black); /* 5.10 on --success */
 
-	/* Semantic aliases. */
+	/* DANGER is FIRST red. 4.38 on white is just under the 4.5 body-text
+	   floor, so red is a border, an icon and a large bold label; the words of
+	   an error are set in --text-1 on a red-bordered surface. Do not set
+	   small error text in red and do not darken the brand red to make it
+	   pass -- altering a brand colour is the thing the guidelines forbid. */
+	--danger: var(--first-red);
+	--danger-ink: #ffffff; /* 4.38 on --danger: large bold only */
+
+	/* --- THE THREE FUNCTIONAL COLOURS, DECLARED AS SUCH.
+	   The brand palettes are for BRAND EXPRESSION: marks, rules, primary
+	   action, links. A user interface also needs state colours that clear
+	   4.5:1 as small text, and two of the brand accents cannot (green is
+	   3.19 on white, red is 4.38). Rather than darken a brand colour and
+	   call it the brand colour -- which is the one thing the guidelines
+	   forbid -- the text-carrying variants are declared separate, functional
+	   values. Like a team accent, they never appear on or near a FIRST mark
+	   and never stand in for a brand colour.
+
+	   --success / --danger stay EXACTLY the official green and red and are
+	   used as fills, borders, dots and large bold labels. --success-text and
+	   --danger-text carry small text. --warning has no brand equivalent at
+	   all: "blocked" is not "error", and a mentor scanning the live board
+	   has to tell a child who is stuck from a request that failed. */
+	--success-text: #046b37; /* 6.64 / 6.09 / 5.53 on the three grounds */
+	--danger-text: #bf1219; /* 6.33 / 5.81 / 5.28 */
+	--warning: #8a5a00; /* 5.93 / 5.45 / 4.95 */
+	--warning-ink: #ffffff; /* 5.93 on --warning */
+
+	/* --- rules and boundaries.
+	   --rule-gray IS the brand gray, and it is the "thin gray line" the FLL
+	   lockup guidelines prescribe between a paired FIRST logo and a division
+	   lockup. --boundary carries meaning and clears 3:1 on all three
+	   grounds with headroom (4.38 / 4.02 / 3.65). --hairline decorates
+	   (1.38 on white) and is not held to that; do not raise it. */
+	--rule-gray: var(--first-gray);
+	--boundary: #7a787a;
+	--hairline: #dcdbdc;
+
+	/* --- aliases the app writes against. */
 	--surface-page: var(--surface-0);
 	--text-body: var(--text-1);
 	--text-muted: var(--text-2);
 	--text-faint: var(--text-3);
-	--accent: var(--glow-green);
-	--accent-ink: #062018; /* text on an --accent ground, 13.9:1 */
-	--link: var(--glow-cyan);
-	--focus-ring: var(--glow-cyan);
-	--danger: var(--coral);
-	--warning: var(--amber);
 }

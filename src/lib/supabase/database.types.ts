@@ -1252,7 +1252,10 @@ export type Database = {
       }
       teams: {
         Row: {
-          accent: Database["public"]["Enums"]["team_accent"]
+          accent: Database["public"]["Enums"]["team_accent"] | null
+          accent_proposed: Database["public"]["Enums"]["team_accent"] | null
+          accent_proposed_at: string | null
+          accent_proposed_by: string | null
           archived_at: string | null
           created_at: string
           fll_team_number: number | null
@@ -1261,10 +1264,14 @@ export type Database = {
           join_open_meeting_id: string | null
           join_open_since: string | null
           name: string
+          short_name: string | null
           updated_at: string
         }
         Insert: {
-          accent?: Database["public"]["Enums"]["team_accent"]
+          accent?: Database["public"]["Enums"]["team_accent"] | null
+          accent_proposed?: Database["public"]["Enums"]["team_accent"] | null
+          accent_proposed_at?: string | null
+          accent_proposed_by?: string | null
           archived_at?: string | null
           created_at?: string
           fll_team_number?: number | null
@@ -1273,10 +1280,14 @@ export type Database = {
           join_open_meeting_id?: string | null
           join_open_since?: string | null
           name: string
+          short_name?: string | null
           updated_at?: string
         }
         Update: {
-          accent?: Database["public"]["Enums"]["team_accent"]
+          accent?: Database["public"]["Enums"]["team_accent"] | null
+          accent_proposed?: Database["public"]["Enums"]["team_accent"] | null
+          accent_proposed_at?: string | null
+          accent_proposed_by?: string | null
           archived_at?: string | null
           created_at?: string
           fll_team_number?: number | null
@@ -1285,9 +1296,17 @@ export type Database = {
           join_open_meeting_id?: string | null
           join_open_since?: string | null
           name?: string
+          short_name?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "teams_accent_proposed_by_fkey"
+            columns: ["accent_proposed_by"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "teams_join_open_meeting_fkey"
             columns: ["join_open_meeting_id"]
@@ -1356,10 +1375,6 @@ export type Database = {
         Args: { p_meeting_id: string }
         Returns: number
       }
-      _next_team_accent: {
-        Args: never
-        Returns: Database["public"]["Enums"]["team_accent"]
-      }
       _resolve_current_meeting_id: { Args: never; Returns: string }
       _student_detach_from_team: {
         Args: { p_student_id: string }
@@ -1373,6 +1388,7 @@ export type Database = {
         Args: { p_first_name: string; p_last_initial: string }
         Returns: string
       }
+      _text_is_clean: { Args: { p_text: string }; Returns: boolean }
       auth_whoami: { Args: never; Returns: Json }
       board_live_summary: { Args: { p_meeting_id?: string }; Returns: Json }
       current_board_team_id: { Args: never; Returns: string }
@@ -1462,9 +1478,17 @@ export type Database = {
         }
         Returns: Json
       }
+      team_accent_options: { Args: never; Returns: Json }
       team_board_disable: { Args: { p_team_id: string }; Returns: Json }
       team_board_enable: {
         Args: { p_pin: string; p_team_id: string }
+        Returns: Json
+      }
+      team_confirm_accent: {
+        Args: {
+          p_accent?: Database["public"]["Enums"]["team_accent"]
+          p_team_id: string
+        }
         Returns: Json
       }
       team_create: {
@@ -1479,6 +1503,10 @@ export type Database = {
       team_join_window_close: { Args: { p_team_id: string }; Returns: Json }
       team_join_window_open: { Args: { p_team_id: string }; Returns: Json }
       team_login_roster: { Args: { p_join_code: string }; Returns: Json }
+      team_propose_accent: {
+        Args: { p_accent: Database["public"]["Enums"]["team_accent"] }
+        Returns: Json
+      }
       team_regenerate_join_code: { Args: { p_team_id: string }; Returns: Json }
       team_resolve_roles: {
         Args: { p_meeting_id?: string; p_on_date?: string; p_team_id: string }
@@ -1498,6 +1526,17 @@ export type Database = {
         }[]
       }
       team_roster_state: { Args: never; Returns: Json }
+      team_set_accent: {
+        Args: {
+          p_accent?: Database["public"]["Enums"]["team_accent"]
+          p_team_id: string
+        }
+        Returns: Json
+      }
+      team_set_short_name: {
+        Args: { p_short_name: string; p_team_id: string }
+        Returns: Json
+      }
       team_size_cap: { Args: never; Returns: number }
     }
     Enums: {
@@ -1510,7 +1549,18 @@ export type Database = {
         | "season_summary"
       role_tier: "primary" | "second"
       task_status: "open" | "active" | "blocked" | "done"
-      team_accent: "cyan" | "chartreuse" | "magenta" | "amber"
+      team_accent:
+        | "bark"
+        | "orange"
+        | "olive"
+        | "lime"
+        | "green"
+        | "sage"
+        | "teal"
+        | "violet"
+        | "purple"
+        | "orchid"
+        | "magenta"
       team_role:
         | "lead_builder"
         | "lead_programmer"
@@ -1657,7 +1707,19 @@ export const Constants = {
       ],
       role_tier: ["primary", "second"],
       task_status: ["open", "active", "blocked", "done"],
-      team_accent: ["cyan", "chartreuse", "magenta", "amber"],
+      team_accent: [
+        "bark",
+        "orange",
+        "olive",
+        "lime",
+        "green",
+        "sage",
+        "teal",
+        "violet",
+        "purple",
+        "orchid",
+        "magenta",
+      ],
       team_role: [
         "lead_builder",
         "lead_programmer",

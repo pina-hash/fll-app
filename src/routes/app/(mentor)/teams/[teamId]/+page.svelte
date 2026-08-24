@@ -5,7 +5,8 @@
 	import { watchTables } from '$lib/console/live.svelte';
 	import { knownPins, mintPin, rememberPin, forgetPins } from '$lib/console/pins';
 	import { parentUrl } from '$lib/parent/qr';
-	import { ACCENT_LABEL, ROLE_LABEL, TEAM_ACCENTS, TEAM_ROLES, type TeamAccent, type TeamRole } from '$lib/console/types';
+	import { ROLE_LABEL, TEAM_ROLES, type TeamAccent, type TeamRole } from '$lib/console/types';
+	import AccentPicker from '$lib/team/AccentPicker.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -19,15 +20,18 @@
 	// The $effect below re-seeds them when the rail switches to another team.
 	let name = $state(untrack(() => data.team.name));
 	let number = $state(untrack(() => (data.team.fll_team_number ? String(data.team.fll_team_number) : '')));
-	let accent = $state<TeamAccent>(untrack(() => data.team.accent));
+	let shortName = $state(untrack(() => data.team.short_name ?? ''));
 	let confirmRotate = $state(false);
+	let accentBusy = $state(false);
+	let accentMessage = $state('');
 
 	// Re-seed the form when the rail switches team.
 	$effect(() => {
 		const t = data.team;
 		name = t.name;
 		number = t.fll_team_number ? String(t.fll_team_number) : '';
-		accent = t.accent;
+		shortName = t.short_name ?? '';
+		accentMessage = '';
 		confirmRotate = false;
 		editing = null;
 		moving = null;
@@ -100,12 +104,53 @@
 					.from('teams')
 					.update({
 						name: name.trim(),
-						fll_team_number: number.trim() ? Number(number) : null,
-						accent
+						fll_team_number: number.trim() ? Number(number) : null
 					})
 					.eq('id', data.team.id),
 			'Team saved.'
 		);
+	}
+
+	let proposedByName = $derived.by(() => {
+		const id = data.team.accent_proposed_by;
+		if (!id) return null;
+		const s = data.students.find((x) => x.id === id);
+		return s ? `${s.first_name} ${s.last_initial}.` : null;
+	});
+
+	async function saveShortName(event: SubmitEvent) {
+		event.preventDefault();
+		return call(
+			'shortname',
+			async () =>
+				// An empty string is how "no name" is said: the RPC nullifies a
+				// blank, so clearing the field clears the name.
+				data.supabase.rpc('team_set_short_name', {
+					p_team_id: data.team.id,
+					p_short_name: shortName.trim()
+				}),
+			'Team name saved.'
+		);
+	}
+
+	/**
+	 * The mentor override. The DATABASE decides whether it lands: a colour
+	 * another live team holds comes back as a sentence naming them, which is
+	 * shown rather than swallowed.
+	 */
+	async function setAccent(accent: TeamAccent | null) {
+		accentBusy = true;
+		accentMessage = '';
+		const { error } = await data.supabase.rpc('team_set_accent', {
+			p_team_id: data.team.id,
+			p_accent: accent ?? undefined
+		});
+		accentBusy = false;
+		if (error) {
+			accentMessage = error.message;
+			return;
+		}
+		await invalidateAll();
 	}
 
 	async function rotateCode() {
@@ -413,16 +458,40 @@
 				<span>FLL number</span>
 				<input class="input" bind:value={number} inputmode="numeric" pattern="[0-9]*" placeholder="unassigned" />
 			</label>
-			<label class="field">
-				<span>Accent</span>
-				<select class="input" bind:value={accent}>
-					{#each TEAM_ACCENTS as option (option)}
-						<option value={option}>{ACCENT_LABEL[option]}{takenAccents.has(option) ? ' (another team)' : ''}</option>
-					{/each}
-				</select>
-			</label>
 			<button class="btn btn--secondary" type="submit" disabled={busy === 'team'}>Save team</button>
 		</form>
+
+		<hr class="rule" />
+		<form onsubmit={saveShortName} class="tp__form">
+			<label class="field">
+				<span>The name the team picked for itself</span>
+				<input
+					class="input"
+					bind:value={shortName}
+					maxlength="24"
+					placeholder="optional, shown under the number"
+				/>
+			</label>
+			<button class="btn btn--secondary" type="submit" disabled={busy === 'shortname'}>
+				Save the team name
+			</button>
+		</form>
+
+		<hr class="rule" />
+		<AccentPicker
+			teamId={data.team.id}
+			teamName={data.team.name}
+			options={data.accentOptions}
+			current={data.team.accent}
+			proposed={data.team.accent_proposed}
+			proposedByName={proposedByName}
+			canConfirm={true}
+			canPropose={true}
+			isMentor={true}
+			busy={accentBusy}
+			message={accentMessage}
+			onSet={setAccent}
+		/>
 
 		<hr class="rule" />
 		<h3>Join code</h3>
@@ -807,7 +876,7 @@
 	}
 
 	.signup--on {
-		border-color: var(--glow-green);
+		border-color: var(--success);
 	}
 	.seats {
 		display: flex;
@@ -845,7 +914,7 @@
 		background: var(--surface-2);
 	}
 	.rrow--warn {
-		border-color: var(--amber);
+		border-color: var(--warning);
 	}
 	.rrow__label {
 		font-weight: var(--fw-bold);
@@ -876,7 +945,7 @@
 		font-size: var(--fs-h3);
 		font-weight: var(--fw-bold);
 		letter-spacing: var(--track-wide);
-		color: var(--glow-green);
+		color: var(--success-text);
 	}
 
 	.tablewrap {

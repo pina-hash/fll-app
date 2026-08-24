@@ -2,7 +2,9 @@
 	import { onMount } from 'svelte';
 	import { safeInvalidateAll } from '$lib/student/refresh';
 	import { watchTables } from '$lib/console/live.svelte';
-	import { ROLE_LABEL, TEAM_ROLES } from '$lib/console/types';
+	import { ROLE_LABEL, TEAM_ROLES, type TeamAccent } from '$lib/console/types';
+	import AccentPicker from '$lib/team/AccentPicker.svelte';
+	import TeamName from '$lib/team/TeamName.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -20,6 +22,44 @@
 	let open = $derived(data.tasks.filter((t) => t.status !== 'done'));
 	let done = $derived(data.tasks.filter((t) => t.status === 'done'));
 	let hereCount = $derived(data.roster.filter((s) => s.present).length);
+
+	// --- the team colour -----------------------------------------------------
+	let accentBusy = $state(false);
+	let accentMessage = $state('');
+	let proposedByName = $derived.by(() => {
+		const id = data.team?.accent_proposed_by;
+		if (!id) return null;
+		const s = data.roster.find((x) => x.id === id);
+		return s ? `${s.first_name} ${s.last_initial}.` : null;
+	});
+
+	/**
+	 * ONLINE ONLY, AND ON PURPOSE. Choosing a colour is a claim on a shared
+	 * resource: the database decides who gets it, and a queued write replayed
+	 * twenty minutes later would tell a team it won something it lost. Every
+	 * refusal here is the server's own sentence, shown as it came.
+	 */
+	async function run(fn: () => PromiseLike<{ error: { message: string } | null }>) {
+		accentBusy = true;
+		accentMessage = '';
+		const { error } = await fn();
+		accentBusy = false;
+		if (error) {
+			accentMessage = error.message;
+			return;
+		}
+		await safeInvalidateAll();
+	}
+
+	const propose = (accent: TeamAccent) =>
+		run(() => data.supabase.rpc('team_propose_accent', { p_accent: accent }));
+	const confirm = (accent: TeamAccent | null) =>
+		run(() =>
+			data.supabase.rpc('team_confirm_accent', {
+				p_team_id: data.student.teamId,
+				...(accent ? { p_accent: accent } : {})
+			})
+		);
 </script>
 
 <svelte:head><title>{data.student.teamName} team</title></svelte:head>
@@ -27,8 +67,30 @@
 <div class="tt" data-accent={data.student.accent}>
 	<header class="tt__top">
 		<a class="tt__back" href="/app/me">Back</a>
-		<span class="tt__team">{data.student.teamName}</span>
+		<span class="tt__team">
+			<TeamName name={data.student.teamName} shortName={data.team?.short_name} layout="inline" />
+		</span>
 	</header>
+
+	{#if data.team}
+		<section class="tt__card">
+			<AccentPicker
+				teamId={data.student.teamId}
+				teamName={data.student.teamName}
+				options={data.accentOptions}
+				current={data.team.accent}
+				proposed={data.team.accent_proposed}
+				{proposedByName}
+				canConfirm={data.canConfirmAccent}
+				canPropose={true}
+				isMentor={false}
+				busy={accentBusy}
+				message={accentMessage}
+				onPropose={propose}
+				onConfirm={confirm}
+			/>
+		</section>
+	{/if}
 
 	<section class="tt__card">
 		<h2>Who is here</h2>
@@ -151,7 +213,7 @@
 		border: 1px solid var(--boundary);
 	}
 	.tt__card--alarm {
-		border-color: var(--amber);
+		border-color: var(--warning);
 	}
 	.tt__card h2 {
 		margin: 0 0 var(--space-2);
@@ -215,7 +277,7 @@
 		background: var(--surface-2);
 	}
 	.jrow--empty {
-		border-color: var(--amber);
+		border-color: var(--warning);
 	}
 	.jrow__name,
 	.trow__title {
@@ -227,15 +289,15 @@
 		color: var(--text-2);
 	}
 	.jrow__who--empty {
-		color: var(--amber);
+		color: var(--warning);
 		font-weight: var(--fw-semibold);
 	}
 	.jrow__cover {
 		margin-left: var(--space-2);
 		padding: 0.1rem 0.5rem;
 		border-radius: 999px;
-		border: 1px solid var(--amber);
-		color: var(--amber);
+		border: 1px solid var(--warning);
+		color: var(--warning);
 		font-size: var(--fs-small);
 	}
 	.tt__stuck li {

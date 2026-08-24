@@ -84,7 +84,7 @@
 		align-items: center;
 		justify-content: center;
 		border-radius: 50%;
-		background: var(--team-accent, var(--glow-cyan));
+		background: var(--team-accent, var(--link));
 		color: var(--team-accent-ink, var(--accent-ink));
 		font-weight: var(--fw-black);
 		font-variant-numeric: tabular-nums;
@@ -102,6 +102,6 @@
 		font-variant-numeric: tabular-nums;
 	}
 	.ml__step--turn strong {
-		color: var(--team-accent, var(--glow-cyan));
+		color: var(--team-accent, var(--link));
 	}
 </style>

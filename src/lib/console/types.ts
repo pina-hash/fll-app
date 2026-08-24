@@ -8,16 +8,63 @@
  * board would simply stop updating.
  */
 
-export type TeamAccent = 'cyan' | 'chartreuse' | 'magenta' | 'amber';
+/**
+ * THE ELEVEN TEAM COLOURS. This list MIRRORS the public.team_accent enum
+ * (0018) and the [data-accent] blocks in team-accents.css, and all three have
+ * to move together. The database is the authority: team_accent_options() says
+ * which exist and who holds them, and this type only names them.
+ *
+ * RED AND BLUE ARE ABSENT ON PURPOSE -- the mat's launch areas are red and
+ * blue, and a team accent in either hue is read as a launch area on the route
+ * planner. 0018's header carries the full reasoning.
+ *
+ * A team may hold NO colour: `null` is the state before it chooses, and it is
+ * not an error.
+ */
+export type TeamAccent =
+	| 'bark'
+	| 'orange'
+	| 'olive'
+	| 'lime'
+	| 'green'
+	| 'sage'
+	| 'teal'
+	| 'violet'
+	| 'purple'
+	| 'orchid'
+	| 'magenta';
 
-export const TEAM_ACCENTS: TeamAccent[] = ['cyan', 'chartreuse', 'magenta', 'amber'];
+export const TEAM_ACCENTS: TeamAccent[] = [
+	'bark',
+	'orange',
+	'olive',
+	'lime',
+	'green',
+	'sage',
+	'teal',
+	'violet',
+	'purple',
+	'orchid',
+	'magenta'
+];
 
 export const ACCENT_LABEL: Record<TeamAccent, string> = {
-	cyan: 'Cyan',
-	chartreuse: 'Chartreuse',
-	magenta: 'Magenta',
-	amber: 'Amber'
+	bark: 'Bark',
+	orange: 'Orange',
+	olive: 'Olive',
+	lime: 'Lime',
+	green: 'Green',
+	sage: 'Sage',
+	teal: 'Teal',
+	violet: 'Violet',
+	purple: 'Purple',
+	orchid: 'Orchid',
+	magenta: 'Magenta'
 };
+
+export function isTeamAccent(v: unknown): v is TeamAccent {
+	return TEAM_ACCENTS.includes(v as TeamAccent);
+}
 
 export type MeetingKind = 'friday' | 'saturday';
 
@@ -86,7 +133,7 @@ export interface BoardTeam {
 	team_id: string;
 	name: string;
 	join_code: string;
-	accent: TeamAccent;
+	accent: TeamAccent | null;
 	fll_team_number: number | null;
 	roster_size: number;
 	present_count: number;
@@ -133,8 +180,9 @@ function str(v: unknown): string | null {
 function num(v: unknown): number {
 	return typeof v === 'number' && Number.isFinite(v) ? v : 0;
 }
-function accent(v: unknown): TeamAccent {
-	return TEAM_ACCENTS.includes(v as TeamAccent) ? (v as TeamAccent) : 'cyan';
+/** Null when the team has not chosen: a real state, not a parse failure. */
+function accent(v: unknown): TeamAccent | null {
+	return isTeamAccent(v) ? v : null;
 }
 
 export function parsePhase(raw: unknown): BoardPhase | null {

@@ -215,7 +215,7 @@
 
 <svelte:head><title>dev: route planner</title></svelte:head>
 
-<div class="harness" data-accent="cyan">
+<div class="harness" data-accent="teal">
 	<header class="harness__bar">
 		<strong>route planner harness</strong>
 		<label>

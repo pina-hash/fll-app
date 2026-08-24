@@ -511,7 +511,7 @@
 	}
 	.mat__board:focus-visible {
 		outline: none;
-		stroke: var(--glow-cyan);
+		stroke: var(--link);
 		stroke-width: 8;
 	}
 	.mat__frame {
@@ -525,14 +525,14 @@
 		opacity: 0.6;
 	}
 	.mat__launch-area {
-		fill: var(--glow-green);
+		fill: var(--success-text);
 		opacity: 0.08;
-		stroke: var(--glow-green);
+		stroke: var(--success);
 		stroke-width: 4;
 		stroke-dasharray: 24 18;
 	}
 	.mat__launch-label {
-		fill: var(--glow-green);
+		fill: var(--success-text);
 		font-size: 52px;
 		font-weight: 700;
 		text-anchor: middle;
@@ -561,14 +561,14 @@
 	}
 	.mat__corridor {
 		fill: none;
-		stroke: var(--team-accent, var(--glow-cyan));
+		stroke: var(--team-accent, var(--link));
 		opacity: 0.16;
 		stroke-linejoin: round;
 		stroke-linecap: round;
 	}
 	.mat__route {
 		fill: none;
-		stroke: var(--team-accent, var(--glow-cyan));
+		stroke: var(--team-accent, var(--link));
 		stroke-width: 12;
 		stroke-linejoin: round;
 	}
@@ -591,7 +591,7 @@
 		outline: none;
 	}
 	.mat__mission:focus-visible .mat__mission-dot {
-		stroke: var(--glow-cyan);
+		stroke: var(--link);
 		stroke-width: 10;
 	}
 	.mat__mission-hit {
@@ -604,7 +604,7 @@
 	}
 	.mat__mission--active .mat__mission-dot {
 		fill: var(--team-accent-wash, var(--surface-2));
-		stroke: var(--team-accent, var(--glow-cyan));
+		stroke: var(--team-accent, var(--link));
 		stroke-width: 9;
 	}
 	.mat__mission-code {
@@ -622,14 +622,14 @@
 		outline: none;
 	}
 	.mat__wp:focus-visible .mat__wp-dot {
-		stroke: var(--glow-cyan);
+		stroke: var(--link);
 		stroke-width: 12;
 	}
 	.mat__wp-hit {
 		fill: transparent;
 	}
 	.mat__wp-dot {
-		fill: var(--team-accent, var(--glow-cyan));
+		fill: var(--team-accent, var(--link));
 		stroke: var(--surface-0);
 		stroke-width: 6;
 	}

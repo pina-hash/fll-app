@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import FirstName from '$lib/brand/FirstName.svelte';
+	import { SEASON } from '$lib/brand/rules';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -72,7 +74,7 @@
 		{#each data.cards as card (card.student.id)}
 			<article class="pcard">
 				<header class="pcard__head">
-					<p class="pcard__eyebrow">Bosco Tech FIRST LEGO League · BIOGLOW 2026-27</p>
+					<p class="pcard__eyebrow">Bosco Tech · <FirstName name="season" /> · {SEASON.years}</p>
 					<h2 class="pcard__name">{card.student.first_name} {card.student.last_initial}.</h2>
 					<p class="pcard__team">
 						{data.team.name}

@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import BrandLogo from '$lib/brand/BrandLogo.svelte';
+	import FirstName from '$lib/brand/FirstName.svelte';
+	import { SEASON } from '$lib/brand/rules';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
@@ -43,7 +46,22 @@
 {:else}
 	<div class="shell">
 	<header class="shell__bar">
-		<a class="shell__brand" href="/app"><span class="glow">BIOGLOW</span> <span class="muted small">2026-27</span></a>
+		<!--
+			THE CONSOLE'S OWN MARK. The FIRST LEGO League Challenge horizontal
+			stacked lockup is the preferred format (FLL guidelines p4) and is
+			rendered here at 48px, above its 45px digital minimum, in its
+			full-colour version on a light ground. The season is TEXT beside
+			it, never artwork and never inside the mark's clear space: no
+			season lockup, mat graphic or mission model is fetched or stored
+			anywhere in this repo.
+		-->
+		<a class="shell__brand" href="/app" aria-label="Console home">
+			<BrandLogo mark="fll-challenge-horizontal-stacked" height={48} />
+			<span class="shell__season">
+				<span class="shell__season-name">{SEASON.challenge}<sup>&trade;</sup></span>
+				<span class="muted small">{SEASON.years} &middot; <FirstName name="challenge" /></span>
+			</span>
+		</a>
 		<div class="shell__who">
 			<span class="small">{who}</span>
 			<form method="post" action="/auth/signout">
@@ -82,12 +100,27 @@
 		background: var(--surface-1);
 	}
 	.shell__brand {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		text-decoration: none;
+		color: var(--text-1);
+		min-width: 0;
+	}
+	.shell__season {
+		display: grid;
+		gap: 0.1rem;
+		min-width: 0;
+	}
+	.shell__season-name {
 		font-family: var(--font-display);
 		font-weight: var(--fw-bold);
 		font-size: var(--fs-h3);
-		letter-spacing: var(--track-wide);
-		text-decoration: none;
-		color: var(--text-1);
+		letter-spacing: var(--track-label);
+	}
+	.shell__season-name sup {
+		font-size: 0.55em;
+		vertical-align: super;
 	}
 	.shell__who {
 		display: flex;
@@ -117,7 +150,7 @@
 		white-space: nowrap;
 	}
 	.shell__tab--on {
-		color: var(--glow-green);
+		color: var(--success-text);
 		border-color: var(--boundary);
 		background: var(--surface-2);
 	}

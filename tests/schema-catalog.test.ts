@@ -215,22 +215,40 @@ describe('realtime', () => {
 });
 
 describe('seed', () => {
-	test('every live team has an accent, and the four seeded teams have four different ones', async () => {
-		const rows = await sql<{ name: string; accent: string }[]>`
+	test('the four seeded teams are NUMBERED and have chosen no colour', async () => {
+		// From 0018 a team chooses its own colour, so the seed hands none out:
+		// an assigned colour is not a chosen one. Null is the real state on
+		// the first Friday, not a broken row.
+		const rows = await sql<{ name: string; accent: string | null }[]>`
 			select name, accent::text from public.teams
-			where name in ('Red Team', 'Blue Team', 'Green Team', 'Gold Team') order by name`;
-		expect(rows).toHaveLength(4);
-		expect(new Set(rows.map((r) => r.accent)).size).toBe(4);
-		// The stylesheet keys off these four strings and nothing else.
-		expect(rows.every((r) => ['cyan', 'chartreuse', 'magenta', 'amber'].includes(r.accent))).toBe(true);
-		const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from public.teams where accent is null`;
-		expect(n).toBe(0);
+			where name in ('Team 1', 'Team 2', 'Team 3', 'Team 4') order by name`;
+		expect(rows.map((r) => r.name)).toEqual(['Team 1', 'Team 2', 'Team 3', 'Team 4']);
+		expect(rows.every((r) => r.accent === null)).toBe(true);
+	});
+
+	test('the accent enum is the eleven-colour palette, with red and blue absent', async () => {
+		// The stylesheet keys off these eleven strings and nothing else, and
+		// the mat's launch areas are why no red or blue hue is among them
+		// (0018's header carries the reasoning).
+		const [{ vals }] = await sql<{ vals: string[] }[]>`
+			select enum_range(null::public.team_accent)::text[] as vals`;
+		expect(vals).toEqual([
+			'bark', 'orange', 'olive', 'lime', 'green', 'sage',
+			'teal', 'violet', 'purple', 'orchid', 'magenta'
+		]);
+	});
+
+	test('a colour is taken once: the partial unique index is the enforcer', async () => {
+		const [{ n }] = await sql<{ n: number }[]>`
+			select count(*)::int as n from pg_indexes
+			where schemaname = 'public' and indexname = 'teams_accent_unique_live'`;
+		expect(n).toBe(1);
 	});
 
 	test('the local seed left one admin mentor, four teams and both phase templates', async () => {
 		const [{ admins }] = await sql<{ admins: number }[]>`select count(*)::int as admins from public.mentors where is_admin`;
 		expect(admins).toBeGreaterThanOrEqual(1);
-		const teams = await sql<{ join_code: string }[]>`select join_code from public.teams where name in ('Red Team', 'Blue Team', 'Green Team', 'Gold Team')`;
+		const teams = await sql<{ join_code: string }[]>`select join_code from public.teams where name in ('Team 1', 'Team 2', 'Team 3', 'Team 4')`;
 		expect(teams).toHaveLength(4);
 		expect(teams.every((t) => /^[A-HJ-NP-Z2-9]{6}$/.test(t.join_code))).toBe(true);
 		const totals = await sql<{ kind: string; minutes: number }[]>`

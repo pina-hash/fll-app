@@ -1,8 +1,11 @@
 /* ==========================================================================
-   FLL BIOGLOW app shell. The token layer (src/lib/design-system/) is the
-   single source of truth for colours, type, effects and motion and is imported
-   here. Do not invent colours or redefine tokens in this file -- design
-   against the custom properties the import defines. Shared classes live below.
+   App shell. The token layer (src/lib/design-system/) is the single source of
+   truth for colours, type, effects and motion and is imported here. Do not
+   invent colours or redefine tokens in this file -- design against the custom
+   properties the import defines. Shared classes live below.
+
+   The ground is the brand's white and the ink is FIRST black; see colors.css
+   for why, and for the measured contrast of every token used here.
    ========================================================================== */
 
 @import './lib/design-system/index.css';
@@ -14,7 +17,7 @@
 }
 
 html {
-	color-scheme: dark;
+	color-scheme: light;
 	background: var(--surface-page);
 }
 
@@ -38,7 +41,7 @@ h3 {
 }
 h1 {
 	font-size: var(--fs-h1);
-	font-weight: var(--fw-black);
+	font-weight: var(--fw-bold);
 }
 h2 {
 	font-size: var(--fs-h2);
@@ -80,9 +83,12 @@ code {
 	color: var(--text-faint);
 	margin-bottom: var(--space-2);
 }
+/* Was a bioluminescent glow; now simply the live/done state, in the
+   text-safe green. No halo: a coloured glow is a busy background, and a
+   FIRST mark may not sit on one. */
 .glow {
-	color: var(--glow-green);
-	text-shadow: 0 0 1rem rgba(95, 242, 182, 0.5);
+	color: var(--success-text);
+	font-weight: var(--fw-bold);
 }
 .error {
 	color: var(--danger);
@@ -90,7 +96,7 @@ code {
 }
 .notice {
 	color: var(--warning);
-	font-weight: var(--fw-semibold);
+	font-weight: var(--fw-bold);
 	text-align: center;
 }
 
@@ -134,12 +140,16 @@ code {
 .btn--primary {
 	background: var(--accent);
 	color: var(--accent-ink);
-	box-shadow: var(--glow-green-shadow);
 }
 .btn--secondary {
 	background: var(--surface-2);
-	color: var(--glow-violet);
+	color: var(--accent);
 	border-color: var(--boundary);
+}
+.btn--danger {
+	background: transparent;
+	color: var(--danger-text);
+	border-color: var(--danger);
 }
 .btn--ghost {
 	background: transparent;
@@ -201,5 +211,13 @@ code {
 	cursor: pointer;
 }
 .tile:hover {
-	border-color: var(--glow-cyan);
+	border-color: var(--link);
+}
+
+/* --- the thin gray rule the FLL lockup guidelines prescribe between a
+   FIRST logo and a division lockup. It is the brand gray and nothing else. */
+.brand-rule {
+	border: 0;
+	border-top: 1px solid var(--rule-gray);
+	margin: 0;
 }

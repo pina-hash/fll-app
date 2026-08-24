@@ -109,7 +109,7 @@
 	.back {
 		display: inline-block;
 		margin-bottom: var(--space-3);
-		color: var(--glow-cyan);
+		color: var(--link);
 	}
 	h1 {
 		margin: var(--space-1) 0 var(--space-2);
@@ -132,11 +132,11 @@
 		gap: var(--space-2);
 	}
 	.warn {
-		border-color: var(--amber);
+		border-color: var(--warning);
 	}
 	.warn-text {
 		flex-basis: 100%;
-		color: var(--amber);
+		color: var(--warning);
 	}
 	.kind {
 		text-transform: uppercase;
@@ -170,10 +170,10 @@
 		padding: 0.15rem var(--space-2);
 		border-radius: var(--radius-pill, 999px);
 		background: var(--surface-2);
-		color: var(--glow-green);
+		color: var(--success-text);
 	}
 	.course__badge--optional {
-		color: var(--amber);
+		color: var(--warning);
 	}
 	.lesson-list {
 		margin: var(--space-3) 0 0;

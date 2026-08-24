@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/supabase/database.types';
-import { TEAM_ACCENTS, type TeamAccent } from '$lib/console/types';
+import { isTeamAccent, type TeamAccent } from '$lib/console/types';
 
 export interface MentorPrincipal {
 	kind: 'mentor';
@@ -28,7 +28,7 @@ export interface StudentPrincipal {
 	teamName: string;
 	joinCode: string;
 	/** The team's glow accent, for theming the student runtime. */
-	accent: TeamAccent;
+	accent: TeamAccent | null;
 }
 
 /**
@@ -41,7 +41,7 @@ export interface BoardPrincipal {
 	teamId: string;
 	teamName: string;
 	joinCode: string;
-	accent: TeamAccent;
+	accent: TeamAccent | null;
 }
 
 export type Principal = MentorPrincipal | StudentPrincipal | BoardPrincipal;
@@ -80,10 +80,11 @@ export function parsePrincipal(raw: unknown): Principal | null {
 			teamId,
 			teamName,
 			joinCode,
-			// An accent this code does not recognise falls back rather than
-			// rejecting the principal: a wrong colour is a blemish, a null
-			// principal is a student locked out of their own board.
-			accent: TEAM_ACCENTS.includes(r.accent as TeamAccent) ? (r.accent as TeamAccent) : 'cyan'
+			// An accent this code does not recognise reads as NO colour rather
+			// than rejecting the principal: a missing colour is a blemish, a
+			// null principal is a student locked out of their own board. Null
+			// is also the real state before a team has chosen (0018).
+			accent: isTeamAccent(r.accent) ? r.accent : null
 		};
 	}
 	if (r.kind === 'board') {
@@ -98,7 +99,7 @@ export function parsePrincipal(raw: unknown): Principal | null {
 			teamId,
 			teamName,
 			joinCode,
-			accent: TEAM_ACCENTS.includes(r.accent as TeamAccent) ? (r.accent as TeamAccent) : 'cyan'
+			accent: isTeamAccent(r.accent) ? r.accent : null
 		};
 	}
 	return null;

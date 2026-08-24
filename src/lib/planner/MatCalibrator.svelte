@@ -449,23 +449,23 @@
 
 	.cal__outline {
 		fill: none;
-		stroke: var(--glow-green);
+		stroke: var(--success);
 		stroke-width: 4;
 		vector-effect: non-scaling-stroke;
 	}
 	.cal__grid {
-		stroke: var(--glow-cyan);
+		stroke: var(--link);
 		stroke-width: 1;
 		opacity: 0.65;
 		vector-effect: non-scaling-stroke;
 	}
 	.cal__tick {
-		stroke: var(--glow-green);
+		stroke: var(--success);
 		stroke-width: 3;
 		vector-effect: non-scaling-stroke;
 	}
 	.cal__ruler {
-		fill: var(--glow-green);
+		fill: var(--success-text);
 		font-weight: var(--fw-bold);
 		paint-order: stroke fill;
 		stroke: var(--surface-0);
@@ -492,17 +492,17 @@
 	}
 	.cal__pin--origin circle,
 	.cal__pin--origin line {
-		stroke: var(--glow-green);
+		stroke: var(--success);
 	}
 	.cal__pin--origin text {
-		fill: var(--glow-green);
+		fill: var(--success-text);
 	}
 	.cal__pin--far circle,
 	.cal__pin--far line {
-		stroke: var(--glow-violet);
+		stroke: var(--accent);
 	}
 	.cal__pin--far text {
-		fill: var(--glow-violet);
+		fill: var(--accent);
 	}
 
 	.cal__zoom {
@@ -510,8 +510,8 @@
 		gap: var(--space-2);
 	}
 	.cal__zoom--on {
-		border-color: var(--glow-cyan);
-		color: var(--glow-cyan);
+		border-color: var(--link);
+		color: var(--link);
 	}
 
 	.cal__fields {
@@ -526,8 +526,8 @@
 		gap: var(--space-3);
 	}
 	.cal__warn {
-		color: var(--amber);
-		border-color: var(--amber);
+		color: var(--warning);
+		border-color: var(--warning);
 	}
 	.cal__ok {
 		margin: 0;

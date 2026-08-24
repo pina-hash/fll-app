@@ -21,7 +21,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 	const now = parseMeetingNow(nowRaw);
 	const meetingId = now?.meeting?.id ?? null;
 
-	const [rolesRes, tasksRes, rosterRes, attendanceRes, blockersRes] = await Promise.all([
+	const [rolesRes, tasksRes, rosterRes, attendanceRes, blockersRes, teamRes, accentRes, canEditRes] =
+		await Promise.all([
 		supabase.rpc('team_resolve_roles', {
 			p_team_id: student.teamId,
 			p_meeting_id: meetingId ?? undefined
@@ -44,7 +45,18 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 			.from('blockers')
 			.select('id, note, student_id')
 			.eq('team_id', student.teamId)
-			.is('resolved_at', null)
+			.is('resolved_at', null),
+		supabase
+			.from('teams')
+			.select('id, name, short_name, accent, accent_proposed, accent_proposed_by')
+			.eq('id', student.teamId)
+			.maybeSingle(),
+		// Which colours exist and who holds them: one statement, in SQL.
+		supabase.rpc('team_accent_options'),
+		// May THIS student confirm a colour? strategy_can_edit()'s own answer
+		// (the active Run Captain, or the assignment holders), so the button
+		// and the enforcement cannot drift.
+		supabase.rpc('strategy_can_edit', { p_team_id: student.teamId })
 	]);
 
 	const presentIds = new Set((attendanceRes.data ?? []).map((a) => a.student_id));
@@ -55,6 +67,13 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
 		roles: parseResolvedRoles(rolesRes.data),
 		tasks: tasksRes.data ?? [],
 		roster: (rosterRes.data ?? []).map((s) => ({ ...s, present: presentIds.has(s.id) })),
-		blockers: blockersRes.data ?? []
+		blockers: blockersRes.data ?? [],
+		team: teamRes.data,
+		accentOptions: (accentRes.data ?? []) as {
+			accent: import('$lib/console/types').TeamAccent;
+			taken_by_team_id: string | null;
+			taken_by: string | null;
+		}[],
+		canConfirmAccent: canEditRes.data === true
 	};
 };

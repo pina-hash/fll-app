@@ -668,13 +668,13 @@
 		width: 0.65rem;
 		height: 0.65rem;
 		border-radius: 50%;
-		background: var(--glow-green);
+		background: var(--success);
 	}
 	.nb__status[data-state='offline'] .nb__dot {
-		background: var(--amber);
+		background: var(--warning);
 	}
 	.nb__status[data-state='syncing'] .nb__dot {
-		background: var(--glow-cyan);
+		background: var(--link);
 	}
 	.nb__failed {
 		display: flex;
@@ -682,9 +682,9 @@
 		justify-content: space-between;
 		gap: var(--space-3);
 		padding: var(--space-2) var(--space-3);
-		border: 1px solid var(--coral);
+		border: 1px solid var(--danger);
 		border-radius: var(--radius-control);
-		color: var(--coral);
+		color: var(--danger-text);
 	}
 
 	.nb__tabs {
@@ -709,9 +709,9 @@
 		cursor: pointer;
 	}
 	.nb__tab--on {
-		color: var(--team-accent-ink, var(--glow-green));
+		color: var(--team-accent-ink, var(--success-text));
 		background: var(--team-accent-wash, transparent);
-		border-color: var(--team-accent, var(--glow-green));
+		border-color: var(--team-accent, var(--success));
 	}
 	.nb__badge {
 		display: inline-flex;
@@ -721,7 +721,7 @@
 		height: 1.4rem;
 		padding: 0 0.3rem;
 		border-radius: 999px;
-		background: var(--amber);
+		background: var(--warning);
 		color: var(--surface-0);
 		font-size: var(--fs-small);
 		font-weight: var(--fw-black);
@@ -753,7 +753,7 @@
 	}
 	.nb__judge {
 		margin: 0;
-		color: var(--amber);
+		color: var(--warning);
 	}
 	.nb__holders {
 		display: flex;
@@ -792,13 +792,13 @@
 		gap: var(--space-2);
 	}
 	.nb__entry[data-outcome='failed'] {
-		border-left: 4px solid var(--amber);
+		border-left: 4px solid var(--warning);
 	}
 	.nb__entry[data-outcome='worked'] {
-		border-left: 4px solid var(--glow-green);
+		border-left: 4px solid var(--success);
 	}
 	.nb__entry[data-outcome='mixed'] {
-		border-left: 4px solid var(--glow-cyan);
+		border-left: 4px solid var(--link);
 	}
 	.nb__entryhead {
 		display: flex;
@@ -810,13 +810,13 @@
 		font-weight: var(--fw-black);
 	}
 	.nb__outcome[data-outcome='failed'] {
-		color: var(--amber);
+		color: var(--warning);
 	}
 	.nb__outcome[data-outcome='worked'] {
-		color: var(--glow-green);
+		color: var(--success-text);
 	}
 	.nb__outcome[data-outcome='mixed'] {
-		color: var(--glow-cyan);
+		color: var(--link);
 	}
 	.nb__byline {
 		color: var(--text-3);
@@ -848,7 +848,7 @@
 		gap: var(--space-2);
 	}
 	.nb__delete {
-		color: var(--coral);
+		color: var(--danger-text);
 	}
 	/* Student-facing slabs: a control they are meant to tap is 56px tall. */
 	.nb__add {
@@ -885,7 +885,7 @@
 		gap: var(--space-3);
 	}
 	.nb__recap--draft {
-		border-color: var(--amber);
+		border-color: var(--warning);
 	}
 	.nb__recaphead {
 		display: flex;
@@ -894,11 +894,11 @@
 		gap: var(--space-2);
 	}
 	.nb__done {
-		color: var(--glow-green);
+		color: var(--success-text);
 		font-weight: var(--fw-black);
 	}
 	.nb__todo {
-		color: var(--amber);
+		color: var(--warning);
 		font-weight: var(--fw-black);
 	}
 	.nb__facts {
@@ -969,16 +969,16 @@
 		cursor: pointer;
 	}
 	.nb__outcomebtn--on[data-outcome='worked'] {
-		border-color: var(--glow-green);
-		color: var(--glow-green);
+		border-color: var(--success);
+		color: var(--success-text);
 	}
 	.nb__outcomebtn--on[data-outcome='failed'] {
-		border-color: var(--amber);
-		color: var(--amber);
+		border-color: var(--warning);
+		color: var(--warning);
 	}
 	.nb__outcomebtn--on[data-outcome='mixed'] {
-		border-color: var(--glow-cyan);
-		color: var(--glow-cyan);
+		border-color: var(--link);
+		color: var(--link);
 	}
 
 	.nb__photorow {

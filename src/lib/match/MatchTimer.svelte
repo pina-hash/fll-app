@@ -46,7 +46,7 @@
 	}
 
 	interface Props {
-		team: { name: string; accent: TeamAccent };
+		team: { name: string; accent: TeamAccent | null };
 		missions: MatchMission[];
 		/** The current strategy's launches, if the team has a plan. */
 		planLaunches?: { id: string; name: string }[];
@@ -547,20 +547,20 @@
 		font-weight: var(--fw-black);
 		line-height: 0.9;
 		letter-spacing: -0.02em;
-		color: var(--glow-green);
+		color: var(--success-text);
 		font-variant-numeric: tabular-nums;
 	}
 	.clock--warn {
-		border-color: var(--amber);
+		border-color: var(--warning);
 	}
 	.clock--warn .clock__value {
-		color: var(--amber);
+		color: var(--warning);
 	}
 	.clock--over {
-		border-color: var(--coral);
+		border-color: var(--danger);
 	}
 	.clock--over .clock__value {
-		color: var(--coral);
+		color: var(--danger-text);
 	}
 
 	.controls {
@@ -590,7 +590,7 @@
 		color: var(--accent-ink);
 	}
 	.slab--stop {
-		background: var(--amber);
+		background: var(--warning);
 		color: var(--surface-0);
 	}
 	.slab--quiet {
@@ -668,7 +668,7 @@
 	.check input[type='checkbox'] {
 		width: 1.75rem;
 		height: 1.75rem;
-		accent-color: var(--glow-green);
+		accent-color: var(--success);
 		flex: none;
 	}
 	.check--extra {
@@ -770,7 +770,7 @@
 		vector-effect: non-scaling-stroke;
 	}
 	.chart__dot {
-		fill: var(--glow-cyan);
+		fill: var(--link);
 	}
 
 	.run {

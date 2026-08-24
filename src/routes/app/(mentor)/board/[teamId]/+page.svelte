@@ -240,10 +240,10 @@
 		background: var(--surface-2);
 	}
 	.row--alarm {
-		border-color: var(--coral);
+		border-color: var(--danger);
 	}
 	.row--warn {
-		border-color: var(--amber);
+		border-color: var(--warning);
 	}
 	.row--done strong {
 		color: var(--text-3);
@@ -260,7 +260,7 @@
 		gap: var(--space-2);
 	}
 	.warn {
-		color: var(--amber);
+		color: var(--warning);
 		font-weight: var(--fw-bold);
 	}
 
@@ -276,8 +276,8 @@
 		color: var(--text-2);
 	}
 	.pill--warn {
-		border-color: var(--amber);
-		color: var(--amber);
+		border-color: var(--warning);
+		color: var(--warning);
 	}
 
 	.chips {

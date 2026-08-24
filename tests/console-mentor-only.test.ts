@@ -166,9 +166,13 @@ describe('the provisioning and phase RPCs are mentor-only', () => {
 		const [{ name }] = await sql<{ name: string }[]>`select name from public.teams where id = ${teamA.teamId}`;
 		expect(name).toBe(teamA.name);
 
+		// From 0018 NOBODY holds an update grant on teams.accent -- not even a
+		// mentor. The colour changes only through team_confirm_accent or
+		// team_set_accent, each of which re-checks its own caller. So a direct
+		// write is not filtered to zero rows, it is refused outright (42501).
 		const accentUpdate = await studentClient.from('teams').update({ accent: 'magenta' }).eq('id', teamA.teamId);
-		expect(accentUpdate.error).toBeNull();
-		const [{ accent }] = await sql<{ accent: string }[]>`select accent from public.teams where id = ${teamA.teamId}`;
+		expect(accentUpdate.error?.code).toBe('42501');
+		const [{ accent }] = await sql<{ accent: string | null }[]>`select accent from public.teams where id = ${teamA.teamId}`;
 		expect(accent).not.toBe('magenta');
 	});
 });
