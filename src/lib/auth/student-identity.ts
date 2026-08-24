@@ -19,6 +19,11 @@ const JOIN_CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
 const PIN_RE = /^[0-9]{6}$/;
 const SLUG_RE = /^[a-z0-9]{1,48}$/;
 
+// Built from the alphabet itself rather than written out a second time: a
+// claim code has no shape of its own, it borrows this one. See the block
+// comment on normalizeClaimCode for why that is not the same as being one.
+const CLAIM_CODE_RE = new RegExp(`^[${JOIN_CODE_ALPHABET}]{6}$`);
+
 /** Upper-cases and trims what the student typed. Does not validate. */
 export function normalizeJoinCode(raw: string): string {
 	return raw.trim().toUpperCase();
@@ -27,6 +32,41 @@ export function normalizeJoinCode(raw: string): string {
 /** True for exactly six symbols of the join-code alphabet (after normalizing). */
 export function isValidJoinCode(raw: string): boolean {
 	return JOIN_CODE_RE.test(normalizeJoinCode(raw));
+}
+
+/**
+ * A CLAIM CODE IS THE SAME SHAPE AS A JOIN CODE AND A DIFFERENT THING.
+ *
+ * A join code names a TEAM. It is on the roster card, everybody on that team
+ * types it all season, and it stays live until a mentor regenerates it. A
+ * claim code names ONE SEAT on one team: a mentor hands it to one child on one
+ * card, it is spent once, and it stops working the second it is spent. The
+ * login screen calls it a SEAT code, because that is the word a nine-year-old
+ * can act on.
+ *
+ * They share the 32 symbols because they share the room. `_generate_claim_code`
+ * (0019) draws from the same alphabet `_generate_join_code` (0001) does: a code
+ * is read aloud across a noisy room and typed by a nine-year-old on an iPad, so
+ * a character that is two characters depending on the font is a support call.
+ * O and 0, I and 1 are out of both.
+ *
+ * They are two pairs of functions here rather than one because the login screen
+ * asks two different questions with them -- "which team is this" and "which
+ * seat is this" -- and only the alphabet is promised to stay shared. Neither
+ * pair says whether a code is LIVE, only whether it is the right shape: which
+ * team a code belongs to, whether a seat has been spent, voided or is still
+ * waiting for its child is the database's answer and `student_claim_seat` is
+ * the one that gives it.
+ */
+
+/** Upper-cases and trims what the student typed off their card. Does not validate. */
+export function normalizeClaimCode(raw: string): string {
+	return raw.trim().toUpperCase();
+}
+
+/** True for exactly six symbols of the shared alphabet (after normalizing). */
+export function isValidClaimCode(raw: string): boolean {
+	return CLAIM_CODE_RE.test(normalizeClaimCode(raw));
 }
 
 /** True for exactly six ASCII digits. GoTrue's 6-character minimum is why it is not 4. */

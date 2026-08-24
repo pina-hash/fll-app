@@ -28,10 +28,12 @@
 	import {
 		notebookDelete,
 		notebookInsert,
+		notebookRestore,
 		notebookUpdate,
 		recapUpdate,
 		type NotebookOp
 	} from './ops';
+	import { bySortThenCreated } from './types';
 	import type {
 		MeetingRecapModel,
 		NotebookEntryModel,
@@ -105,6 +107,30 @@
 	let composer = $state<Composer | null>(null);
 	let pickingPhoto = $state(false);
 	let confirmingDelete = $state<string | null>(null);
+
+	/**
+	 * THE TEN SECOND UNDO. Deleting a page is a soft delete (0020), so the
+	 * words are still in the database and putting them back is one RPC. The
+	 * line below is what a child sees for ten seconds; after that an adult
+	 * uses the bin on the mentor page, which is why the undo is allowed to be
+	 * this short. The whole entry is kept here, not just its id, so the local
+	 * model can be repaired without a refetch (this surface is local-first and
+	 * has to work with the wifi down).
+	 */
+	const UNDO_MS = 10_000;
+	let undo = $state<{ entry: NotebookEntryModel } | null>(null);
+
+	// One timer per offer, torn down when the offer changes AND on unmount, so
+	// a child who taps Delete and walks to another tab leaves nothing running.
+	$effect(() => {
+		const offer = undo;
+		if (!offer) return;
+		const timer = setTimeout(() => {
+			if (undo?.entry.id === offer.entry.id) undo = null;
+		}, UNDO_MS);
+		return () => clearTimeout(timer);
+	});
+
 	/** Recap summaries being typed, keyed by recap id. */
 	let recapDrafts = $state<Record<string, string>>({});
 
@@ -218,15 +244,24 @@
 		composer = null;
 	}
 
-	function deleteEntry(id: string) {
-		if (confirmingDelete !== id) {
-			confirmingDelete = id;
+	function deleteEntry(entry: NotebookEntryModel) {
+		if (confirmingDelete !== entry.id) {
+			confirmingDelete = entry.id;
 			return;
 		}
 		confirmingDelete = null;
-		onPersist(notebookDelete(id));
-		model = model.filter((e) => e.id !== id);
-		if (composer?.entryId === id) composer = null;
+		onPersist(notebookDelete(entry.id));
+		model = model.filter((e) => e.id !== entry.id);
+		if (composer?.entryId === entry.id) composer = null;
+		undo = { entry: { ...entry } };
+	}
+
+	function putItBack() {
+		const offer = undo;
+		if (!offer) return;
+		undo = null;
+		onPersist(notebookRestore(offer.entry.id));
+		model = [...model.filter((e) => e.id !== offer.entry.id), offer.entry].sort(bySortThenCreated);
 	}
 
 	function recapSummaryValue(r: MeetingRecapModel): string {
@@ -296,6 +331,13 @@
 		</div>
 	{/each}
 
+	{#if undo}
+		<div class="nb__undo" role="status">
+			<span>Deleted{undo.entry.title ? ` "${undo.entry.title}"` : ' that page'}.</span>
+			<button class="btn btn--secondary nb__undobtn" type="button" onclick={putItBack}>Put it back</button>
+		</div>
+	{/if}
+
 	<nav class="nb__tabs" aria-label="Notebook sections">
 		{#each NOTEBOOK_SECTIONS as s (s.id)}
 			<button
@@ -362,7 +404,7 @@
 								{#if canEdit[def.id]}
 									<div class="nb__entryactions">
 										<button class="btn btn--ghost btn--small" type="button" onclick={() => openComposer(def.id, 'try', '', e)}>Edit</button>
-										<button class="btn btn--ghost btn--small nb__delete" type="button" onclick={() => deleteEntry(e.id)}>
+										<button class="btn btn--ghost btn--small nb__delete" type="button" onclick={() => deleteEntry(e)}>
 											{confirmingDelete === e.id ? 'Really delete?' : 'Delete'}
 										</button>
 									</div>
@@ -397,7 +439,7 @@
 								{#if canEdit[def.id]}
 									<div class="nb__entryactions">
 										<button class="btn btn--ghost btn--small" type="button" onclick={() => openComposer(def.id, 'answer', prompt.key, e)}>Edit</button>
-										<button class="btn btn--ghost btn--small nb__delete" type="button" onclick={() => deleteEntry(e.id)}>
+										<button class="btn btn--ghost btn--small nb__delete" type="button" onclick={() => deleteEntry(e)}>
 											{confirmingDelete === e.id ? 'Really delete?' : 'Delete'}
 										</button>
 									</div>
@@ -427,7 +469,7 @@
 							{#if canEdit[def.id]}
 								<div class="nb__entryactions">
 									<button class="btn btn--ghost btn--small" type="button" onclick={() => openComposer(def.id, 'note', '', e)}>Edit</button>
-									<button class="btn btn--ghost btn--small nb__delete" type="button" onclick={() => deleteEntry(e.id)}>
+									<button class="btn btn--ghost btn--small nb__delete" type="button" onclick={() => deleteEntry(e)}>
 										{confirmingDelete === e.id ? 'Really delete?' : 'Delete'}
 									</button>
 								</div>
@@ -685,6 +727,21 @@
 		border: 1px solid var(--danger);
 		border-radius: var(--radius-control);
 		color: var(--danger-text);
+	}
+
+	.nb__undo {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		gap: var(--space-3);
+		padding: var(--space-2) var(--space-3);
+		border: 1px solid var(--boundary);
+		border-radius: var(--radius-control);
+		background: var(--surface-2);
+	}
+	.nb__undobtn {
+		min-height: 2.75rem;
 	}
 
 	.nb__tabs {

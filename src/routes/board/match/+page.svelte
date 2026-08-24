@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
 	import MatchTimer, { type LoggedRun } from '$lib/match/MatchTimer.svelte';
+	import { safeInvalidateAll } from '$lib/student/refresh';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -14,7 +14,15 @@
 	 * device that is plugged in and parked next to the access point.
 	 *
 	 * So this path reports honestly instead: a refused or unreachable write is
-	 * SHOWN, and nothing claims to have saved that did not.
+	 * SHOWN, and nothing claims to have saved that did not. EVERY part of a run
+	 * is judged, the launches included: a run whose score saved but whose
+	 * launches did not is a run nobody can read afterwards, because "we tried
+	 * these three" is half of what a practice log is for.
+	 *
+	 * THE REFETCH IS `safeInvalidateAll`, NEVER `invalidateAll`. This kiosk sits
+	 * in a gym at a competition. Re-running a server load over a dead connection
+	 * makes SvelteKit fall back to a full document reload, which blanks the
+	 * iPad in the middle of a meeting; see $lib/student/refresh.ts.
 	 */
 	let message = $state('');
 	let busy = $state(false);
@@ -33,11 +41,17 @@
 		});
 		if (error) {
 			busy = false;
-			message = `That run did not save: ${error.message}`;
+			// A table write, not one of this schema's RPCs, so its answer is a
+			// constraint name: the board reads a sentence instead.
+			message = 'That run did not save. Check this iPad is online, then log it again.';
 			return;
 		}
+		// Two parts still to write. A failure in either is reported without
+		// throwing away what did land, so the message names the half that is
+		// missing rather than pretending the run is gone.
+		const missing: string[] = [];
 		if (run.launches.length > 0) {
-			await data.supabase.from('match_run_launches').insert(
+			const { error: launchError } = await data.supabase.from('match_run_launches').insert(
 				run.launches.map((l) => ({
 					id: l.id,
 					run_id: runId,
@@ -48,6 +62,7 @@
 					sort_order: l.sortOrder
 				}))
 			);
+			if (launchError) missing.push('which launches were tried');
 		}
 		if (run.lines.length > 0) {
 			const { error: lineError } = await data.supabase.from('match_run_scores').insert(
@@ -60,10 +75,13 @@
 					quantity: s.quantity
 				}))
 			);
-			if (lineError) message = `The run saved but the score did not: ${lineError.message}`;
+			if (lineError) missing.push('the score');
+		}
+		if (missing.length > 0) {
+			message = `The run saved, but not ${missing.join(' or ')}. Write it on paper and tell a mentor.`;
 		}
 		busy = false;
-		await invalidateAll();
+		await safeInvalidateAll();
 	}
 
 	async function removeRun(runId: string) {
@@ -78,7 +96,7 @@
 			message = 'That run was not removed.';
 			return;
 		}
-		await invalidateAll();
+		await safeInvalidateAll();
 	}
 </script>
 

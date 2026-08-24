@@ -26,6 +26,16 @@
  * is marked failed and SHOWN, because retrying it forever would be a lie told
  * quietly. A duplicate-key error is neither; it is the idempotency working,
  * and it counts as success.
+ *
+ * AND "NO ERROR" IS NOT "IT LANDED". An UPDATE whose rows RLS filtered comes
+ * back from PostgREST as 204, zero rows, error === null. Read as success it
+ * turns the tick green on a task the rest of the team can still see open,
+ * which is the one lie this file exists to prevent. So both task updates ask
+ * for their rows back and, when none come, ASK THE ROW ITSELF: still visible
+ * means the write was refused (mark it failed and show it), gone means a
+ * mentor deleted the task and there is nothing left to save. That answer goes
+ * through the same classify-and-fail path as every other refusal; there is no
+ * separate failure mode for it.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/supabase/database.types';
@@ -288,15 +298,24 @@ export class WriteQueue {
 		if (isNotebookOp(op)) return applyNotebookOp(sb, op);
 		try {
 			if (op.kind === 'task_status') {
-				const { error } = await sb.from('tasks').update({ status: op.status }).eq('id', op.taskId);
-				return this.#classify(error);
+				const res = await sb
+					.from('tasks')
+					.update({ status: op.status })
+					.eq('id', op.taskId)
+					.select('id');
+				return this.#judgeTaskWrite(op.taskId, res, 'We could not save that task. Ask a mentor.');
 			}
 			if (op.kind === 'task_claim') {
-				const { error } = await sb
+				const res = await sb
 					.from('tasks')
 					.update({ assigned_student_id: op.assignedStudentId })
-					.eq('id', op.taskId);
-				return this.#classify(error);
+					.eq('id', op.taskId)
+					.select('id');
+				return this.#judgeTaskWrite(
+					op.taskId,
+					res,
+					'We could not put your name on that task. Ask a mentor.'
+				);
 			}
 			if (op.kind === 'attendance') {
 				const { error } = await sb
@@ -343,6 +362,25 @@ export class WriteQueue {
 
 	#classify(error: { code?: string | null; message?: string } | null): 'done' | 'transient' | { message: string } {
 		return classifyPostgrest(error);
+	}
+
+	/**
+	 * Judges a task write that asked for its rows back. Zero rows and no error
+	 * is ambiguous, so the row is read through this student's own policies:
+	 * still there means RLS filtered the write and the student is told, gone
+	 * means a mentor deleted the task while this op sat on disk, and telling a
+	 * nine-year-old off for that would be a failure the app invented.
+	 */
+	async #judgeTaskWrite(
+		taskId: string,
+		res: { error: { code?: string | null; message?: string } | null; data: { id: string }[] | null },
+		refusal: string
+	): Promise<'done' | 'transient' | { message: string }> {
+		if (res.error) return this.#classify(res.error);
+		if ((res.data ?? []).length > 0) return 'done';
+		const probe = await this.#supabase.from('tasks').select('id').eq('id', taskId).maybeSingle();
+		if (probe.error) return this.#classify(probe.error);
+		return probe.data ? { message: refusal } : 'done';
 	}
 }
 

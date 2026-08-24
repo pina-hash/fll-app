@@ -1,7 +1,15 @@
 <script lang="ts">
 	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
-	import { displayName, isValidJoinCode, isValidPin, normalizeJoinCode, studentEmail } from '$lib/auth/student-identity';
+	import {
+		displayName,
+		isValidClaimCode,
+		isValidJoinCode,
+		isValidPin,
+		normalizeClaimCode,
+		normalizeJoinCode,
+		studentEmail
+	} from '$lib/auth/student-identity';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -14,23 +22,38 @@
 		size_cap: number;
 		roster_size: number;
 		roster_full: boolean;
-		join_open: boolean;
 		students: RosterStudent[];
 	};
+	type ClaimedSeat = { email: string; join_code: string };
 
 	/**
-	 * The student flow is code -> name -> PIN, with one branch: a child who is
-	 * not on the roster yet taps "I'm new here" and types themselves in.
+	 * TWO DOORS, BOTH ON THE FIRST SCREEN.
 	 *
-	 * THE JOIN WINDOW AND THE CAP ARE THE DATABASE'S ANSWER, NOT THIS SCREEN'S.
-	 * Both come back from team_login_roster so the button can be honest before
-	 * a child fills in a form -- but a phone that loaded this page twenty
-	 * minutes ago is showing a twenty-minute-old answer, and the RPC re-checks
-	 * both inside its own transaction. When it refuses, its sentence is shown
-	 * verbatim: it is written for a nine-year-old and this screen has nothing
-	 * to add to it.
+	 * A child who has signed in before types the team code, taps their name and
+	 * types their PIN: code -> name -> pin, unchanged. A child who never has is
+	 * holding a CARD with one seat code on it, and takes that seat: card ->
+	 * who I am -> a PIN I make up. Both buttons are on the FIRST screen,
+	 * because a new child has the card and nothing else. Putting "I have a
+	 * seat code" behind a team-code lookup would ask them for something nobody
+	 * ever gave them.
+	 *
+	 * THERE IS NO OPEN JOIN WINDOW ANY MORE (0019). The old one was open to
+	 * whoever was holding a team code: an older sibling, a child from another
+	 * team, the same child twice, for as long as a mentor forgot to close it.
+	 * A seat code is handed to ONE child by an adult, is spent once, and can be
+	 * voided before it is spent, so "who may take this seat" is answered by the
+	 * person handing out the cards rather than by a clock. Nothing on this
+	 * screen decides whether a seat is going spare: the code works or it does
+	 * not, and student_claim_seat settles that inside its own transaction.
+	 *
+	 * WHEN THE DATABASE REFUSES, ITS SENTENCE IS SHOWN VERBATIM. Every refusal
+	 * student_claim_seat raises is already written for a nine-year-old ("That is
+	 * your team code, not your seat code"), and a second copy of the same rule
+	 * in this file would drift from it within a season. What is checked here is
+	 * only what saves a round trip, plus the one thing the server cannot see:
+	 * whether the two PIN boxes agree.
 	 */
-	let step: 'code' | 'name' | 'pin' | 'new' = $state('code');
+	let step: 'code' | 'name' | 'pin' | 'card' | 'card-you' | 'card-pin' = $state('code');
 	let code = $state('');
 	let roster: Roster | null = $state(null);
 	let chosen: RosterStudent | null = $state(null);
@@ -38,7 +61,8 @@
 	let busy = $state(false);
 	let message = $state('');
 
-	// --- the "I'm new here" form ---------------------------------------------
+	// --- the "I have a seat code" form ---------------------------------------
+	let seatCode = $state('');
 	let newFirst = $state('');
 	let newInitial = $state('');
 	let newGrade = $state('');
@@ -51,12 +75,6 @@
 		failed: 'Sign-in did not complete. Try again.'
 	};
 	let notice = $derived(reasonText[page.url.searchParams.get('reason') ?? ''] ?? '');
-
-	// $derived.by, not $derived: at this point in the file `roster` has only
-	// ever been assigned null, so TypeScript narrows it to null in a bare
-	// expression. Reading it inside a closure is what tells the checker it can
-	// change later, which it does on every team lookup.
-	let canJoin = $derived.by(() => Boolean(roster?.join_open) && !roster?.roster_full);
 
 	async function lookupTeam(event: SubmitEvent) {
 		event.preventDefault();
@@ -110,24 +128,37 @@
 		await goto(data.next);
 	}
 
-	function startNew() {
+	/** The second door. Reachable from the first screen and from the roster. */
+	function startClaim() {
 		message = '';
+		seatCode = '';
 		newFirst = '';
 		newInitial = '';
 		newGrade = '';
 		newPin = '';
 		newPinAgain = '';
-		step = 'new';
+		step = 'card';
 	}
 
 	/**
-	 * Sign myself up, then sign myself in, with no approval queue in between:
-	 * a queue means twenty children waiting on one adult in a room where the
-	 * roster is being built live.
+	 * Shape only. Nothing here can tell a live code from a spent one, and there
+	 * is no anon door that would: team_claim_codes answers mentors. So this
+	 * catches the typo that would otherwise cost a child three more screens,
+	 * and student_claim_seat catches everything that matters.
 	 */
-	async function enroll(event: SubmitEvent) {
+	function seatCodeNext(event: SubmitEvent) {
 		event.preventDefault();
-		if (!roster) return;
+		message = '';
+		if (!isValidClaimCode(seatCode)) {
+			message = 'A seat code is 6 letters and numbers. Look at your card.';
+			return;
+		}
+		seatCode = normalizeClaimCode(seatCode);
+		step = 'card-you';
+	}
+
+	function seatNameNext(event: SubmitEvent) {
+		event.preventDefault();
 		message = '';
 		if (!newFirst.trim()) {
 			message = 'Type your first name.';
@@ -142,21 +173,33 @@
 			message = 'Pick your grade.';
 			return;
 		}
+		step = 'card-pin';
+	}
+
+	/**
+	 * Spend the seat, then sign in with the PIN they just made up. No approval
+	 * queue in between: a queue means twenty children waiting on one adult in a
+	 * room where the roster is being built card by card.
+	 */
+	async function claimSeat(event: SubmitEvent) {
+		event.preventDefault();
+		message = '';
 		if (!isValidPin(newPin)) {
 			message = 'Make up a PIN of 6 numbers.';
 			return;
 		}
+		// The one check the database cannot make: it is only ever handed one PIN.
 		if (newPin !== newPinAgain) {
-			message = 'The two PINs are not the same. Type it again.';
+			message = 'Those two PINs are not the same.';
 			return;
 		}
 
 		busy = true;
-		const { data: made, error } = await data.supabase.rpc('student_self_enroll', {
-			p_join_code: roster.join_code,
+		const { data: took, error } = await data.supabase.rpc('student_claim_seat', {
+			p_claim_code: normalizeClaimCode(seatCode),
 			p_first_name: newFirst.trim(),
 			p_last_initial: newInitial.trim().toUpperCase(),
-			p_grade: grade,
+			p_grade: Number(newGrade),
 			p_pin: newPin
 		});
 		if (error) {
@@ -167,18 +210,23 @@
 			return;
 		}
 
-		const row = made as unknown as { email: string } | null;
-		if (!row?.email) {
+		// An RPC that answers with nothing took nothing: no error is not proof
+		// the seat is now theirs, and the next screen would be a lie.
+		const seat = took as unknown as ClaimedSeat | null;
+		if (!seat?.email) {
 			busy = false;
-			message = 'Something went wrong signing you up. Ask a mentor.';
+			message = 'Something went wrong taking your seat. Ask a mentor.';
 			return;
 		}
-		const signIn = await data.supabase.auth.signInWithPassword({ email: row.email, password: newPin });
+
+		const signIn = await data.supabase.auth.signInWithPassword({ email: seat.email, password: newPin });
 		busy = false;
 		if (signIn.error) {
+			// The seat IS spent, so never send them back to the card: they are on
+			// the roster now, and the roster is the way in from here.
 			message = 'You are on the team. Now tap your name and type your PIN.';
 			const { data: again } = await data.supabase.rpc('team_login_roster', {
-				p_join_code: roster.join_code
+				p_join_code: seat.join_code
 			});
 			if (again) roster = again as unknown as Roster;
 			step = 'name';
@@ -206,12 +254,19 @@
 
 	function back() {
 		message = '';
-		if (step === 'pin' || step === 'new') {
+		if (step === 'pin') {
 			step = 'name';
 			chosen = null;
 		} else if (step === 'name') {
 			step = 'code';
 			roster = null;
+		} else if (step === 'card') {
+			// Back to wherever the card was picked up from.
+			step = roster ? 'name' : 'code';
+		} else if (step === 'card-you') {
+			step = 'card';
+		} else if (step === 'card-pin') {
+			step = 'card-you';
 		}
 	}
 </script>
@@ -247,12 +302,19 @@
 					/>
 				</label>
 				<p id="code-help" class="muted small">Your mentor has it.</p>
-				<button class="btn btn--primary" type="submit" disabled={busy}>Find my team</button>
+				<button class="btn btn--primary login__wide" type="submit" disabled={busy}>Find my team</button>
 			</form>
+
+			<div class="login__alt">
+				<p class="muted small">First time here? A mentor gave you a card with a seat code on it.</p>
+				<button class="btn btn--secondary login__wide" type="button" onclick={startClaim} disabled={busy}>
+					I have a seat code
+				</button>
+			</div>
 		{:else if step === 'name' && roster}
 			<p class="muted">Team <strong>{roster.team_name}</strong> · which one are you?</p>
 			{#if roster.students.length === 0}
-				<p>Nobody has signed up yet.</p>
+				<p>Nobody has signed in yet.</p>
 			{:else}
 				<ul class="tiles">
 					{#each roster.students as student (student.slug)}
@@ -265,25 +327,14 @@
 				</ul>
 			{/if}
 
-			{#if canJoin}
-				<button class="btn btn--secondary login__new" type="button" onclick={startNew}>
-					I'm new here
+			<div class="login__alt">
+				<p class="muted small">Not on the list? Use the code on your card.</p>
+				<button class="btn btn--secondary login__wide" type="button" onclick={startClaim} disabled={busy}>
+					I have a seat code
 				</button>
-				<p class="muted small">
-					{roster.size_cap - roster.roster_size} spot{roster.size_cap - roster.roster_size === 1 ? '' : 's'} left
-					on this team.
-				</p>
-			{:else if roster.roster_full}
-				<p class="muted small">
-					This team is full ({roster.size_cap} people). If you are new, ask a mentor which team to join.
-				</p>
-			{:else}
-				<p class="muted small">
-					Sign-ups are closed right now. If you are new, ask a mentor to open them.
-				</p>
-			{/if}
+			</div>
 
-			<button class="btn btn--ghost" type="button" onclick={back}>Different team</button>
+			<button class="btn btn--ghost login__wide login__back" type="button" onclick={back}>Different team</button>
 		{:else if step === 'pin' && roster && chosen}
 			<form onsubmit={signInStudent}>
 				<p class="muted">
@@ -307,9 +358,34 @@
 					<button class="btn btn--primary" type="submit" disabled={busy}>Sign in</button>
 				</div>
 			</form>
-		{:else if step === 'new' && roster}
-			<form onsubmit={enroll}>
-				<p class="muted">Joining <strong>{roster.team_name}</strong>.</p>
+		{:else if step === 'card'}
+			<form onsubmit={seatCodeNext}>
+				<p class="muted">Type the code from your card.</p>
+				<label class="field">
+					<span>Seat code</span>
+					<input
+						class="input input--code"
+						bind:value={seatCode}
+						autocomplete="off"
+						autocapitalize="characters"
+						spellcheck="false"
+						maxlength="6"
+						placeholder="GH7KPQ"
+						aria-describedby="seat-help"
+						disabled={busy}
+					/>
+				</label>
+				<p id="seat-help" class="muted small">
+					It is the code on your own card. It is not the team code.
+				</p>
+				<div class="row">
+					<button class="btn btn--ghost" type="button" onclick={back} disabled={busy}>Back</button>
+					<button class="btn btn--primary" type="submit" disabled={busy}>Next</button>
+				</div>
+			</form>
+		{:else if step === 'card-you'}
+			<form onsubmit={seatNameNext}>
+				<p class="muted">Seat code <strong>{seatCode}</strong> · who are you?</p>
 				<label class="field">
 					<span>First name</span>
 					<input class="input" bind:value={newFirst} maxlength="40" autocomplete="off" disabled={busy} />
@@ -334,6 +410,14 @@
 						{/each}
 					</select>
 				</label>
+				<div class="row">
+					<button class="btn btn--ghost" type="button" onclick={back} disabled={busy}>Back</button>
+					<button class="btn btn--primary" type="submit" disabled={busy}>Next</button>
+				</div>
+			</form>
+		{:else if step === 'card-pin'}
+			<form onsubmit={claimSeat}>
+				<p class="muted">Make up a PIN. You will type it every time you sign in.</p>
 				<label class="field">
 					<span>Make up a PIN: 6 numbers</span>
 					<input
@@ -365,7 +449,7 @@
 				</p>
 				<div class="row">
 					<button class="btn btn--ghost" type="button" onclick={back} disabled={busy}>Back</button>
-					<button class="btn btn--primary" type="submit" disabled={busy}>Join the team</button>
+					<button class="btn btn--primary" type="submit" disabled={busy}>Take my seat</button>
 				</div>
 			</form>
 		{/if}
@@ -415,9 +499,22 @@
 		gap: var(--space-3);
 		justify-content: space-between;
 	}
-	.login__new {
+	/* The two doors are the same width, because they are the same size of
+	   decision: one child knows the team code, the next one only has a card. */
+	.login__wide {
 		width: 100%;
-		margin-bottom: var(--space-2);
+	}
+	/* A decorative rule, so --hairline rather than --boundary: the separation
+	   is already carried by the sentence above the button. */
+	.login__alt {
+		display: grid;
+		gap: var(--space-3);
+		margin-top: var(--space-4);
+		padding-top: var(--space-4);
+		border-top: 1px solid var(--hairline);
+	}
+	.login__back {
+		margin-top: var(--space-3);
 	}
 	.input--code {
 		font-family: var(--font-mono);

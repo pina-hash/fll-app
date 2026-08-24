@@ -8,7 +8,12 @@ import type { PageServerLoad } from './$types';
  *
  * The meeting this page reports against is whichever one `board_live_summary`
  * resolved, so the drill-in and the card it came from can never disagree about
- * which session "today" means.
+ * which session "today" means. A cancelled meeting (0020) is not resolved by
+ * the database at all, so this page follows without asking.
+ *
+ * BLOCKERS ARE LOADED RESOLVED AND ALL, and the screen filters. A resolved
+ * blocker is the only record that the thing happened, so a mentor who cleared
+ * the wrong one has to be able to find it again and put it back.
  */
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
 	const { data: summaryRaw } = await supabase.rpc('board_live_summary');
@@ -36,9 +41,8 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 			.order('created_at', { ascending: false }),
 		supabase
 			.from('blockers')
-			.select('id, note, student_id, task_id, raised_at')
+			.select('id, note, student_id, task_id, raised_at, resolved_at')
 			.eq('team_id', params.teamId)
-			.is('resolved_at', null)
 			.order('raised_at'),
 		meetingId
 			? supabase.from('attendance').select('student_id').eq('meeting_id', meetingId)

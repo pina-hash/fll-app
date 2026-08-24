@@ -33,18 +33,19 @@
 		shortName = t.short_name ?? '';
 		accentMessage = '';
 		confirmRotate = false;
+		confirmArchive = false;
 		editing = null;
 		moving = null;
 	});
 
 	/**
 	 * THE ROSTER FILLS IN WHILE THIS PAGE IS OPEN. On the Friday this is built,
-	 * a mentor opens sign-ups and then watches twenty children type themselves
-	 * in from twenty phones. A realtime event on `students` or `teams` (0013)
-	 * schedules a REFETCH of this load, never a patch: the seats-left number
-	 * and the window state are rules that live in SQL, and recomputing them
-	 * here from a stream of INSERTs is the second implementation the repo's
-	 * rules forbid.
+	 * a mentor hands out seat cards and then watches the children spend them
+	 * from twenty phones. A realtime event on `students` or `teams` (0013)
+	 * schedules a REFETCH of this load, never a patch: seats left is the cap
+	 * minus the roster minus the cards nobody has spent yet, and that
+	 * subtraction is a rule that lives in SQL. Recomputing it here from a
+	 * stream of INSERTs is the second implementation the repo's rules forbid.
 	 */
 	onMount(() =>
 		watchTables(data.supabase, ['students', 'teams'], `console-roster-${page.params.teamId}`, () =>
@@ -66,14 +67,16 @@
 	let firstNameInput = $state<HTMLInputElement | null>(null);
 
 	let activeStudents = $derived(data.students.filter((s) => !s.deactivated_at));
-	let takenAccents = $derived(
-		new Set(data.teams.filter((t) => !t.archived_at && t.id !== data.team.id).map((t) => t.accent))
-	);
 	let rolesWithoutSecond = $derived(data.roles.filter((r) => !r.has_second).length);
 
+	// team_roster_state answers for LIVE teams only, so an archived team has no
+	// row here at all. That absence is the honest state and is shown as one,
+	// never as a team with zero seats.
 	let seatsLeft = $derived(data.rosterState?.seats_left ?? 0);
 	let sizeCap = $derived(data.rosterState?.size_cap ?? 0);
-	let joinOpen = $derived(data.rosterState?.join_open ?? false);
+	let rosterSize = $derived(data.rosterState?.roster_size ?? activeStudents.length);
+	let claimsOpen = $derived(data.rosterState?.claims_open ?? 0);
+	let archived = $derived(Boolean(data.team.archived_at));
 	let otherTeams = $derived(data.teams.filter((t) => !t.archived_at && t.id !== data.team.id));
 
 	let parentByStudent = $derived(
@@ -97,16 +100,25 @@
 
 	function saveTeam(event: SubmitEvent) {
 		event.preventDefault();
+		// .select(): an RLS-filtered UPDATE comes back 204 with no rows and no
+		// error, so "no error" is not "it landed". Asking for the row back is
+		// the only thing that tells a rename that saved from one that did not.
 		return call(
 			'team',
-			async () =>
-				data.supabase
+			async () => {
+				const result = await data.supabase
 					.from('teams')
 					.update({
 						name: name.trim(),
 						fll_team_number: number.trim() ? Number(number) : null
 					})
-					.eq('id', data.team.id),
+					.eq('id', data.team.id)
+					.select('id');
+				if (!result.error && (result.data ?? []).length === 0) {
+					return { error: { message: 'That change was not saved. Ask an admin mentor.' } };
+				}
+				return result;
+			},
 			'Team saved.'
 		);
 	}
@@ -177,20 +189,55 @@
 		await invalidateAll();
 	}
 
-	// --- sign-ups ------------------------------------------------------------
-	function openJoin() {
-		return call(
-			'join',
-			async () => data.supabase.rpc('team_join_window_open', { p_team_id: data.team.id }),
-			`Sign-ups are open. Read out the code ${data.team.join_code} and tell them to tap "I'm new here".`
-		);
+	// --- archive and restore -------------------------------------------------
+	let confirmArchive = $state(false);
+
+	/**
+	 * ARCHIVING REFUSES RATHER THAN DESTROYS. `team_archive` counts the
+	 * students still on the roster and the seat cards still out, and raises a
+	 * sentence naming both; that sentence is shown as it comes, because it is
+	 * already written in the mentor's own terms and it says what to do next.
+	 */
+	async function archiveTeam() {
+		if (!confirmArchive) {
+			confirmArchive = true;
+			return;
+		}
+		confirmArchive = false;
+		busy = 'archive';
+		message = '';
+		good = '';
+		const { error } = await data.supabase.rpc('team_archive', { p_team_id: data.team.id });
+		busy = '';
+		if (error) {
+			message = error.message;
+			return;
+		}
+		good = `${data.team.name} is archived. Bring it back any time from the teams list.`;
+		await invalidateAll();
 	}
-	function closeJoin() {
-		return call(
-			'join',
-			async () => data.supabase.rpc('team_join_window_close', { p_team_id: data.team.id }),
-			'Sign-ups closed.'
-		);
+
+	/**
+	 * A restore can cost the team its colour: an accent belongs to one LIVE
+	 * team at a time (0018), so another team may have taken it while this one
+	 * was away. The RPC decides that and reports it in `accent_cleared`; this
+	 * only says what happened.
+	 */
+	async function restoreTeam() {
+		busy = 'restore';
+		message = '';
+		good = '';
+		const { data: result, error } = await data.supabase.rpc('team_restore', { p_team_id: data.team.id });
+		busy = '';
+		if (error) {
+			message = error.message;
+			return;
+		}
+		const row = result as { name: string; accent_cleared: boolean } | null;
+		good = row?.accent_cleared
+			? `${data.team.name} is back. Another team took its colour while it was away, so it has none now: pick a new one above.`
+			: `${data.team.name} is back on the live teams list.`;
+		await invalidateAll();
 	}
 
 	async function addStudent(event: SubmitEvent) {
@@ -440,6 +487,13 @@
 		<p class="notice" role="status">{good}</p>
 	{/if}
 
+	{#if archived}
+		<p class="notice" role="status">
+			This team is archived. It is off the live teams list, out of the colour palette and out of every "move a
+			student here" menu. Nothing it did was deleted.
+		</p>
+	{/if}
+
 	<section class="card">
 		<h1 class="tp__name">{data.team.name}</h1>
 		<p class="muted small">
@@ -511,33 +565,42 @@
 		{/if}
 	</section>
 
-	<!-- SIGN-UPS. The Friday feature: one tap, and the children in the room
-	     type themselves in. -->
-	<section class="card signup" class:signup--on={joinOpen}>
-		<h2>Sign-ups</h2>
-		<p class="seats">
-			<span class="seats__n">{seatsLeft}</span>
-			<span class="seats__u">of {sizeCap} seats free</span>
-		</p>
-		{#if joinOpen}
-			<p class="notice" role="status">
-				Open. Read out <code>{data.team.join_code}</code>; a new student taps "I'm new here" on the login screen,
-				types their name and picks their own PIN.
-			</p>
+	<!-- SEATS. A seat is held by a student on the roster OR by a seat card that
+	     has been handed out and not yet spent. The subtraction is SQL's
+	     (team_roster_state, 0019); this only prints the three numbers. -->
+	<section class="card">
+		<h2>Seats</h2>
+		{#if data.rosterState}
+			<ul class="seats">
+				<li class="seats__stat">
+					<span class="seats__n">{rosterSize}</span>
+					<span class="seats__u">on the team</span>
+				</li>
+				<li class="seats__stat">
+					<span class="seats__n">{claimsOpen}</span>
+					<span class="seats__u">seat card{claimsOpen === 1 ? '' : 's'} out</span>
+				</li>
+				<li class="seats__stat">
+					<span class="seats__n">{seatsLeft}</span>
+					<span class="seats__u">of {sizeCap} free</span>
+				</li>
+			</ul>
 			<p class="muted small">
-				This closes by itself when the meeting ends, so it cannot be left open all week.
+				A seat card carries a six-character code a child types at the login screen to take their seat and pick
+				their own PIN. A card that is out holds its seat until it is used or you void it.
 			</p>
-			<button class="btn btn--secondary" disabled={busy === 'join'} onclick={closeJoin}>Close sign-ups</button>
+			<a class="btn btn--primary" href="/app/teams/{data.team.id}/claims">Seat cards</a>
+			{#if seatsLeft === 0}
+				<p class="muted small">
+					All {sizeCap} seats are spoken for, by students or by cards nobody has used yet. Take somebody off the
+					team, or void a card, before handing out another.
+				</p>
+			{/if}
 		{:else}
 			<p class="muted small">
-				Closed. Nobody can add themselves to this team right now.
-				{#if seatsLeft === 0}
-					It is also full: a team holds {sizeCap}. Take somebody off before opening it.
-				{/if}
+				Seats are counted for live teams only, and this one is archived. Nobody can take a seat on it until it is
+				back.
 			</p>
-			<button class="btn btn--primary" disabled={busy === 'join' || seatsLeft === 0} onclick={openJoin}>
-				Open sign-ups
-			</button>
 		{/if}
 	</section>
 
@@ -653,12 +716,16 @@
 				<span>Grade</span>
 				<input class="input" bind:value={grade} inputmode="numeric" pattern="[0-9]*" placeholder="optional" />
 			</label>
-			<button class="btn btn--primary" type="submit" disabled={busy === 'add' || seatsLeft === 0}>
+			<button class="btn btn--primary" type="submit" disabled={busy === 'add' || archived || seatsLeft === 0}>
 				Add and stay
 			</button>
 		</form>
-		{#if seatsLeft === 0}
-			<p class="muted small">This team is full ({sizeCap}). Take somebody off first.</p>
+		{#if archived}
+			<p class="muted small">This team is archived. Bring it back before you add anybody to it.</p>
+		{:else if seatsLeft === 0}
+			<p class="muted small">
+				This team is full ({sizeCap}). Take somebody off, or void a seat card, first.
+			</p>
 		{/if}
 
 		{#if justAdded.length}
@@ -674,7 +741,12 @@
 	<section class="card">
 		<h2>Roster</h2>
 		<p class="muted small">
-			{activeStudents.length} of {sizeCap} seats used. This list fills in by itself as students sign themselves up.
+			{#if data.rosterState}
+				{rosterSize} of {sizeCap} seats used, {claimsOpen} card{claimsOpen === 1 ? '' : 's'} still out. This list
+				fills in by itself as children spend their seat cards.
+			{:else}
+				{activeStudents.length} student{activeStudents.length === 1 ? '' : 's'} on this team.
+			{/if}
 		</p>
 		<div class="tablewrap">
 			<table class="table">
@@ -825,7 +897,7 @@
 							</tr>
 						{/if}
 					{:else}
-						<tr><td colspan="6" class="muted">No students yet. Open sign-ups, or add one by hand.</td></tr>
+						<tr><td colspan="6" class="muted">No students yet. Hand out seat cards, or add one by hand.</td></tr>
 					{/each}
 				</tbody>
 			</table>
@@ -835,6 +907,40 @@
 				{Object.keys(pins).length} PIN{Object.keys(pins).length === 1 ? '' : 's'} are held in this tab only.
 				<button class="btn btn--ghost btn--small" onclick={clearPins}>Forget them now</button>
 			</p>
+		{/if}
+	</section>
+
+	<section class="card">
+		<h2>{archived ? 'Bring this team back' : 'Put this team away'}</h2>
+		{#if archived}
+			<p class="muted small">
+				Everything this team did is still attached to it: the roster, the seat cards, the match runs and the
+				notebook. Bringing it back may cost it its colour, because a colour belongs to one live team at a time and
+				another team may have taken it while this one was away. Nothing else changes.
+			</p>
+			<button class="btn btn--primary" disabled={busy === 'restore'} onclick={restoreTeam}>
+				Bring {data.team.name} back
+			</button>
+		{:else if confirmArchive}
+			<p class="notice">
+				Archiving {data.team.name} takes it off the live teams list, off the login screen, and out of every
+				"move a student here" menu, and gives up its colour to whichever team asks for it next. Its roster, its
+				seat cards, its match runs and its notebook all stay attached to it, and the archived filter on the
+				teams list brings it back. If it still has a team board iPad, turn that off above first: archiving does
+				not sign it out.
+			</p>
+			<div class="tp__row">
+				<button class="btn btn--danger" disabled={busy === 'archive'} onclick={archiveTeam}>
+					Yes, archive {data.team.name}
+				</button>
+				<button class="btn btn--ghost" onclick={() => (confirmArchive = false)}>Keep it</button>
+			</div>
+		{:else}
+			<p class="muted small">
+				For a team that is not running this season. It refuses while anybody is still on the roster or any seat
+				card is still out, and tells you how many of each: move them, take them off, or void the cards first.
+			</p>
+			<button class="btn btn--ghost" onclick={archiveTeam}>Archive this team</button>
 		{/if}
 	</section>
 </div>
@@ -875,14 +981,24 @@
 		margin: var(--space-4) 0 var(--space-3);
 	}
 
-	.signup--on {
-		border-color: var(--success);
-	}
 	.seats {
+		list-style: none;
+		margin: var(--space-3) 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+		gap: var(--space-3);
+	}
+	.seats__stat {
 		display: flex;
 		align-items: baseline;
+		flex-wrap: wrap;
 		gap: var(--space-2);
-		margin-bottom: var(--space-3);
+		min-width: 0;
+		padding: var(--space-3);
+		border-radius: var(--radius-control);
+		border: 1px solid var(--hairline);
+		background: var(--surface-2);
 	}
 	.seats__n {
 		font-family: var(--font-mono);

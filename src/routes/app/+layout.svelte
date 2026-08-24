@@ -89,6 +89,16 @@
 		min-height: 100dvh;
 		display: grid;
 		grid-template-rows: auto auto 1fr;
+		/* THE SHELL'S ONE COLUMN IS minmax(0, 1fr) AND NOT `auto`, WHICH IS THE
+		   REPO'S OWN GRID RULE APPLIED TO THE THING THAT WRAPS EVERY CONSOLE
+		   SCREEN. With no explicit column the implicit one is content-sized, so
+		   the nav's row of tabs -- which scrolls on purpose, `overflow-x: auto`
+		   below -- was still sizing the whole page from its content. Measured at
+		   a 375px viewport: every mentor route scrolled sideways by 21px, header,
+		   nav and main all 396px wide inside a 375px window. Naming the column
+		   takes it to 0. `min-width: 0` on the nav alone does NOT fix it: the
+		   overflow is the track, not the item. */
+		grid-template-columns: minmax(0, 1fr);
 	}
 	.shell__bar {
 		display: flex;

@@ -1,14 +1,21 @@
 // tests/roster-cap.test.ts
 //
-// SIX ACTIVE STUDENTS PER TEAM, PROVED AT THE DATABASE AND NOT AT THE UI.
+// SIX SEATS PER TEAM, PROVED AT THE DATABASE AND NOT AT THE UI.
 // The load-bearing assertion is the first one: seven RAW inserts as
 // `postgres`, bypassing PostgREST, RLS and every RPC in the schema. Six land
 // and the seventh is refused, so the cap is a property of the table and not
 // of any code path that could forget it. Everything after that shows the same
 // trigger holding the other three ways a seat gets taken -- a mentor typing
-// (student_create), a student typing (student_self_enroll), and an old row
-// coming back (student_reactivate) -- plus the two things that must NOT count
-// against it: a deactivated row, and a rename on a team that is already full.
+// (student_create), a child spending a seat code (student_claim_seat), and an
+// old row coming back (student_reactivate) -- plus the two things that must
+// NOT count against it: a deactivated row, and a rename on a team that is
+// already full.
+//
+// A SEAT IS NOW A STUDENT OR A PROMISE OF ONE. From 0019 an unclaimed claim
+// code holds a seat too, so six printed cards fill an empty team before any
+// child types a name. That is what stops a mentor printing six cards for a
+// team that already has four children and turning two of them away at the
+// tablet holding a card that says they have a seat.
 
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import {
@@ -180,16 +187,32 @@ describe('the cap is enforced by the table, not by any code path above it', () =
 		expect(await activeCount(rpcTeam.teamId)).toBe(6);
 	}, 120_000);
 
-	test('self-enrollment refuses the seventh even with the window wide open', async () => {
+	test('claiming a seat refuses the seventh, and the cards themselves hold the seats', async () => {
 		const anon = anonClient();
-		const open = await mentor.client.rpc('team_join_window_open', { p_team_id: enrollTeam.teamId });
-		expect(open.error).toBeNull();
 
-		// POSITIVE CONTROL: six students enroll themselves, one after another.
-		for (let i = 1; i <= 6; i++) {
-			const { data, error } = await anon.rpc('student_self_enroll', {
-				p_join_code: enrollTeam.joinCode,
-				p_first_name: `Self${i}`,
+		// SIX CARDS FILL AN EMPTY TEAM BEFORE ANY CHILD TYPES A NAME. That is the
+		// change 0019 made to this rule: a live claim code holds a seat, so the
+		// cap is reached by the cards alone.
+		const { data: issued, error: issueErr } = await mentor.client.rpc('team_claim_codes_issue', {
+			p_team_id: enrollTeam.teamId,
+			p_count: 6
+		});
+		expect(issueErr).toBeNull();
+		const codes = (issued as unknown as { codes: { code: string }[] }).codes;
+		expect(codes).toHaveLength(6);
+
+		const seventhCard = await mentor.client.rpc('team_claim_codes_issue', {
+			p_team_id: enrollTeam.teamId,
+			p_count: 1
+		});
+		expect(expectPostgrestError(seventhCard).message).toMatch(/every seat/i);
+
+		// POSITIVE CONTROL: all six cards are spent, one after another, and each
+		// one signs a child in.
+		for (const [i, { code }] of codes.entries()) {
+			const { data, error } = await anon.rpc('student_claim_seat', {
+				p_claim_code: code,
+				p_first_name: `Seat${i + 1}`,
 				p_last_initial: 'S',
 				p_grade: 5,
 				p_pin: '112233'
@@ -199,28 +222,30 @@ describe('the cap is enforced by the table, not by any code path above it', () =
 		}
 		expect(await activeCount(enrollTeam.teamId)).toBe(6);
 
-		// The window is still open: this refusal is the cap, not the window.
-		const [{ open_now }] = await sql<{ open_now: boolean }[]>`
-			select public.team_join_open(${enrollTeam.teamId}) as open_now`;
-		expect(open_now).toBe(true);
+		// The seats changed hands rather than multiplying: six students, no live
+		// cards, and the team is still exactly at the cap.
+		const [{ live }] = await sql<{ live: number }[]>`
+			select count(*)::int as live from public.student_claim_codes
+			where team_id = ${enrollTeam.teamId} and claimed_at is null and voided_at is null`;
+		expect(live).toBe(0);
 
-		const seventh = await anon.rpc('student_self_enroll', {
-			p_join_code: enrollTeam.joinCode,
-			p_first_name: 'Self7',
+		// And a spent card cannot be spent again to squeeze a seventh in.
+		const seventh = await anon.rpc('student_claim_seat', {
+			p_claim_code: codes[0].code,
+			p_first_name: 'Seat7',
 			p_last_initial: 'S',
 			p_grade: 5,
 			p_pin: '112233'
 		});
-		const error = expectPostgrestError(seventh);
-		expect(error.message).toBe('That team is full. A team holds 6 students. Ask a mentor which team to join.');
+		expect(expectPostgrestError(seventh).message).toBe(
+			'That seat code has already been used. Ask a mentor for a new card.'
+		);
 		expect(await activeCount(enrollTeam.teamId)).toBe(6);
 
-		// And no half-made account was left in auth: the refusal happens before
-		// anything is written, and the transaction would have rolled it back
-		// anyway.
+		// No half-made account was left in auth.
 		const [{ n }] = await sql<{ n: number }[]>`
 			select count(*)::int as n from auth.users
-			where email like ${enrollTeam.joinCode.toLowerCase() + '-self7%'}`;
+			where email like ${enrollTeam.joinCode.toLowerCase() + '-seat7%'}`;
 		expect(n).toBe(0);
 	}, 180_000);
 

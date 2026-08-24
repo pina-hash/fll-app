@@ -52,11 +52,12 @@
 </script>
 
 <span class="n"
-	><i class="first">FIRST</i>{#if firstMark}<sup>®</sup>{/if}{#if name !== 'first' && name !== 'first-season'}
-		<span class="lego">LEGO</span>{#if legoMark}<sup>®</sup>{/if} League{#if name === 'challenge' || name === 'season'}
+	><span class="mark"><i class="first">FIRST</i>{#if firstMark}<sup>®</sup>{/if}</span
+	>{#if name !== 'first' && name !== 'first-season'}
+		<span class="mark"><span class="lego">LEGO</span>{#if legoMark}<sup>®</sup>{/if}</span> League{#if name === 'challenge' || name === 'season'}
 			Challenge{/if}{#if name === 'season'}
-			{SEASON.challenge}<sup>™</sup>{/if}{/if}{#if name === 'first-season'}
-		{SEASON.first}<sup>™</sup>{/if}</span
+			<span class="mark">{SEASON.challenge}<sup>™</sup></span>{/if}{/if}{#if name === 'first-season'}
+		<span class="mark">{SEASON.first}<sup>™</sup></span>{/if}</span
 >
 
 <style>
@@ -65,6 +66,16 @@
 	   differently would create the appearance of a new logo. */
 	.n {
 		font: inherit;
+	}
+	/* A MARK IS UNBREAKABLE; THE SENTENCE AROUND IT IS NOT. The whole name used
+	   to be one `white-space: nowrap` run, which made "FIRST LEGO League
+	   Challenge BIOGLOW(tm)" a single 338px word: on the notebook print sheet at
+	   a 375px viewport it hung 11px off the page, carrying the trademark symbol
+	   out of view with it. What the guidelines protect is each MARK, not the
+	   line it sits on, so the nowrap moved inward: FIRST and its ®, LEGO and
+	   its ®, and a season name and its ™ each stay whole, and the line may
+	   break at the ordinary spaces between them. */
+	.mark {
 		white-space: nowrap;
 	}
 	.first {

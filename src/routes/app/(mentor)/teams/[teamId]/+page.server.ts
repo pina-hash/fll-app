@@ -13,10 +13,11 @@ import type { PageServerLoad } from './$types';
  * for "who is assigned" would be the second implementation the migration's
  * header warns about.
  *
- * Seats, the cap and whether sign-ups are open likewise come from ONE rpc
- * (team_roster_state, 0013), not from counting rows here: "is this team open"
- * has two bounds in it (the meeting it was opened in, and the local day) and
- * neither belongs in a page load.
+ * Seats and the cap likewise come from ONE rpc (team_roster_state, 0013,
+ * rewritten by 0019), not from counting rows here: a seat is held by a student
+ * on the roster OR by a seat card handed out and not yet spent, and that
+ * subtraction is a rule. It answers for LIVE teams only, so an archived team
+ * gets a null `rosterState` and the page says so rather than printing zeroes.
  *
  * Parent links are read straight off student_parent_access, which mentors and
  * only mentors may select (0014). The token is in that select on purpose: it

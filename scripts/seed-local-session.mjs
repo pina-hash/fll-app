@@ -37,8 +37,27 @@ const ROSTERS = {
 
 const ROLES = ['lead_builder', 'lead_programmer', 'run_captain', 'innovation_lead', 'notebook_values_lead'];
 
-const teams = await sql`select id, name from public.teams order by name`;
-const byName = new Map(teams.map((t) => [t.name, t.id]));
+// 0018 MADE THE TEAM NUMBER THE IDENTITY AND THE COLOUR A CLAIM, AND THIS
+// SCRIPT WAS LEFT BEHIND. seed.sql creates 'Team 1' through 'Team 4'; every map
+// below is keyed on the colour names the teams had before that migration, so
+// byName.get('Red Team') was undefined and the first student_create died with
+// UNDEFINED_VALUE. Worse than the crash: rosterOf() matched nothing either, so
+// the roles, attendance and closed-task loops silently seeded NOTHING on the
+// runs that got that far. The keys stay as the colours because they are what
+// this fixture is about; SHORT is the one place that maps them onto the
+// numbered teams the schema actually has, and the short name is then set
+// through the real RPC, which is what a team choosing its own name does.
+const SHORT = { 'Team 1': 'Red Team', 'Team 2': 'Blue Team', 'Team 3': 'Green Team', 'Team 4': 'Gold Team' };
+
+const teams = await sql`select id, name, short_name from public.teams order by name`;
+const byName = new Map(teams.map((t) => [SHORT[t.name] ?? t.name, t.id]));
+
+for (const team of teams) {
+	const short = SHORT[team.name];
+	if (short && team.short_name !== short) {
+		await asMentor((tx) => tx`select public.team_set_short_name(${team.id}::uuid, ${short})`);
+	}
+}
 
 // 1. Students, through student_create (mints the auth user, identity and PIN).
 for (const [team, roster] of Object.entries(ROSTERS)) {
@@ -61,6 +80,10 @@ const students = await sql`
 	select s.id, s.first_name, s.team_id, t.name as team
 	from public.students s join public.teams t on t.id = s.team_id
 	order by t.name, s.created_at`;
+// The query above aliases teams.name, which is 'Team 1'..'Team 4'; every map in
+// this file is keyed on the colour. Translate once, here, so rosterOf and the
+// PRESENT and CLOSED maps all agree. See SHORT above.
+for (const s of students) s.team = SHORT[s.team] ?? s.team;
 const rosterOf = (team) => students.filter((s) => s.team === team);
 
 const PLAN = {

@@ -1,26 +1,33 @@
 /**
- * What `team_roster_state` (0013) returns, and the parser for it.
+ * What `team_roster_state` (0013, rewritten by 0019) returns, and the parser
+ * for it.
  *
- * SEATS AND THE WINDOW ARE ONE ANSWER, FROM ONE PLACE. "How many seats are
- * left" is the cap minus the active roster, and "are sign-ups open" has two
- * bounds inside it (the meeting the window was opened in, and the local day it
- * was opened on). Both are stated once in SQL and asked for here; a console
- * that counted rows and compared timestamps itself would be a second
- * implementation that drifts the first Friday a meeting runs past midnight
- * UTC, which every Friday does.
+ * A SEAT IS ONE ANSWER, FROM ONE PLACE. Since 0019 a seat is taken either by a
+ * student on the roster or by a seat card a mentor has handed out and nobody
+ * has spent yet, and "how many are left" is the cap minus both. That
+ * subtraction is stated once, in SQL: a console that counted students here and
+ * forgot the unspent cards would offer a seventh card for a team that has none
+ * left, and the child holding it would be refused at the login screen with the
+ * mentor watching.
+ *
+ * THE JOIN WINDOW IS GONE. 0019 removed `team_join_open` and the two stored
+ * columns behind it; a seat is now a card, which is a thing a mentor can print
+ * and take back. Nothing here reports whether sign-ups are open, because there
+ * is no such state any more.
  */
 
 export interface TeamRosterState {
 	team_id: string;
 	name: string;
+	/** teams.short_name -- what the team called itself, or null. */
+	short_name: string | null;
 	join_code: string;
 	accent: string;
 	size_cap: number;
 	roster_size: number;
+	/** Seat cards handed out and neither spent nor voided. Each holds a seat. */
+	claims_open: number;
 	seats_left: number;
-	join_open: boolean;
-	join_open_since: string | null;
-	join_open_meeting_id: string | null;
 }
 
 function obj(v: unknown): Record<string, unknown> | null {
@@ -47,14 +54,13 @@ export function parseRosterState(raw: unknown): TeamRosterState[] {
 			return {
 				team_id: id,
 				name: str(r.name),
+				short_name: maybeStr(r.short_name),
 				join_code: str(r.join_code),
 				accent: str(r.accent),
 				size_cap: num(r.size_cap),
 				roster_size: num(r.roster_size),
-				seats_left: num(r.seats_left),
-				join_open: r.join_open === true,
-				join_open_since: maybeStr(r.join_open_since),
-				join_open_meeting_id: maybeStr(r.join_open_meeting_id)
+				claims_open: num(r.claims_open),
+				seats_left: num(r.seats_left)
 			};
 		})
 		.filter((row): row is TeamRosterState => row !== null);

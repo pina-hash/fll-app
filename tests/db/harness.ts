@@ -254,10 +254,15 @@ export async function cleanupRun(): Promise<void> {
 			await tx`delete from public.team_robots where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.team_mission_notes where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.role_assignments where team_id = any(${teamIds}::uuid[])`;
+			// Claim codes name a team, a mentor and (once spent) a student, so
+			// they go before all three.
+			await tx`delete from public.student_claim_codes where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.attendance a using public.students s
 				where a.student_id = s.id and s.team_id = any(${teamIds}::uuid[])`;
 		}
 		if (mentorIds.length) {
+			await tx`delete from public.student_claim_codes where issued_by_mentor_id = any(${mentorIds}::uuid[])
+				or voided_by_mentor_id = any(${mentorIds}::uuid[])`;
 			await tx`delete from public.tasks where created_by_mentor_id = any(${mentorIds}::uuid[])`;
 			await tx`update public.blockers set resolved_by_mentor_id = null where resolved_by_mentor_id = any(${mentorIds}::uuid[])`;
 			await tx`delete from public.meetings where created_by = any(${mentorIds}::uuid[])`;

@@ -13,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import {
 	applyNotebookOp,
 	notebookDelete,
+	notebookRestore,
 	notebookInsert,
 	notebookUpdate,
 	recapUpdate
@@ -135,12 +136,28 @@ describe('replayed entries', () => {
 
 	test('a replayed delete is done both times, and an edit whose target is gone is done, not an error', async () => {
 		expect(await applyNotebookOp(ritaClient, notebookDelete(entryId))).toBe('done');
+		// The second attempt is the replay a lost answer causes. The RPC refuses
+		// it ("already in the bin"), and the op still reports done, because the
+		// read policy no longer shows the row and that is what "did my delete
+		// land" actually means.
 		expect(await applyNotebookOp(ritaClient, notebookDelete(entryId))).toBe('done');
 
-		const { data } = await service.from('notebook_entries').select('id').eq('id', entryId);
-		expect(data).toHaveLength(0);
+		// A SOFT DELETE (0020): gone from the author's reads...
+		const { data: hers } = await ritaClient.from('notebook_entries').select('id').eq('id', entryId);
+		expect(hers).toHaveLength(0);
+		// ...and still on the table, stamped, which is what makes the undo and
+		// the mentor's bin possible. The service role is the positive control:
+		// without it, a soft delete and a hard one read identically from here.
+		const { data } = await service.from('notebook_entries').select('id, deleted_at').eq('id', entryId);
+		expect(data).toHaveLength(1);
+		expect((data as unknown as { deleted_at: string | null }[])[0].deleted_at).not.toBeNull();
 
 		expect(await applyNotebookOp(ritaClient, notebookUpdate(entryId, { body: 'ghost' }))).toBe('done');
+
+		// And the restore that the ten-second undo calls brings it back.
+		expect(await applyNotebookOp(ritaClient, notebookRestore(entryId))).toBe('done');
+		const { data: back } = await ritaClient.from('notebook_entries').select('id').eq('id', entryId);
+		expect(back).toHaveLength(1);
 	});
 });
 

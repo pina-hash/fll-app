@@ -24,7 +24,14 @@
  *
  * AN RLS-FILTERED WRITE IS NOT AN ERROR. Every write here asks for its rows
  * back and treats an empty answer as a refusal (CLAUDE.md); a mentor who has
- * been deactivated mid-session must not be told the calibration saved.
+ * been deactivated mid-session must not be told the calibration saved. That
+ * goes for the REMOVAL too: asking for the rows back and then not reading
+ * them is the same lie in a longer form, so the delete below judges its
+ * answer and says which half of the removal actually happened.
+ *
+ * NO POSTGRES SENTENCE REACHES A MENTOR. These are PostgREST table writes,
+ * not this schema's RPCs, so their errors are constraint names and SQLSTATEs;
+ * each one is mapped to a sentence naming what to do next.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/supabase/database.types';
@@ -38,6 +45,12 @@ const MAX_DIM = 2600;
 /** The bucket's own limit (0012). Anything larger is re-encoded. */
 const MAX_BYTES = 10 * 1024 * 1024;
 const PASSTHROUGH = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+/** What a mentor reads when a table write is refused; never the raw answer. */
+const SAVE_FAILED = 'The picture did not save. Reload the page and try again.';
+const DIM_FAILED = 'The dimming did not save. Reload the page and try again.';
+const ROW_LEFT =
+	'The picture file went, but its record did not. Reload the page and remove it again.';
 
 export interface PreparedImage {
 	blob: Blob;
@@ -132,7 +145,7 @@ export async function uploadFieldImage(
 		.update(row)
 		.eq('team_id', teamId)
 		.select('id');
-	if (updated.error) return { ok: false, message: updated.error.message };
+	if (updated.error) return { ok: false, message: SAVE_FAILED };
 	if ((updated.data ?? []).length > 0) {
 		return { ok: true, message: 'New picture saved. Calibrate it before it is shown.' };
 	}
@@ -141,7 +154,7 @@ export async function uploadFieldImage(
 		.from('mat_images')
 		.insert({ id: crypto.randomUUID(), team_id: teamId, ...row })
 		.select('id');
-	if (inserted.error) return { ok: false, message: inserted.error.message };
+	if (inserted.error) return { ok: false, message: SAVE_FAILED };
 	if ((inserted.data ?? []).length === 0) {
 		return { ok: false, message: 'The server did not accept the picture.' };
 	}
@@ -172,7 +185,7 @@ export async function saveCalibration(
 		})
 		.eq('team_id', teamId)
 		.select('id');
-	if (res.error) return { ok: false, message: res.error.message };
+	if (res.error) return { ok: false, message: 'The calibration did not save. Try the two taps again.' };
 	if ((res.data ?? []).length === 0) {
 		return { ok: false, message: 'The server did not accept the calibration.' };
 	}
@@ -187,10 +200,8 @@ export async function saveDim(supabase: Client, teamId: string, pct: number): Pr
 		.update({ dim_pct: value })
 		.eq('team_id', teamId)
 		.select('id');
-	if (res.error) return { ok: false, message: res.error.message };
-	return (res.data ?? []).length > 0
-		? { ok: true, message: '' }
-		: { ok: false, message: 'The server did not accept that.' };
+	if (res.error || (res.data ?? []).length === 0) return { ok: false, message: DIM_FAILED };
+	return { ok: true, message: '' };
 }
 
 /**
@@ -201,8 +212,18 @@ export async function saveDim(supabase: Client, teamId: string, pct: number): Pr
 export async function removeFieldImage(supabase: Client, teamId: string): Promise<WriteResult> {
 	const gone = await supabase.storage.from('mat').remove([matImagePath(teamId)]);
 	if (gone.error) return { ok: false, message: 'The picture could not be removed. Are you online?' };
+
 	const res = await supabase.from('mat_images').delete().eq('team_id', teamId).select('id');
-	if (res.error) return { ok: false, message: res.error.message };
+	if (res.error) return { ok: false, message: ROW_LEFT };
+	if ((res.data ?? []).length === 0) {
+		// Zero rows and no error: either RLS filtered the delete (the row is
+		// still there and this mentor may not remove it) or there was no row to
+		// begin with. Ask, because only the first case is a problem, and only
+		// the first case may be reported as "removed" nowhere.
+		const probe = await supabase.from('mat_images').select('id').eq('team_id', teamId).maybeSingle();
+		if (probe.error) return { ok: false, message: ROW_LEFT };
+		if (probe.data) return { ok: false, message: ROW_LEFT };
+	}
 	return { ok: true, message: 'Picture removed.' };
 }
 

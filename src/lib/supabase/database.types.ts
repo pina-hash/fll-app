@@ -637,6 +637,8 @@ export type Database = {
       }
       meetings: {
         Row: {
+          cancelled_at: string | null
+          cancelled_by_mentor_id: string | null
           created_at: string
           created_by: string
           current_phase_id: string | null
@@ -650,6 +652,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancelled_at?: string | null
+          cancelled_by_mentor_id?: string | null
           created_at?: string
           created_by: string
           current_phase_id?: string | null
@@ -663,6 +667,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancelled_at?: string | null
+          cancelled_by_mentor_id?: string | null
           created_at?: string
           created_by?: string
           current_phase_id?: string | null
@@ -676,6 +682,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "meetings_cancelled_by_mentor_id_fkey"
+            columns: ["cancelled_by_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meetings_created_by_fkey"
             columns: ["created_by"]
@@ -770,6 +783,7 @@ export type Database = {
           body: string
           change_note: string
           created_at: string
+          deleted_at: string | null
           evidence_id: string | null
           id: string
           outcome: Database["public"]["Enums"]["notebook_outcome"] | null
@@ -785,6 +799,7 @@ export type Database = {
           body?: string
           change_note?: string
           created_at?: string
+          deleted_at?: string | null
           evidence_id?: string | null
           id?: string
           outcome?: Database["public"]["Enums"]["notebook_outcome"] | null
@@ -800,6 +815,7 @@ export type Database = {
           body?: string
           change_note?: string
           created_at?: string
+          deleted_at?: string | null
           evidence_id?: string | null
           id?: string
           outcome?: Database["public"]["Enums"]["notebook_outcome"] | null
@@ -940,6 +956,74 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_claim_codes: {
+        Row: {
+          claimed_at: string | null
+          claimed_student_id: string | null
+          code: string
+          created_at: string
+          id: string
+          issued_by_mentor_id: string
+          team_id: string
+          updated_at: string
+          voided_at: string | null
+          voided_by_mentor_id: string | null
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_student_id?: string | null
+          code: string
+          created_at?: string
+          id?: string
+          issued_by_mentor_id: string
+          team_id: string
+          updated_at?: string
+          voided_at?: string | null
+          voided_by_mentor_id?: string | null
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_student_id?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          issued_by_mentor_id?: string
+          team_id?: string
+          updated_at?: string
+          voided_at?: string | null
+          voided_by_mentor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_claim_codes_issued_by_mentor_id_fkey"
+            columns: ["issued_by_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_claim_codes_student_fkey"
+            columns: ["claimed_student_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id", "team_id"]
+          },
+          {
+            foreignKeyName: "student_claim_codes_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_claim_codes_voided_by_mentor_id_fkey"
+            columns: ["voided_by_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
             referencedColumns: ["id"]
           },
         ]
@@ -1261,8 +1345,6 @@ export type Database = {
           fll_team_number: number | null
           id: string
           join_code: string
-          join_open_meeting_id: string | null
-          join_open_since: string | null
           name: string
           short_name: string | null
           updated_at: string
@@ -1277,8 +1359,6 @@ export type Database = {
           fll_team_number?: number | null
           id?: string
           join_code: string
-          join_open_meeting_id?: string | null
-          join_open_since?: string | null
           name: string
           short_name?: string | null
           updated_at?: string
@@ -1293,8 +1373,6 @@ export type Database = {
           fll_team_number?: number | null
           id?: string
           join_code?: string
-          join_open_meeting_id?: string | null
-          join_open_since?: string | null
           name?: string
           short_name?: string | null
           updated_at?: string
@@ -1305,13 +1383,6 @@ export type Database = {
             columns: ["accent_proposed_by"]
             isOneToOne: false
             referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "teams_join_open_meeting_fkey"
-            columns: ["join_open_meeting_id"]
-            isOneToOne: false
-            referencedRelation: "meetings"
             referencedColumns: ["id"]
           },
         ]
@@ -1366,6 +1437,7 @@ export type Database = {
       _app_timezone: { Args: never; Returns: string }
       _app_today: { Args: never; Returns: string }
       _board_email: { Args: { p_join_code: string }; Returns: string }
+      _generate_claim_code: { Args: never; Returns: string }
       _generate_join_code: { Args: never; Returns: string }
       _meeting_recap_facts: {
         Args: { p_meeting_id: string; p_team_id: string }
@@ -1388,6 +1460,10 @@ export type Database = {
         Args: { p_first_name: string; p_last_initial: string }
         Returns: string
       }
+      _team_seats_taken: {
+        Args: { p_exclude_claim?: string; p_team_id: string }
+        Returns: number
+      }
       _text_is_clean: { Args: { p_text: string }; Returns: boolean }
       auth_whoami: { Args: never; Returns: Json }
       board_live_summary: { Args: { p_meeting_id?: string }; Returns: Json }
@@ -1399,6 +1475,7 @@ export type Database = {
       is_mentor: { Args: never; Returns: boolean }
       match_run_history: { Args: { p_team_id: string }; Returns: Json }
       meeting_advance_phase: { Args: { p_meeting_id: string }; Returns: Json }
+      meeting_cancel: { Args: { p_meeting_id: string }; Returns: Json }
       meeting_create: {
         Args: {
           p_kind: Database["public"]["Enums"]["meeting_kind"]
@@ -1410,7 +1487,18 @@ export type Database = {
       }
       meeting_current: { Args: never; Returns: Json }
       meeting_end: { Args: { p_meeting_id: string }; Returns: Json }
+      meeting_phase_reorder: {
+        Args: { p_direction: number; p_phase_id: string }
+        Returns: Json
+      }
+      meeting_recap_regenerate: {
+        Args: { p_meeting_id: string }
+        Returns: Json
+      }
+      meeting_reopen: { Args: { p_meeting_id: string }; Returns: Json }
+      meeting_restore: { Args: { p_meeting_id: string }; Returns: Json }
       meeting_start: { Args: { p_meeting_id: string }; Returns: Json }
+      notebook_bin: { Args: { p_team_id: string }; Returns: Json }
       notebook_can_edit: {
         Args: {
           p_section: Database["public"]["Enums"]["notebook_section"]
@@ -1418,6 +1506,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      notebook_entry_delete: { Args: { p_entry_id: string }; Returns: Json }
+      notebook_entry_restore: { Args: { p_entry_id: string }; Returns: Json }
       notebook_season_stats: { Args: { p_team_id: string }; Returns: Json }
       parent_access_issue: { Args: { p_student_id: string }; Returns: Json }
       parent_access_revoke: { Args: { p_student_id: string }; Returns: Json }
@@ -1448,6 +1538,16 @@ export type Database = {
         Args: { p_label?: string; p_team_id: string }
         Returns: Json
       }
+      student_claim_seat: {
+        Args: {
+          p_claim_code: string
+          p_first_name: string
+          p_grade: number
+          p_last_initial: string
+          p_pin: string
+        }
+        Returns: Json
+      }
       student_create: {
         Args: {
           p_first_name: string
@@ -1468,20 +1568,18 @@ export type Database = {
         Args: { p_new_pin: string; p_student_id: string }
         Returns: Json
       }
-      student_self_enroll: {
-        Args: {
-          p_first_name: string
-          p_grade: number
-          p_join_code: string
-          p_last_initial: string
-          p_pin: string
-        }
-        Returns: Json
-      }
       team_accent_options: { Args: never; Returns: Json }
+      team_archive: { Args: { p_team_id: string }; Returns: Json }
       team_board_disable: { Args: { p_team_id: string }; Returns: Json }
       team_board_enable: {
         Args: { p_pin: string; p_team_id: string }
+        Returns: Json
+      }
+      team_claim_code_reissue: { Args: { p_claim_id: string }; Returns: Json }
+      team_claim_code_void: { Args: { p_claim_id: string }; Returns: Json }
+      team_claim_codes: { Args: { p_team_id: string }; Returns: Json }
+      team_claim_codes_issue: {
+        Args: { p_count?: number; p_team_id: string }
         Returns: Json
       }
       team_confirm_accent: {
@@ -1499,9 +1597,6 @@ export type Database = {
         }
         Returns: Json
       }
-      team_join_open: { Args: { p_team_id: string }; Returns: boolean }
-      team_join_window_close: { Args: { p_team_id: string }; Returns: Json }
-      team_join_window_open: { Args: { p_team_id: string }; Returns: Json }
       team_login_roster: { Args: { p_join_code: string }; Returns: Json }
       team_propose_accent: {
         Args: { p_accent: Database["public"]["Enums"]["team_accent"] }
@@ -1525,6 +1620,7 @@ export type Database = {
           unfilled: boolean
         }[]
       }
+      team_restore: { Args: { p_team_id: string }; Returns: Json }
       team_roster_state: { Args: never; Returns: Json }
       team_set_accent: {
         Args: {

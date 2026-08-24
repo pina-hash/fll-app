@@ -32,6 +32,19 @@ export interface NotebookEntryModel {
 	createdAt: string;
 }
 
+/**
+ * One page in the bin: an entry a soft delete (0020) stamped, listed by
+ * `notebook_bin` for MENTORS only. A child gets the ten-second undo; an
+ * adult, who hears about it on Tuesday, gets this.
+ */
+export interface NotebookBinEntry {
+	entryId: string;
+	section: NotebookSectionId;
+	title: string;
+	body: string;
+	deletedAt: string | null;
+}
+
 /** One photo from the season, offered to entries and shown in recaps. */
 export interface SeasonPhoto {
 	id: string;
@@ -91,6 +104,32 @@ function num(v: unknown): number {
 }
 function role(v: unknown): TeamRole | null {
 	return TEAM_ROLES.includes(v as TeamRole) ? (v as TeamRole) : null;
+}
+
+/**
+ * `notebook_bin`'s jsonb array. Defensive like every parser here: a payload
+ * this code cannot read shows an empty bin, never a stack trace under a
+ * mentor's finger.
+ */
+export function parseNotebookBin(raw: unknown): NotebookBinEntry[] {
+	if (!Array.isArray(raw)) return [];
+	return raw
+		.map((item) => {
+			const o = obj(item);
+			const id = o && str(o.entryId ?? o.entry_id);
+			const section = o && str(o.section);
+			if (!o || !id || !section || !NOTEBOOK_SECTION_IDS.includes(section as NotebookSectionId)) {
+				return null;
+			}
+			return {
+				entryId: id,
+				section: section as NotebookSectionId,
+				title: str(o.title) ?? '',
+				body: str(o.body) ?? '',
+				deletedAt: str(o.deleted_at)
+			};
+		})
+		.filter((e): e is NotebookBinEntry => e !== null);
 }
 
 /** Null when the payload is not a recap draft at all (an empty `{}` is one). */
