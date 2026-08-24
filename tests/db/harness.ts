@@ -237,6 +237,10 @@ export async function cleanupRun(): Promise<void> {
 
 	await sql.begin(async (tx) => {
 		if (teamIds.length) {
+			// Scores and launches cascade from the run; the run itself references
+			// the team, so it has to go before the team does.
+			await tx`delete from public.match_runs where team_id = any(${teamIds}::uuid[])`;
+			await tx`delete from public.student_parent_access where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.evidence where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.blockers where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.tasks where team_id = any(${teamIds}::uuid[])`;

@@ -1,7 +1,10 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
+	import { watchTables } from '$lib/console/live.svelte';
 	import { knownPins, mintPin, rememberPin, forgetPins } from '$lib/console/pins';
+	import { parentUrl } from '$lib/parent/qr';
 	import { ACCENT_LABEL, ROLE_LABEL, TEAM_ACCENTS, TEAM_ROLES, type TeamAccent, type TeamRole } from '$lib/console/types';
 	import type { PageData } from './$types';
 
@@ -26,7 +29,24 @@
 		number = t.fll_team_number ? String(t.fll_team_number) : '';
 		accent = t.accent;
 		confirmRotate = false;
+		editing = null;
+		moving = null;
 	});
+
+	/**
+	 * THE ROSTER FILLS IN WHILE THIS PAGE IS OPEN. On the Friday this is built,
+	 * a mentor opens sign-ups and then watches twenty children type themselves
+	 * in from twenty phones. A realtime event on `students` or `teams` (0013)
+	 * schedules a REFETCH of this load, never a patch: the seats-left number
+	 * and the window state are rules that live in SQL, and recomputing them
+	 * here from a stream of INSERTs is the second implementation the repo's
+	 * rules forbid.
+	 */
+	onMount(() =>
+		watchTables(data.supabase, ['students', 'teams'], `console-roster-${page.params.teamId}`, () =>
+			void invalidateAll()
+		)
+	);
 
 	// --- PINs this tab has seen ---------------------------------------------
 	let pins = $state<Record<string, string>>({});
@@ -46,6 +66,15 @@
 		new Set(data.teams.filter((t) => !t.archived_at && t.id !== data.team.id).map((t) => t.accent))
 	);
 	let rolesWithoutSecond = $derived(data.roles.filter((r) => !r.has_second).length);
+
+	let seatsLeft = $derived(data.rosterState?.seats_left ?? 0);
+	let sizeCap = $derived(data.rosterState?.size_cap ?? 0);
+	let joinOpen = $derived(data.rosterState?.join_open ?? false);
+	let otherTeams = $derived(data.teams.filter((t) => !t.archived_at && t.id !== data.team.id));
+
+	let parentByStudent = $derived(
+		new Map(data.parentLinks.map((row) => [row.student_id, row]))
+	);
 
 	async function call(key: string, fn: () => Promise<{ error: { message: string } | null }>, ok = '') {
 		busy = key;
@@ -103,6 +132,22 @@
 		await invalidateAll();
 	}
 
+	// --- sign-ups ------------------------------------------------------------
+	function openJoin() {
+		return call(
+			'join',
+			async () => data.supabase.rpc('team_join_window_open', { p_team_id: data.team.id }),
+			`Sign-ups are open. Read out the code ${data.team.join_code} and tell them to tap "I'm new here".`
+		);
+	}
+	function closeJoin() {
+		return call(
+			'join',
+			async () => data.supabase.rpc('team_join_window_close', { p_team_id: data.team.id }),
+			'Sign-ups closed.'
+		);
+	}
+
 	async function addStudent(event: SubmitEvent) {
 		event.preventDefault();
 		message = '';
@@ -140,6 +185,79 @@
 		await invalidateAll();
 	}
 
+	// --- editing one student -------------------------------------------------
+	let editing = $state<string | null>(null);
+	let editFirst = $state('');
+	let editInitial = $state('');
+	let editGrade = $state('');
+	let moving = $state<{ studentId: string; toTeamId: string } | null>(null);
+
+	function startEdit(student: { id: string; first_name: string; last_initial: string; grade: number | null }) {
+		editing = student.id;
+		editFirst = student.first_name;
+		editInitial = student.last_initial;
+		editGrade = student.grade ? String(student.grade) : '';
+	}
+
+	async function saveEdit(studentId: string) {
+		if (!editFirst.trim() || !/^[A-Za-z]$/.test(editInitial.trim())) {
+			message = 'A first name and a single-letter last initial, please.';
+			return;
+		}
+		// .select(): an RLS-filtered UPDATE comes back 204 with no error and no
+		// rows. Asking for the row back is what tells "saved" from "refused".
+		const okay = await call(
+			`edit:${studentId}`,
+			async () => {
+				const result = await data.supabase
+					.from('students')
+					.update({
+						first_name: editFirst.trim(),
+						last_initial: editInitial.trim().toUpperCase(),
+						grade: editGrade.trim() ? Number(editGrade) : null
+					})
+					.eq('id', studentId)
+					.select('id');
+				if (!result.error && (result.data ?? []).length === 0) {
+					return { error: { message: 'That change was not saved. Ask an admin mentor.' } };
+				}
+				return result;
+			},
+			'Saved. Their login is unchanged.'
+		);
+		if (okay) editing = null;
+	}
+
+	async function moveStudent(studentId: string, toTeamId: string) {
+		if (!moving || moving.studentId !== studentId || moving.toTeamId !== toTeamId) {
+			moving = { studentId, toTeamId };
+			return;
+		}
+		moving = null;
+		busy = `move:${studentId}`;
+		message = '';
+		good = '';
+		const { data: result, error } = await data.supabase.rpc('student_move_team', {
+			p_student_id: studentId,
+			p_to_team_id: toTeamId
+		});
+		busy = '';
+		if (error) {
+			message = error.message;
+			return;
+		}
+		const row = result as {
+			to_team_name: string;
+			roles_cleared: number;
+			tasks_unassigned: number;
+		} | null;
+		good =
+			`Moved to ${row?.to_team_name}. Their login address changed and they are signed out; the PIN is the same. ` +
+			`${row?.roles_cleared ?? 0} role assignment${row?.roles_cleared === 1 ? '' : 's'} cleared, ` +
+			`${row?.tasks_unassigned ?? 0} job${row?.tasks_unassigned === 1 ? '' : 's'} unassigned. Reprint both roster cards.`;
+		await invalidateAll();
+	}
+
 	async function resetPin(studentId: string, label: string) {
 		const pin = mintPin();
 		const okay = await call(
@@ -157,7 +275,7 @@
 		return call(
 			`off:${studentId}`,
 			async () => data.supabase.rpc('student_deactivate', { p_student_id: studentId }),
-			'Deactivated. Their PIN no longer works.'
+			'Deactivated. Their PIN no longer works, and their seat is free.'
 		);
 	}
 
@@ -167,6 +285,35 @@
 			async () => data.supabase.rpc('student_reactivate', { p_student_id: studentId }),
 			'Reactivated with the same PIN.'
 		);
+	}
+
+	// --- parent links --------------------------------------------------------
+	let copied = $state('');
+
+	function issueParentLink(studentId: string, label: string) {
+		return call(
+			`parent:${studentId}`,
+			async () => data.supabase.rpc('parent_access_issue', { p_student_id: studentId }),
+			`${label} has a new link. Any link printed before now is dead. Print the parent cards again.`
+		);
+	}
+
+	function revokeParentLink(studentId: string, label: string) {
+		return call(
+			`parentoff:${studentId}`,
+			async () => data.supabase.rpc('parent_access_revoke', { p_student_id: studentId }),
+			`${label}'s parent link is off.`
+		);
+	}
+
+	async function copyLink(token: string, studentId: string) {
+		try {
+			await navigator.clipboard.writeText(parentUrl(page.url.origin, token));
+			copied = studentId;
+			setTimeout(() => (copied = ''), 2000);
+		} catch {
+			message = 'This browser would not let the page copy. Open the parent cards page and read it off there.';
+		}
 	}
 
 	function setRole(role: TeamRole, tier: 'primary' | 'second', studentId: string) {
@@ -253,6 +400,7 @@
 		<p class="muted small">
 			Join code <code class="tp__code">{data.team.join_code}</code> ·
 			<a href="/app/teams/{data.team.id}/card">Printable roster card</a> ·
+			<a href="/app/teams/{data.team.id}/parents">Parent cards</a> ·
 			<a href="/app/board/{data.team.id}">Live view</a>
 		</p>
 
@@ -291,6 +439,36 @@
 			</div>
 		{:else}
 			<button class="btn btn--ghost" onclick={rotateCode}>Regenerate join code</button>
+		{/if}
+	</section>
+
+	<!-- SIGN-UPS. The Friday feature: one tap, and the children in the room
+	     type themselves in. -->
+	<section class="card signup" class:signup--on={joinOpen}>
+		<h2>Sign-ups</h2>
+		<p class="seats">
+			<span class="seats__n">{seatsLeft}</span>
+			<span class="seats__u">of {sizeCap} seats free</span>
+		</p>
+		{#if joinOpen}
+			<p class="notice" role="status">
+				Open. Read out <code>{data.team.join_code}</code>; a new student taps "I'm new here" on the login screen,
+				types their name and picks their own PIN.
+			</p>
+			<p class="muted small">
+				This closes by itself when the meeting ends, so it cannot be left open all week.
+			</p>
+			<button class="btn btn--secondary" disabled={busy === 'join'} onclick={closeJoin}>Close sign-ups</button>
+		{:else}
+			<p class="muted small">
+				Closed. Nobody can add themselves to this team right now.
+				{#if seatsLeft === 0}
+					It is also full: a team holds {sizeCap}. Take somebody off before opening it.
+				{/if}
+			</p>
+			<button class="btn btn--primary" disabled={busy === 'join' || seatsLeft === 0} onclick={openJoin}>
+				Open sign-ups
+			</button>
 		{/if}
 	</section>
 
@@ -387,10 +565,11 @@
 	</section>
 
 	<section class="card">
-		<h2>Add students</h2>
+		<h2>Add students by hand</h2>
 		<p class="muted small">
-			Creating a student mints their PIN and shows it once, here. Read it aloud or print the roster card; nothing can
-			tell you a PIN again afterwards, only reset it.
+			For the ones who will not be in the room, or whose phone will not cooperate. Creating a student mints their
+			PIN and shows it once, here. Read it aloud or print the roster card; nothing can tell you a PIN again
+			afterwards, only reset it.
 		</p>
 		<form onsubmit={addStudent} class="tp__form">
 			<label class="field">
@@ -405,8 +584,13 @@
 				<span>Grade</span>
 				<input class="input" bind:value={grade} inputmode="numeric" pattern="[0-9]*" placeholder="optional" />
 			</label>
-			<button class="btn btn--primary" type="submit" disabled={busy === 'add'}>Add and stay</button>
+			<button class="btn btn--primary" type="submit" disabled={busy === 'add' || seatsLeft === 0}>
+				Add and stay
+			</button>
 		</form>
+		{#if seatsLeft === 0}
+			<p class="muted small">This team is full ({sizeCap}). Take somebody off first.</p>
+		{/if}
 
 		{#if justAdded.length}
 			<h3>Added this session</h3>
@@ -420,6 +604,9 @@
 
 	<section class="card">
 		<h2>Roster</h2>
+		<p class="muted small">
+			{activeStudents.length} of {sizeCap} seats used. This list fills in by itself as students sign themselves up.
+		</p>
 		<div class="tablewrap">
 			<table class="table">
 				<thead>
@@ -428,14 +615,43 @@
 						<th scope="col">Grade</th>
 						<th scope="col">Login</th>
 						<th scope="col">PIN</th>
+						<th scope="col">Parent link</th>
 						<th scope="col">Actions</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each data.students as student (student.id)}
+						{@const link = parentByStudent.get(student.id)}
+						{@const label = `${student.first_name} ${student.last_initial}.`}
 						<tr class:row--off={Boolean(student.deactivated_at)}>
-							<th scope="row">{student.first_name} {student.last_initial}.</th>
-							<td>{student.grade ?? ''}</td>
+							<th scope="row">
+								{#if editing === student.id}
+									<div class="edit">
+										<input class="input" bind:value={editFirst} maxlength="40" aria-label="First name" />
+										<input
+											class="input input--initial"
+											bind:value={editInitial}
+											maxlength="1"
+											aria-label="Last initial"
+										/>
+									</div>
+								{:else}
+									{label}
+								{/if}
+							</th>
+							<td>
+								{#if editing === student.id}
+									<input
+										class="input input--grade"
+										bind:value={editGrade}
+										inputmode="numeric"
+										pattern="[0-9]*"
+										aria-label="Grade"
+									/>
+								{:else}
+									{student.grade ?? ''}
+								{/if}
+							</td>
 							<td><code class="small">{student.slug}</code></td>
 							<td>
 								{#if pins[student.id]}
@@ -445,30 +661,102 @@
 								{/if}
 							</td>
 							<td class="tp__row">
-								<button
-									class="btn btn--ghost btn--small"
-									disabled={busy === `pin:${student.id}` || Boolean(student.deactivated_at)}
-									onclick={() => resetPin(student.id, `${student.first_name} ${student.last_initial}.`)}
-								>
-									Reset PIN
-								</button>
-								{#if student.deactivated_at}
-									<button
-										class="btn btn--secondary btn--small"
-										disabled={busy === `on:${student.id}`}
-										onclick={() => reactivate(student.id)}>Reactivate</button
-									>
-								{:else}
+								{#if link && !link.revoked_at}
 									<button
 										class="btn btn--ghost btn--small"
-										disabled={busy === `off:${student.id}`}
-										onclick={() => deactivate(student.id)}>Deactivate</button
+										onclick={() => copyLink(link.token, student.id)}
 									>
+										{copied === student.id ? 'Copied' : 'Copy link'}
+									</button>
+									<button
+										class="btn btn--ghost btn--small"
+										disabled={busy === `parentoff:${student.id}`}
+										onclick={() => revokeParentLink(student.id, label)}>Turn off</button
+									>
+									<span class="muted small">
+										{link.open_count > 0 ? `opened ${link.open_count}x` : 'not opened yet'}
+									</span>
+								{:else}
+									<button
+										class="btn btn--secondary btn--small"
+										disabled={busy === `parent:${student.id}` || Boolean(student.deactivated_at)}
+										onclick={() => issueParentLink(student.id, label)}
+									>
+										{link ? 'New link' : 'Make link'}
+									</button>
+								{/if}
+							</td>
+							<td class="tp__row">
+								{#if editing === student.id}
+									<button
+										class="btn btn--primary btn--small"
+										disabled={busy === `edit:${student.id}`}
+										onclick={() => saveEdit(student.id)}>Save</button
+									>
+									<button class="btn btn--ghost btn--small" onclick={() => (editing = null)}>Cancel</button>
+								{:else}
+									<button class="btn btn--ghost btn--small" onclick={() => startEdit(student)}>Edit</button>
+									<button
+										class="btn btn--ghost btn--small"
+										disabled={busy === `pin:${student.id}` || Boolean(student.deactivated_at)}
+										onclick={() => resetPin(student.id, label)}
+									>
+										Reset PIN
+									</button>
+									{#if student.deactivated_at}
+										<button
+											class="btn btn--secondary btn--small"
+											disabled={busy === `on:${student.id}`}
+											onclick={() => reactivate(student.id)}>Reactivate</button
+										>
+									{:else}
+										<button
+											class="btn btn--ghost btn--small"
+											disabled={busy === `off:${student.id}`}
+											onclick={() => deactivate(student.id)}>Deactivate</button
+										>
+									{/if}
+									{#if otherTeams.length > 0 && !student.deactivated_at}
+										<select
+											class="input input--move"
+											aria-label={`Move ${label} to another team`}
+											value={moving?.studentId === student.id ? moving.toTeamId : ''}
+											disabled={busy === `move:${student.id}`}
+											onchange={(e) => e.currentTarget.value && moveStudent(student.id, e.currentTarget.value)}
+										>
+											<option value="">Move to...</option>
+											{#each otherTeams as t (t.id)}
+												<option value={t.id}>{t.name}</option>
+											{/each}
+										</select>
+									{/if}
 								{/if}
 							</td>
 						</tr>
+						{#if moving?.studentId === student.id}
+							<tr class="confirmrow">
+								<td colspan="6">
+									<p class="notice">
+										Moving {label} to {otherTeams.find((t) => t.id === moving?.toTeamId)?.name} rewrites their
+										login address (the code and the name part both change) and signs them out on every device.
+										Their PIN stays the same. Their role assignments are cleared and their jobs are unassigned.
+										Both roster cards become wrong.
+									</p>
+									<div class="tp__row">
+										<button
+											class="btn btn--primary btn--small"
+											disabled={busy === `move:${student.id}`}
+											onclick={() => moving && moveStudent(student.id, moving.toTeamId)}
+										>
+											Yes, move {label}
+										</button>
+										<button class="btn btn--ghost btn--small" onclick={() => (moving = null)}>Stay here</button>
+									</div>
+								</td>
+							</tr>
+						{/if}
 					{:else}
-						<tr><td colspan="5" class="muted">No students yet.</td></tr>
+						<tr><td colspan="6" class="muted">No students yet. Open sign-ups, or add one by hand.</td></tr>
 					{/each}
 				</tbody>
 			</table>
@@ -510,11 +798,35 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-2);
+		align-items: center;
 	}
 	.rule {
 		border: none;
 		border-top: 1px solid var(--hairline);
 		margin: var(--space-4) 0 var(--space-3);
+	}
+
+	.signup--on {
+		border-color: var(--glow-green);
+	}
+	.seats {
+		display: flex;
+		align-items: baseline;
+		gap: var(--space-2);
+		margin-bottom: var(--space-3);
+	}
+	.seats__n {
+		font-family: var(--font-mono);
+		font-size: var(--fs-h1);
+		font-weight: var(--fw-black);
+		color: var(--team-accent);
+		line-height: 1;
+	}
+	.seats__u {
+		font-size: var(--fs-label);
+		letter-spacing: var(--track-label);
+		text-transform: uppercase;
+		color: var(--text-3);
 	}
 
 	.roles {
@@ -573,7 +885,7 @@
 	.table {
 		width: 100%;
 		border-collapse: collapse;
-		min-width: 34rem;
+		min-width: 52rem;
 	}
 	.table th,
 	.table td {
@@ -592,10 +904,29 @@
 	.row--off td {
 		color: var(--text-3);
 	}
+	.confirmrow td {
+		background: var(--surface-2);
+	}
+	.edit {
+		display: flex;
+		gap: var(--space-2);
+	}
 
 	:global(.input--initial) {
 		max-width: 5rem;
 		text-transform: uppercase;
+	}
+	:global(.input--grade) {
+		max-width: 5rem;
+	}
+	:global(.input--move) {
+		max-width: 11rem;
+		min-height: 2.25rem;
+	}
+	@media (pointer: coarse) {
+		:global(.input--move) {
+			min-height: 2.75rem;
+		}
 	}
 
 	@media (min-width: 48rem) {

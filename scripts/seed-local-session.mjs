@@ -29,7 +29,10 @@ const ROSTERS = {
 	'Red Team': [['Maya', 'R'], ['Diego', 'S'], ['Priya', 'K'], ['Omar', 'B'], ['Lena', 'T'], ['Jonah', 'W']],
 	'Blue Team': [['Ana', 'C'], ['Theo', 'M'], ['Ruby', 'F'], ['Sam', 'L'], ['Ivy', 'N'], ['Kai', 'P']],
 	'Green Team': [['Nora', 'A'], ['Felix', 'G'], ['Zoe', 'H'], ['Milo', 'D'], ['Ada', 'V']],
-	'Gold Team': [['Rosa', 'E'], ['Hugo', 'J'], ['Iris', 'Q'], ['Leo', 'Y'], ['Talia', 'Z'], ['Nate', 'X'], ['Cora', 'U']]
+	// Six is the cap (0013's team_size_cap), so every roster here is six or
+	// fewer. Gold used to carry a seventh; the trigger refuses it now, which is
+	// the cap doing its job on a dev script exactly as it would on a Friday.
+	'Gold Team': [['Rosa', 'E'], ['Hugo', 'J'], ['Iris', 'Q'], ['Leo', 'Y'], ['Talia', 'Z'], ['Nate', 'X']]
 };
 
 const ROLES = ['lead_builder', 'lead_programmer', 'run_captain', 'innovation_lead', 'notebook_values_lead'];

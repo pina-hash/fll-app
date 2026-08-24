@@ -43,6 +43,7 @@
 		onDismissFailure?: (id: string) => void;
 		teamHref?: string;
 		planHref?: string;
+		matchHref?: string;
 		libraryHref?: string;
 	}
 
@@ -66,6 +67,7 @@
 		onDismissFailure,
 		teamHref = '/app/me/team',
 		planHref = '/app/me/plan',
+		matchHref = '/app/me/match',
 		libraryHref = '/app/library'
 	}: Props = $props();
 
@@ -252,6 +254,7 @@
 			{/if}
 			<a class="sr__teamlink" href={teamHref}>See what my team is doing</a>
 			<a class="sr__teamlink" href={planHref}>Plan our robot runs</a>
+			<a class="sr__teamlink" href={matchHref}>Time a practice run</a>
 				<a class="sr__teamlink" href={libraryHref}>Look something up</a>
 		</section>
 

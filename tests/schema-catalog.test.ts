@@ -1,10 +1,11 @@
 // tests/schema-catalog.test.ts
 //
 // THE CATALOG SAYS WHAT THE MIGRATIONS CLAIM. Every public table has RLS on;
-// anon holds no table privilege and can execute exactly one function; each RPC
-// resolves to exactly one pg_proc row (the signature trap: two overloads that
-// differ only by a defaulted parameter make PostgREST unable to call either);
-// the five realtime tables are published with full replica identity.
+// anon holds no table privilege at all and can execute only the handful of
+// functions listed below; each RPC resolves to exactly one pg_proc row (the
+// signature trap: two overloads that differ only by a defaulted parameter make
+// PostgREST unable to call either); every published table carries full replica
+// identity.
 
 import { afterAll, describe, expect, test } from 'vitest';
 import { closeDb, sql } from './db/harness';
@@ -20,6 +21,9 @@ const TABLES = [
 	'launch_missions',
 	'launches',
 	'mat_config',
+	'match_run_launches',
+	'match_run_scores',
+	'match_runs',
 	'meeting_phases',
 	'meetings',
 	'mentors',
@@ -27,6 +31,7 @@ const TABLES = [
 	'phase_templates',
 	'role_assignments',
 	'strategies',
+	'student_parent_access',
 	'students',
 	'tasks',
 	'team_board_devices',
@@ -39,6 +44,11 @@ const TABLES = [
 const RPCS = [
 	'auth_whoami',
 	'board_live_summary',
+	'match_run_history',
+	'parent_access_issue',
+	'parent_access_revoke',
+	'parent_photo_path',
+	'parent_view',
 	'meeting_current',
 	'meeting_advance_phase',
 	'meeting_create',
@@ -48,6 +58,8 @@ const RPCS = [
 	'role_unassign',
 	'student_create',
 	'student_deactivate',
+	'student_move_team',
+	'student_self_enroll',
 	'student_reactivate',
 	'student_reset_pin',
 	'strategy_can_edit',
@@ -55,9 +67,14 @@ const RPCS = [
 	'team_board_disable',
 	'team_board_enable',
 	'team_create',
+	'team_join_open',
+	'team_join_window_close',
+	'team_join_window_open',
 	'team_login_roster',
 	'team_regenerate_join_code',
 	'team_resolve_roles',
+	'team_roster_state',
+	'team_size_cap',
 	'is_mentor',
 	'is_admin_mentor',
 	'current_board_team_id',
@@ -100,7 +117,9 @@ describe('tables', () => {
 				('attendance', 'checked_in_at'),
 				('mentors', 'auth_user_id'), ('mentors', 'email'),
 				('students', 'auth_user_id'), ('students', 'slug'), ('students', 'team_id'), ('students', 'deactivated_at'),
-				('teams', 'join_code')
+				('teams', 'join_code'), ('teams', 'join_open_since'), ('teams', 'join_open_meeting_id'),
+				('match_runs', 'points'), ('match_run_scores', 'points'),
+				('student_parent_access', 'token'), ('student_parent_access', 'revoked_at')
 			  )`;
 		// attendance.checked_in_at is UPDATE-granted on purpose (a mentor corrects a stamp); nothing else is.
 		expect(rows).toEqual([{ table_name: 'attendance', column_name: 'checked_in_at', privilege_type: 'UPDATE' }]);
@@ -108,11 +127,22 @@ describe('tables', () => {
 });
 
 describe('functions', () => {
-	test('anon can execute exactly team_login_roster', async () => {
+	// anon's reach is five functions and no table, and each one is a door the
+	// spec asked for: the login roster (0004), the two halves of the parent
+	// view (0014), self-enrollment (0013) and the cap the login screen prints.
+	// Adding a sixth is a decision, not an accident, which is what this list
+	// is for.
+	test('anon can execute exactly the five public doors, and nothing else', async () => {
 		const rows = await sql<{ proname: string }[]>`
 			select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 			where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute') order by 1`;
-		expect(rows.map((r) => r.proname)).toEqual(['team_login_roster']);
+		expect(rows.map((r) => r.proname)).toEqual([
+			'parent_photo_path',
+			'parent_view',
+			'student_self_enroll',
+			'team_login_roster',
+			'team_size_cap'
+		]);
 	});
 
 	test('each RPC and helper resolves to exactly one pg_proc row', async () => {
@@ -152,13 +182,25 @@ describe('functions', () => {
 });
 
 describe('realtime', () => {
-	test('meetings, meeting_phases, tasks, blockers and attendance are published with full replica identity', async () => {
+	// 0008's five, plus students and teams (0013): the console's roster pane
+	// has to fill in as children sign themselves up, and the join-window pill
+	// has to agree across two mentors' laptops.
+	test('the seven published tables carry full replica identity', async () => {
+		const expected = [
+			'attendance',
+			'blockers',
+			'meeting_phases',
+			'meetings',
+			'students',
+			'tasks',
+			'teams'
+		];
 		const published = await sql<{ tablename: string }[]>`
 			select tablename from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' order by 1`;
-		expect(published.map((r) => r.tablename)).toEqual(['attendance', 'blockers', 'meeting_phases', 'meetings', 'tasks']);
+		expect(published.map((r) => r.tablename)).toEqual(expected);
 		const identity = await sql<{ relname: string; relreplident: string }[]>`
 			select relname, relreplident from pg_class
-			where relname in ('attendance', 'blockers', 'meeting_phases', 'meetings', 'tasks') order by 1`;
+			where relname = any(${expected}) order by 1`;
 		expect(identity.every((r) => r.relreplident === 'f')).toBe(true);
 	});
 });

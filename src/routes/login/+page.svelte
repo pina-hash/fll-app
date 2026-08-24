@@ -7,10 +7,30 @@
 	let { data }: { data: PageData } = $props();
 
 	type RosterStudent = { first_name: string; last_initial: string; slug: string };
-	type Roster = { team_id: string; team_name: string; join_code: string; students: RosterStudent[] };
+	type Roster = {
+		team_id: string;
+		team_name: string;
+		join_code: string;
+		size_cap: number;
+		roster_size: number;
+		roster_full: boolean;
+		join_open: boolean;
+		students: RosterStudent[];
+	};
 
-	// The student flow is three steps on one screen: code -> name -> PIN.
-	let step: 'code' | 'name' | 'pin' = $state('code');
+	/**
+	 * The student flow is code -> name -> PIN, with one branch: a child who is
+	 * not on the roster yet taps "I'm new here" and types themselves in.
+	 *
+	 * THE JOIN WINDOW AND THE CAP ARE THE DATABASE'S ANSWER, NOT THIS SCREEN'S.
+	 * Both come back from team_login_roster so the button can be honest before
+	 * a child fills in a form -- but a phone that loaded this page twenty
+	 * minutes ago is showing a twenty-minute-old answer, and the RPC re-checks
+	 * both inside its own transaction. When it refuses, its sentence is shown
+	 * verbatim: it is written for a nine-year-old and this screen has nothing
+	 * to add to it.
+	 */
+	let step: 'code' | 'name' | 'pin' | 'new' = $state('code');
 	let code = $state('');
 	let roster: Roster | null = $state(null);
 	let chosen: RosterStudent | null = $state(null);
@@ -18,12 +38,25 @@
 	let busy = $state(false);
 	let message = $state('');
 
+	// --- the "I'm new here" form ---------------------------------------------
+	let newFirst = $state('');
+	let newInitial = $state('');
+	let newGrade = $state('');
+	let newPin = $state('');
+	let newPinAgain = $state('');
+
 	const reasonText: Record<string, string> = {
 		rejected: 'That Google account is not a boscotech.edu mentor account.',
 		'no-access': 'That account is not active here any more. Ask a mentor.',
 		failed: 'Sign-in did not complete. Try again.'
 	};
 	let notice = $derived(reasonText[page.url.searchParams.get('reason') ?? ''] ?? '');
+
+	// $derived.by, not $derived: at this point in the file `roster` has only
+	// ever been assigned null, so TypeScript narrows it to null in a bare
+	// expression. Reading it inside a closure is what tells the checker it can
+	// change later, which it does on every team lookup.
+	let canJoin = $derived.by(() => Boolean(roster?.join_open) && !roster?.roster_full);
 
 	async function lookupTeam(event: SubmitEvent) {
 		event.preventDefault();
@@ -43,7 +76,7 @@
 			message = 'No team has that code.';
 			return;
 		}
-		roster = found as Roster;
+		roster = found as unknown as Roster;
 		step = 'name';
 	}
 
@@ -77,6 +110,84 @@
 		await goto(data.next);
 	}
 
+	function startNew() {
+		message = '';
+		newFirst = '';
+		newInitial = '';
+		newGrade = '';
+		newPin = '';
+		newPinAgain = '';
+		step = 'new';
+	}
+
+	/**
+	 * Sign myself up, then sign myself in, with no approval queue in between:
+	 * a queue means twenty children waiting on one adult in a room where the
+	 * roster is being built live.
+	 */
+	async function enroll(event: SubmitEvent) {
+		event.preventDefault();
+		if (!roster) return;
+		message = '';
+		if (!newFirst.trim()) {
+			message = 'Type your first name.';
+			return;
+		}
+		if (!/^[A-Za-z]$/.test(newInitial.trim())) {
+			message = 'Type the first letter of your last name.';
+			return;
+		}
+		const grade = Number(newGrade);
+		if (!Number.isInteger(grade) || grade < 1 || grade > 12) {
+			message = 'Pick your grade.';
+			return;
+		}
+		if (!isValidPin(newPin)) {
+			message = 'Make up a PIN of 6 numbers.';
+			return;
+		}
+		if (newPin !== newPinAgain) {
+			message = 'The two PINs are not the same. Type it again.';
+			return;
+		}
+
+		busy = true;
+		const { data: made, error } = await data.supabase.rpc('student_self_enroll', {
+			p_join_code: roster.join_code,
+			p_first_name: newFirst.trim(),
+			p_last_initial: newInitial.trim().toUpperCase(),
+			p_grade: grade,
+			p_pin: newPin
+		});
+		if (error) {
+			busy = false;
+			// The database writes these sentences for a nine-year-old. Showing
+			// our own here would be a second, worse copy of the same rule.
+			message = error.message;
+			return;
+		}
+
+		const row = made as unknown as { email: string } | null;
+		if (!row?.email) {
+			busy = false;
+			message = 'Something went wrong signing you up. Ask a mentor.';
+			return;
+		}
+		const signIn = await data.supabase.auth.signInWithPassword({ email: row.email, password: newPin });
+		busy = false;
+		if (signIn.error) {
+			message = 'You are on the team. Now tap your name and type your PIN.';
+			const { data: again } = await data.supabase.rpc('team_login_roster', {
+				p_join_code: roster.join_code
+			});
+			if (again) roster = again as unknown as Roster;
+			step = 'name';
+			return;
+		}
+		await invalidate('supabase:auth');
+		await goto(data.next);
+	}
+
 	async function signInMentor() {
 		busy = true;
 		message = '';
@@ -95,7 +206,7 @@
 
 	function back() {
 		message = '';
-		if (step === 'pin') {
+		if (step === 'pin' || step === 'new') {
 			step = 'name';
 			chosen = null;
 		} else if (step === 'name') {
@@ -141,7 +252,7 @@
 		{:else if step === 'name' && roster}
 			<p class="muted">Team <strong>{roster.team_name}</strong> · which one are you?</p>
 			{#if roster.students.length === 0}
-				<p>No students on this team yet. Ask a mentor.</p>
+				<p>Nobody has signed up yet.</p>
 			{:else}
 				<ul class="tiles">
 					{#each roster.students as student (student.slug)}
@@ -153,6 +264,25 @@
 					{/each}
 				</ul>
 			{/if}
+
+			{#if canJoin}
+				<button class="btn btn--secondary login__new" type="button" onclick={startNew}>
+					I'm new here
+				</button>
+				<p class="muted small">
+					{roster.size_cap - roster.roster_size} spot{roster.size_cap - roster.roster_size === 1 ? '' : 's'} left
+					on this team.
+				</p>
+			{:else if roster.roster_full}
+				<p class="muted small">
+					This team is full ({roster.size_cap} people). If you are new, ask a mentor which team to join.
+				</p>
+			{:else}
+				<p class="muted small">
+					Sign-ups are closed right now. If you are new, ask a mentor to open them.
+				</p>
+			{/if}
+
 			<button class="btn btn--ghost" type="button" onclick={back}>Different team</button>
 		{:else if step === 'pin' && roster && chosen}
 			<form onsubmit={signInStudent}>
@@ -175,6 +305,67 @@
 				<div class="row">
 					<button class="btn btn--ghost" type="button" onclick={back} disabled={busy}>Not me</button>
 					<button class="btn btn--primary" type="submit" disabled={busy}>Sign in</button>
+				</div>
+			</form>
+		{:else if step === 'new' && roster}
+			<form onsubmit={enroll}>
+				<p class="muted">Joining <strong>{roster.team_name}</strong>.</p>
+				<label class="field">
+					<span>First name</span>
+					<input class="input" bind:value={newFirst} maxlength="40" autocomplete="off" disabled={busy} />
+				</label>
+				<label class="field">
+					<span>First letter of your last name</span>
+					<input
+						class="input input--one"
+						bind:value={newInitial}
+						maxlength="1"
+						autocapitalize="characters"
+						autocomplete="off"
+						disabled={busy}
+					/>
+				</label>
+				<label class="field">
+					<span>Grade</span>
+					<select class="input" bind:value={newGrade} disabled={busy}>
+						<option value="">Pick one</option>
+						{#each [3, 4, 5, 6, 7, 8, 9] as g (g)}
+							<option value={String(g)}>{g}</option>
+						{/each}
+					</select>
+				</label>
+				<label class="field">
+					<span>Make up a PIN: 6 numbers</span>
+					<input
+						class="input input--pin"
+						type="password"
+						inputmode="numeric"
+						pattern="[0-9]*"
+						maxlength="6"
+						autocomplete="off"
+						bind:value={newPin}
+						disabled={busy}
+					/>
+				</label>
+				<label class="field">
+					<span>Type your PIN again</span>
+					<input
+						class="input input--pin"
+						type="password"
+						inputmode="numeric"
+						pattern="[0-9]*"
+						maxlength="6"
+						autocomplete="off"
+						bind:value={newPinAgain}
+						disabled={busy}
+					/>
+				</label>
+				<p class="muted small">
+					Remember your PIN. Nobody can look it up later, but a mentor can give you a new one.
+				</p>
+				<div class="row">
+					<button class="btn btn--ghost" type="button" onclick={back} disabled={busy}>Back</button>
+					<button class="btn btn--primary" type="submit" disabled={busy}>Join the team</button>
 				</div>
 			</form>
 		{/if}
@@ -224,6 +415,10 @@
 		gap: var(--space-3);
 		justify-content: space-between;
 	}
+	.login__new {
+		width: 100%;
+		margin-bottom: var(--space-2);
+	}
 	.input--code {
 		font-family: var(--font-mono);
 		font-size: var(--fs-h2);
@@ -236,5 +431,11 @@
 		font-size: var(--fs-h2);
 		letter-spacing: 0.4em;
 		text-align: center;
+	}
+	.input--one {
+		max-width: 5rem;
+		text-transform: uppercase;
+		text-align: center;
+		font-size: var(--fs-h2);
 	}
 </style>

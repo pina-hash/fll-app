@@ -183,6 +183,7 @@
 					{/if}
 				{/if}
 			</div>
+			<a class="bd__match" href="/board/match">Match timer</a>
 		</header>
 
 		<section class="bd__roster" aria-label="Who is here">
@@ -443,5 +444,20 @@
 	}
 	.bd__net[data-state='syncing'] {
 		color: var(--amber);
+	}
+	/* The mat is across the room from the board; this is the one link a child
+	   walking past taps. Sized to be hit while holding a robot. */
+	.bd__match {
+		display: inline-flex;
+		align-items: center;
+		min-height: 3.5rem;
+		padding: 0 var(--space-4);
+		border-radius: var(--radius-tile);
+		border: 2px solid var(--team-accent);
+		color: var(--team-accent);
+		text-decoration: none;
+		font-family: var(--font-display);
+		font-size: clamp(1rem, 2vw, 1.5rem);
+		font-weight: var(--fw-black);
 	}
 </style>

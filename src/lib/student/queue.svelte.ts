@@ -31,6 +31,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/supabase/database.types';
 import type { TaskStatus } from '$lib/console/types';
 import { applyPlannerOp, isPlannerOp, type PlannerOp } from '$lib/planner/ops';
+import { applyMatchOp, isMatchOp, type MatchOp } from '$lib/match/ops';
 import { classifyPostgrest } from './postgrest';
 import { setReachable } from './refresh';
 
@@ -54,7 +55,9 @@ export type QueuedOp =
 			contentType: string;
 	  }
 	/** The route planner's edits; applied by src/lib/planner/ops.ts. */
-	| PlannerOp;
+	| PlannerOp
+	/** Practice runs logged at the mat; applied by src/lib/match/ops.ts. */
+	| MatchOp;
 
 export interface QueueRecord {
 	/** The client-minted uuid. Also the primary key of any row this op inserts. */
@@ -273,6 +276,10 @@ export class WriteQueue {
 		// (including the zero-rows-back probe); ops.ts catches its own fetch
 		// failures and answers 'transient'.
 		if (isPlannerOp(op)) return applyPlannerOp(sb, op);
+		// Match runs likewise: one op writes the run and everything under it,
+		// and every row carries an id this device minted, so a replay collides
+		// rather than duplicating. See src/lib/match/ops.ts.
+		if (isMatchOp(op)) return applyMatchOp(sb, op);
 		try {
 			if (op.kind === 'task_status') {
 				const { error } = await sb.from('tasks').update({ status: op.status }).eq('id', op.taskId);

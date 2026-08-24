@@ -297,6 +297,179 @@ export type Database = {
         }
         Relationships: []
       }
+      match_run_launches: {
+        Row: {
+          attempted: boolean
+          created_at: string
+          id: string
+          launch_id: string | null
+          name: string
+          run_id: string
+          sort_order: number
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempted?: boolean
+          created_at?: string
+          id?: string
+          launch_id?: string | null
+          name?: string
+          run_id: string
+          sort_order?: number
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempted?: boolean
+          created_at?: string
+          id?: string
+          launch_id?: string | null
+          name?: string
+          run_id?: string
+          sort_order?: number
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_run_launches_launch_id_team_id_fkey"
+            columns: ["launch_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "launches"
+            referencedColumns: ["id", "team_id"]
+          },
+          {
+            foreignKeyName: "match_run_launches_run_id_team_id_fkey"
+            columns: ["run_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "match_runs"
+            referencedColumns: ["id", "team_id"]
+          },
+        ]
+      }
+      match_run_scores: {
+        Row: {
+          created_at: string
+          id: string
+          line_index: number
+          mission_id: string
+          points: number
+          quantity: number
+          run_id: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_index: number
+          mission_id: string
+          points?: number
+          quantity?: number
+          run_id: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_index?: number
+          mission_id?: string
+          points?: number
+          quantity?: number
+          run_id?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_run_scores_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_run_scores_run_id_team_id_fkey"
+            columns: ["run_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "match_runs"
+            referencedColumns: ["id", "team_id"]
+          },
+        ]
+      }
+      match_runs: {
+        Row: {
+          created_at: string
+          elapsed_s: number | null
+          id: string
+          logged_by_mentor_id: string | null
+          logged_by_student_id: string | null
+          note: string
+          points: number
+          started_at: string
+          strategy_id: string | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          elapsed_s?: number | null
+          id?: string
+          logged_by_mentor_id?: string | null
+          logged_by_student_id?: string | null
+          note?: string
+          points?: number
+          started_at?: string
+          strategy_id?: string | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          elapsed_s?: number | null
+          id?: string
+          logged_by_mentor_id?: string | null
+          logged_by_student_id?: string | null
+          note?: string
+          points?: number
+          started_at?: string
+          strategy_id?: string | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_runs_logged_by_mentor_id_fkey"
+            columns: ["logged_by_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_runs_logged_by_student_id_team_id_fkey"
+            columns: ["logged_by_student_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id", "team_id"]
+          },
+          {
+            foreignKeyName: "match_runs_strategy_id_team_id_fkey"
+            columns: ["strategy_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id", "team_id"]
+          },
+          {
+            foreignKeyName: "match_runs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_phases: {
         Row: {
           ended_at: string | null
@@ -577,6 +750,63 @@ export type Database = {
           },
         ]
       }
+      student_parent_access: {
+        Row: {
+          created_at: string
+          id: string
+          issued_at: string
+          issued_by_mentor_id: string | null
+          last_opened_at: string | null
+          open_count: number
+          revoked_at: string | null
+          student_id: string
+          team_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issued_at?: string
+          issued_by_mentor_id?: string | null
+          last_opened_at?: string | null
+          open_count?: number
+          revoked_at?: string | null
+          student_id: string
+          team_id: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issued_at?: string
+          issued_by_mentor_id?: string | null
+          last_opened_at?: string | null
+          open_count?: number
+          revoked_at?: string | null
+          student_id?: string
+          team_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_parent_access_issued_by_mentor_id_fkey"
+            columns: ["issued_by_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_parent_access_student_id_team_id_fkey"
+            columns: ["student_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id", "team_id"]
+          },
+        ]
+      }
       students: {
         Row: {
           auth_user_id: string
@@ -834,6 +1064,8 @@ export type Database = {
           fll_team_number: number | null
           id: string
           join_code: string
+          join_open_meeting_id: string | null
+          join_open_since: string | null
           name: string
           updated_at: string
         }
@@ -844,6 +1076,8 @@ export type Database = {
           fll_team_number?: number | null
           id?: string
           join_code: string
+          join_open_meeting_id?: string | null
+          join_open_since?: string | null
           name: string
           updated_at?: string
         }
@@ -854,10 +1088,20 @@ export type Database = {
           fll_team_number?: number | null
           id?: string
           join_code?: string
+          join_open_meeting_id?: string | null
+          join_open_since?: string | null
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "teams_join_open_meeting_fkey"
+            columns: ["join_open_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       waypoints: {
         Row: {
@@ -915,6 +1159,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["team_accent"]
       }
       _resolve_current_meeting_id: { Args: never; Returns: string }
+      _student_detach_from_team: {
+        Args: { p_student_id: string }
+        Returns: Json
+      }
       _student_email: {
         Args: { p_join_code: string; p_slug: string }
         Returns: string
@@ -931,6 +1179,7 @@ export type Database = {
       current_student_team_id: { Args: never; Returns: string }
       is_admin_mentor: { Args: never; Returns: boolean }
       is_mentor: { Args: never; Returns: boolean }
+      match_run_history: { Args: { p_team_id: string }; Returns: Json }
       meeting_advance_phase: { Args: { p_meeting_id: string }; Returns: Json }
       meeting_create: {
         Args: {
@@ -944,6 +1193,13 @@ export type Database = {
       meeting_current: { Args: never; Returns: Json }
       meeting_end: { Args: { p_meeting_id: string }; Returns: Json }
       meeting_start: { Args: { p_meeting_id: string }; Returns: Json }
+      parent_access_issue: { Args: { p_student_id: string }; Returns: Json }
+      parent_access_revoke: { Args: { p_student_id: string }; Returns: Json }
+      parent_photo_path: {
+        Args: { p_evidence_id: string; p_token: string }
+        Returns: string
+      }
+      parent_view: { Args: { p_token: string }; Returns: Json }
       role_assign: {
         Args: {
           p_role: Database["public"]["Enums"]["team_role"]
@@ -977,9 +1233,23 @@ export type Database = {
         Returns: Json
       }
       student_deactivate: { Args: { p_student_id: string }; Returns: Json }
+      student_move_team: {
+        Args: { p_student_id: string; p_to_team_id: string }
+        Returns: Json
+      }
       student_reactivate: { Args: { p_student_id: string }; Returns: Json }
       student_reset_pin: {
         Args: { p_new_pin: string; p_student_id: string }
+        Returns: Json
+      }
+      student_self_enroll: {
+        Args: {
+          p_first_name: string
+          p_grade: number
+          p_join_code: string
+          p_last_initial: string
+          p_pin: string
+        }
         Returns: Json
       }
       team_board_disable: { Args: { p_team_id: string }; Returns: Json }
@@ -995,6 +1265,9 @@ export type Database = {
         }
         Returns: Json
       }
+      team_join_open: { Args: { p_team_id: string }; Returns: boolean }
+      team_join_window_close: { Args: { p_team_id: string }; Returns: Json }
+      team_join_window_open: { Args: { p_team_id: string }; Returns: Json }
       team_login_roster: { Args: { p_join_code: string }; Returns: Json }
       team_regenerate_join_code: { Args: { p_team_id: string }; Returns: Json }
       team_resolve_roles: {
@@ -1014,6 +1287,8 @@ export type Database = {
           unfilled: boolean
         }[]
       }
+      team_roster_state: { Args: never; Returns: Json }
+      team_size_cap: { Args: never; Returns: number }
     }
     Enums: {
       meeting_kind: "friday" | "saturday"
