@@ -32,6 +32,7 @@ import type { Database } from '$lib/supabase/database.types';
 import type { TaskStatus } from '$lib/console/types';
 import { applyPlannerOp, isPlannerOp, type PlannerOp } from '$lib/planner/ops';
 import { applyMatchOp, isMatchOp, type MatchOp } from '$lib/match/ops';
+import { applyNotebookOp, isNotebookOp, type NotebookOp } from '$lib/notebook/ops';
 import { classifyPostgrest } from './postgrest';
 import { setReachable } from './refresh';
 
@@ -57,7 +58,9 @@ export type QueuedOp =
 	/** The route planner's edits; applied by src/lib/planner/ops.ts. */
 	| PlannerOp
 	/** Practice runs logged at the mat; applied by src/lib/match/ops.ts. */
-	| MatchOp;
+	| MatchOp
+	/** Engineering notebook writing; applied by src/lib/notebook/ops.ts. */
+	| NotebookOp;
 
 export interface QueueRecord {
 	/** The client-minted uuid. Also the primary key of any row this op inserts. */
@@ -280,6 +283,9 @@ export class WriteQueue {
 		// and every row carries an id this device minted, so a replay collides
 		// rather than duplicating. See src/lib/match/ops.ts.
 		if (isMatchOp(op)) return applyMatchOp(sb, op);
+		// Notebook writing follows the planner's judgement rules exactly; see
+		// src/lib/notebook/ops.ts.
+		if (isNotebookOp(op)) return applyNotebookOp(sb, op);
 		try {
 			if (op.kind === 'task_status') {
 				const { error } = await sb.from('tasks').update({ status: op.status }).eq('id', op.taskId);

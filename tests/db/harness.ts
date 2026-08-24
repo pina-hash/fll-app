@@ -240,6 +240,10 @@ export async function cleanupRun(): Promise<void> {
 			// Scores and launches cascade from the run; the run itself references
 			// the team, so it has to go before the team does.
 			await tx`delete from public.match_runs where team_id = any(${teamIds}::uuid[])`;
+				// Notebook rows name students through composite keys, so they go
+				// before the students' auth users do.
+				await tx`delete from public.notebook_entries where team_id = any(${teamIds}::uuid[])`;
+				await tx`delete from public.meeting_recaps where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.student_parent_access where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.evidence where team_id = any(${teamIds}::uuid[])`;
 			await tx`delete from public.blockers where team_id = any(${teamIds}::uuid[])`;

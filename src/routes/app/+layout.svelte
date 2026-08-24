@@ -15,7 +15,7 @@
 	);
 
 	/**
-	 * The console's four surfaces. The live board is first because it is where
+	 * The console's surfaces. The live board is first because it is where
 	 * a mentor lands and where they return between every other task.
 	 */
 	const NAV = [
@@ -24,6 +24,7 @@
 		{ href: '/app/teams', label: 'Teams' },
 		{ href: '/app/tasks', label: 'Tasks' },
 		{ href: '/app/plan', label: 'Plan' },
+		{ href: '/app/notebook', label: 'Notebook' },
 		{ href: '/app/library', label: 'Library' }
 	];
 

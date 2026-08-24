@@ -511,6 +511,77 @@ export type Database = {
           },
         ]
       }
+      meeting_recaps: {
+        Row: {
+          confirmed: boolean
+          confirmed_at: string | null
+          confirmed_by_mentor_id: string | null
+          confirmed_by_student_id: string | null
+          created_at: string
+          draft: Json
+          id: string
+          meeting_id: string
+          summary: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          confirmed?: boolean
+          confirmed_at?: string | null
+          confirmed_by_mentor_id?: string | null
+          confirmed_by_student_id?: string | null
+          created_at?: string
+          draft?: Json
+          id?: string
+          meeting_id: string
+          summary?: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          confirmed?: boolean
+          confirmed_at?: string | null
+          confirmed_by_mentor_id?: string | null
+          confirmed_by_student_id?: string | null
+          created_at?: string
+          draft?: Json
+          id?: string
+          meeting_id?: string
+          summary?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_recaps_confirmed_by_mentor_id_fkey"
+            columns: ["confirmed_by_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_recaps_confirmed_by_student_id_team_id_fkey"
+            columns: ["confirmed_by_student_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id", "team_id"]
+          },
+          {
+            foreignKeyName: "meeting_recaps_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_recaps_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meetings: {
         Row: {
           created_at: string
@@ -639,6 +710,76 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      notebook_entries: {
+        Row: {
+          authored_by_student_id: string | null
+          body: string
+          change_note: string
+          created_at: string
+          evidence_id: string | null
+          id: string
+          outcome: Database["public"]["Enums"]["notebook_outcome"] | null
+          prompt_key: string
+          section: Database["public"]["Enums"]["notebook_section"]
+          sort_order: number
+          team_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          authored_by_student_id?: string | null
+          body?: string
+          change_note?: string
+          created_at?: string
+          evidence_id?: string | null
+          id?: string
+          outcome?: Database["public"]["Enums"]["notebook_outcome"] | null
+          prompt_key?: string
+          section: Database["public"]["Enums"]["notebook_section"]
+          sort_order?: number
+          team_id: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          authored_by_student_id?: string | null
+          body?: string
+          change_note?: string
+          created_at?: string
+          evidence_id?: string | null
+          id?: string
+          outcome?: Database["public"]["Enums"]["notebook_outcome"] | null
+          prompt_key?: string
+          section?: Database["public"]["Enums"]["notebook_section"]
+          sort_order?: number
+          team_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notebook_entries_authored_by_student_id_team_id_fkey"
+            columns: ["authored_by_student_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id", "team_id"]
+          },
+          {
+            foreignKeyName: "notebook_entries_evidence_id_team_id_fkey"
+            columns: ["evidence_id", "team_id"]
+            isOneToOne: false
+            referencedRelation: "evidence"
+            referencedColumns: ["id", "team_id"]
+          },
+          {
+            foreignKeyName: "notebook_entries_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       phase_templates: {
         Row: {
@@ -1154,6 +1295,14 @@ export type Database = {
       _app_today: { Args: never; Returns: string }
       _board_email: { Args: { p_join_code: string }; Returns: string }
       _generate_join_code: { Args: never; Returns: string }
+      _meeting_recap_facts: {
+        Args: { p_meeting_id: string; p_team_id: string }
+        Returns: Json
+      }
+      _meeting_recaps_generate: {
+        Args: { p_meeting_id: string }
+        Returns: number
+      }
       _next_team_accent: {
         Args: never
         Returns: Database["public"]["Enums"]["team_accent"]
@@ -1193,6 +1342,14 @@ export type Database = {
       meeting_current: { Args: never; Returns: Json }
       meeting_end: { Args: { p_meeting_id: string }; Returns: Json }
       meeting_start: { Args: { p_meeting_id: string }; Returns: Json }
+      notebook_can_edit: {
+        Args: {
+          p_section: Database["public"]["Enums"]["notebook_section"]
+          p_team_id: string
+        }
+        Returns: boolean
+      }
+      notebook_season_stats: { Args: { p_team_id: string }; Returns: Json }
       parent_access_issue: { Args: { p_student_id: string }; Returns: Json }
       parent_access_revoke: { Args: { p_student_id: string }; Returns: Json }
       parent_photo_path: {
@@ -1292,6 +1449,12 @@ export type Database = {
     }
     Enums: {
       meeting_kind: "friday" | "saturday"
+      notebook_outcome: "worked" | "failed" | "mixed"
+      notebook_section:
+        | "robot_design"
+        | "innovation_project"
+        | "core_values"
+        | "season_summary"
       role_tier: "primary" | "second"
       task_status: "open" | "active" | "blocked" | "done"
       team_accent: "cyan" | "chartreuse" | "magenta" | "amber"
@@ -1432,6 +1595,13 @@ export const Constants = {
   public: {
     Enums: {
       meeting_kind: ["friday", "saturday"],
+      notebook_outcome: ["worked", "failed", "mixed"],
+      notebook_section: [
+        "robot_design",
+        "innovation_project",
+        "core_values",
+        "season_summary",
+      ],
       role_tier: ["primary", "second"],
       task_status: ["open", "active", "blocked", "done"],
       team_accent: ["cyan", "chartreuse", "magenta", "amber"],

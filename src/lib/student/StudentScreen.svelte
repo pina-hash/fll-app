@@ -44,6 +44,7 @@
 		teamHref?: string;
 		planHref?: string;
 		matchHref?: string;
+		notebookHref?: string;
 		libraryHref?: string;
 	}
 
@@ -68,6 +69,7 @@
 		teamHref = '/app/me/team',
 		planHref = '/app/me/plan',
 		matchHref = '/app/me/match',
+		notebookHref = '/app/me/notebook',
 		libraryHref = '/app/library'
 	}: Props = $props();
 
@@ -255,6 +257,7 @@
 			<a class="sr__teamlink" href={teamHref}>See what my team is doing</a>
 			<a class="sr__teamlink" href={planHref}>Plan our robot runs</a>
 			<a class="sr__teamlink" href={matchHref}>Time a practice run</a>
+			<a class="sr__teamlink" href={notebookHref}>Write in our notebook</a>
 				<a class="sr__teamlink" href={libraryHref}>Look something up</a>
 		</section>
 

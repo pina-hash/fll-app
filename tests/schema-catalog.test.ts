@@ -25,9 +25,11 @@ const TABLES = [
 	'match_run_scores',
 	'match_runs',
 	'meeting_phases',
+	'meeting_recaps',
 	'meetings',
 	'mentors',
 	'missions',
+	'notebook_entries',
 	'phase_templates',
 	'role_assignments',
 	'strategies',
@@ -51,6 +53,8 @@ const RPCS = [
 	'parent_view',
 	'meeting_current',
 	'meeting_advance_phase',
+	'notebook_can_edit',
+	'notebook_season_stats',
 	'meeting_create',
 	'meeting_end',
 	'meeting_start',
@@ -119,7 +123,11 @@ describe('tables', () => {
 				('students', 'auth_user_id'), ('students', 'slug'), ('students', 'team_id'), ('students', 'deactivated_at'),
 				('teams', 'join_code'), ('teams', 'join_open_since'), ('teams', 'join_open_meeting_id'),
 				('match_runs', 'points'), ('match_run_scores', 'points'),
-				('student_parent_access', 'token'), ('student_parent_access', 'revoked_at')
+				('student_parent_access', 'token'), ('student_parent_access', 'revoked_at'),
+					('meeting_recaps', 'draft'), ('meeting_recaps', 'confirmed_at'),
+					('meeting_recaps', 'confirmed_by_student_id'), ('meeting_recaps', 'confirmed_by_mentor_id'),
+					('meeting_recaps', 'created_at'), ('meeting_recaps', 'updated_at'),
+					('notebook_entries', 'created_at'), ('notebook_entries', 'updated_at')
 			  )`;
 		// attendance.checked_in_at is UPDATE-granted on purpose (a mentor corrects a stamp); nothing else is.
 		expect(rows).toEqual([{ table_name: 'attendance', column_name: 'checked_in_at', privilege_type: 'UPDATE' }]);
