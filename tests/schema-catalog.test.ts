@@ -21,6 +21,7 @@ const TABLES = [
 	'launch_missions',
 	'launches',
 	'mat_config',
+	'mat_images',
 	'match_run_launches',
 	'match_run_scores',
 	'match_runs',

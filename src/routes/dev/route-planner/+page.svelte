@@ -9,6 +9,16 @@
 	 * the component would have queued is appended there, so a tap on the mat
 	 * observably becomes a `planner_insert waypoints` line. That is the
 	 * sentinel round trip.
+	 *
+	 * THE FIELD PICTURE FIXTURE IS THIS REPO'S OWN DRAWING, and it has to be.
+	 * The real one is FIRST and LEGO copyrighted, gitignored, and reaches the
+	 * app only through a mentor's upload into the private bucket -- it can
+	 * never be a fixture here. So the harness draws a stand-in with the SAME
+	 * awkward property: a playing surface inset inside a border of walls, at a
+	 * picture aspect that is nothing like the mat's. Calibrated to the inset
+	 * rectangle, the schematic's grid and frame must land exactly on it; that
+	 * is a calibration a person can check by looking, without any artwork
+	 * that is not ours.
 	 */
 	import RoutePlanner from '$lib/planner/RoutePlanner.svelte';
 	import type { PlannerOp } from '$lib/planner/ops';
@@ -140,6 +150,67 @@
 	};
 
 	const MAT_SETUP = { launchWmm: 480, launchHmm: 950 };
+
+	// ---- the field picture stand-in ---------------------------------------
+	// 1200 by 700 (1.71:1, close to the real layout's 1.75:1) with the
+	// playing surface as a 2.067:1 rectangle inset inside a wall border.
+	const PIC_W = 1200;
+	const PIC_H = 700;
+	// The inset surface: x 84..1116 (1032 wide), y 100..599 (499 tall).
+	const SURF = { x: 84, y: 100, w: 1032, h: 499 };
+	const FIXTURE_CAL = {
+		origin: { u: SURF.x / PIC_W, v: (SURF.y + SURF.h) / PIC_H },
+		far: { u: (SURF.x + SURF.w) / PIC_W, v: SURF.y / PIC_H }
+	};
+
+	/** A busy drawing, so the contrast layer has something to survive. */
+	function fixturePicture(): string {
+		const hatch: string[] = [];
+		for (let i = 0; i <= SURF.w; i += 43) {
+			hatch.push(
+				`<line x1="${SURF.x + i}" y1="${SURF.y}" x2="${SURF.x + i + 60}" y2="${SURF.y + SURF.h}" stroke="#7dd3fc" stroke-width="2" opacity="0.5"/>`
+			);
+		}
+		for (let i = 0; i <= SURF.h; i += 41) {
+			hatch.push(
+				`<line x1="${SURF.x}" y1="${SURF.y + i}" x2="${SURF.x + SURF.w}" y2="${SURF.y + i - 40}" stroke="#fca5a5" stroke-width="2" opacity="0.45"/>`
+			);
+		}
+		const svg =
+			`<svg xmlns="http://www.w3.org/2000/svg" width="${PIC_W}" height="${PIC_H}" viewBox="0 0 ${PIC_W} ${PIC_H}">` +
+			`<rect width="${PIC_W}" height="${PIC_H}" fill="#1f2937"/>` +
+			`<rect x="30" y="46" width="${PIC_W - 60}" height="${PIC_H - 92}" fill="#374151" stroke="#9ca3af" stroke-width="10"/>` +
+			`<text x="${PIC_W / 2}" y="30" fill="#9ca3af" font-size="24" text-anchor="middle">border wall (NOT the playing surface)</text>` +
+			`<rect x="${SURF.x}" y="${SURF.y}" width="${SURF.w}" height="${SURF.h}" fill="#0b3b45"/>` +
+			hatch.join('') +
+			`<rect x="${SURF.x}" y="${SURF.y}" width="${SURF.w}" height="${SURF.h}" fill="none" stroke="#facc15" stroke-width="4"/>` +
+			`<circle cx="${SURF.x}" cy="${SURF.y + SURF.h}" r="14" fill="#22c55e"/>` +
+			`<circle cx="${SURF.x + SURF.w}" cy="${SURF.y}" r="14" fill="#a78bfa"/>` +
+			`<text x="${SURF.x + SURF.w / 2}" y="${SURF.y + SURF.h / 2}" fill="#facc15" font-size="34" text-anchor="middle">playing surface</text>` +
+			`</svg>`;
+		return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+	}
+
+	const FIXTURE_IMAGE = {
+		id: 'fixture-mat-image',
+		teamId: 'fixture-team',
+		storagePath: 'teams/fixture-team/field',
+		imageW: PIC_W,
+		imageH: PIC_H,
+		calibration: FIXTURE_CAL,
+		dimPct: 40,
+		url: fixturePicture()
+	};
+
+	type Picture = 'none' | 'uncalibrated' | 'calibrated';
+	let pictureMode = $state<Picture>('none');
+	let matImage = $derived(
+		pictureMode === 'none'
+			? null
+			: pictureMode === 'uncalibrated'
+				? { ...FIXTURE_IMAGE, calibration: null }
+				: FIXTURE_IMAGE
+	);
 </script>
 
 <svelte:head><title>dev: route planner</title></svelte:head>
@@ -164,10 +235,18 @@
 				<option value="offline">offline</option>
 			</select>
 		</label>
+		<label>
+			field picture
+			<select bind:value={pictureMode}>
+				<option value="none">none</option>
+				<option value="uncalibrated">uploaded, not calibrated</option>
+				<option value="calibrated">calibrated</option>
+			</select>
+		</label>
 		<button type="button" onclick={() => (log = [])}>clear log</button>
 	</header>
 
-	{#key scenario}
+	{#key `${scenario}-${pictureMode}`}
 		<RoutePlanner
 			team={{ id: 'fixture-team', name: 'Blue Team' }}
 			isMentor={scenario === 'mentor'}
@@ -176,11 +255,20 @@
 			strategies={scenario === 'empty' ? [] : STRATEGIES}
 			robot={ROBOT}
 			matSetup={MAT_SETUP}
-			matPhotoUrl={null}
+			{matImage}
 			{connection}
 			pendingCount={connection === 'offline' ? 3 : 0}
 			failed={[]}
 			onPersist={record}
+			onUploadPicture={scenario === 'mentor'
+				? async () => ({ ok: true, message: 'harness: nothing is uploaded here.', image: matImage })
+				: undefined}
+			onSaveCalibration={scenario === 'mentor'
+				? async (cal) => {
+						log = [...log, `${log.length + 1}. calibration ${JSON.stringify(cal)}`];
+						return { ok: true, message: 'harness: calibration logged, not stored.', image: matImage };
+					}
+				: undefined}
 		/>
 	{/key}
 

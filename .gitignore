@@ -28,3 +28,11 @@ supabase/.branches
 
 .vercel
 .tmp/
+
+# COPYRIGHTED SOURCE MATERIAL, NEVER COMMITTED.
+# FIRST and LEGO artwork -- field layout images, mat graphics, mission model
+# renders, building instructions -- is used locally to develop against and is
+# not redistributable. This repo is public. The club's own copy lives here and
+# reaches the app only by a mentor uploading it into the private 'mat' bucket.
+# See CLAUDE.md > Skill Hub content > COPYRIGHT.
+local-assets/

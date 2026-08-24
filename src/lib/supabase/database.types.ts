@@ -297,6 +297,59 @@ export type Database = {
         }
         Relationships: []
       }
+      mat_images: {
+        Row: {
+          dim_pct: number
+          far_u: number | null
+          far_v: number | null
+          id: string
+          image_h: number
+          image_w: number
+          origin_u: number | null
+          origin_v: number | null
+          storage_path: string | null
+          team_id: string
+          updated_at: string
+          uploaded_at: string
+        }
+        Insert: {
+          dim_pct?: number
+          far_u?: number | null
+          far_v?: number | null
+          id?: string
+          image_h: number
+          image_w: number
+          origin_u?: number | null
+          origin_v?: number | null
+          storage_path?: string | null
+          team_id: string
+          updated_at?: string
+          uploaded_at?: string
+        }
+        Update: {
+          dim_pct?: number
+          far_u?: number | null
+          far_v?: number | null
+          id?: string
+          image_h?: number
+          image_w?: number
+          origin_u?: number | null
+          origin_v?: number | null
+          storage_path?: string | null
+          team_id?: string
+          updated_at?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mat_images_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_run_launches: {
         Row: {
           attempted: boolean

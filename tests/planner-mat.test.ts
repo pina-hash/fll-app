@@ -1,8 +1,16 @@
 // tests/planner-mat.test.ts
 //
 // THE MAT SETUP SURFACES: the mat_config singleton (launch area, mentor-only
-// writes) and the private 'mat' photo bucket (mentor writes, any signed-in
-// reader). Both are GLOBAL, so this file saves and restores what it touches.
+// writes) and the private 'mat' bucket. mat_config is GLOBAL, so this file
+// saves and restores it.
+//
+// THE BUCKET'S READ RULE CHANGED IN 0017 AND THIS FILE RECORDS THE CHANGE.
+// Under 0012 any signed-in account could read any object in the bucket,
+// which was fine for the club's own photo of its own mat and is NOT fine for
+// a copyrighted field layout. Reads are now scoped to teams/<team_id>/, so an
+// object at the bucket ROOT -- like the one this file uploads -- is readable
+// by mentors and by nobody else. The per-team half is proved end to end in
+// tests/mat-image-roundtrip.test.ts.
 
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import {
@@ -85,7 +93,7 @@ describe('mat_config: one row, everyone reads, mentors write', () => {
 	});
 });
 
-describe('the mat photo bucket', () => {
+describe('the mat bucket', () => {
 	const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
 
 	test('a mentor uploads; a student cannot', async () => {
@@ -100,11 +108,22 @@ describe('the mat photo bucket', () => {
 		expect(studentUpload.error).not.toBeNull();
 	});
 
-	test('a signed-in student reads the photo through a signed URL; a student cannot delete it', async () => {
-		const signed = await studentClient.storage.from('mat').createSignedUrl(testObject, 60);
-		expect(signed.error).toBeNull();
-		expect(signed.data?.signedUrl).toContain(testObject);
+	test('an object outside teams/<team_id>/ is readable by mentors and by nobody else', async () => {
+		// The POSITIVE CONTROL first: the object is really there and really
+		// readable, so the student's empty answer below is a refusal and not an
+		// empty bucket.
+		const asMentor = await mentor.client.storage.from('mat').createSignedUrl(testObject, 60);
+		expect(asMentor.error).toBeNull();
+		expect(asMentor.data?.signedUrl).toContain(testObject);
 
+		const asStudent = await studentClient.storage.from('mat').createSignedUrl(testObject, 60);
+		expect(asStudent.data?.signedUrl ?? null).toBeNull();
+		// Probing reveals nothing: a filtered read answers "not found", the same
+		// answer an object that does not exist would get.
+		expect(asStudent.error?.message).toContain('not found');
+	});
+
+	test('a student cannot delete it either', async () => {
 		const removed = await studentClient.storage.from('mat').remove([testObject]);
 		// Storage answers a filtered delete with an empty list, not an error.
 		expect(removed.data ?? []).toHaveLength(0);

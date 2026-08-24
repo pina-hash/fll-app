@@ -3,6 +3,7 @@
  * database rows: a malformed scoring list renders as no lines rather than a
  * crash on a tablet mid-meeting.
  */
+import type { MatCalibration } from './calibration';
 import type { ScoringLine } from './geometry';
 
 export interface MissionMarker {
@@ -65,6 +66,35 @@ export interface RobotProfileModel {
 export interface MatSetupModel {
 	launchWmm: number | null;
 	launchHmm: number | null;
+}
+
+/**
+ * The team's field picture: where it is, how big it is, and where the playing
+ * surface sits inside it. `calibration` is null until a mentor taps the two
+ * corners, and a null calibration means the picture IS NOT DRAWN -- the
+ * planner refuses to guess a transform, because a wrong one is invisible.
+ * `url` is a short-lived signed URL; the picture is copyrighted and lives
+ * only in the private bucket.
+ */
+/** A background picture ready to draw. Nothing here is optional: a picture
+ * without a calibration is never handed to the canvas at all. */
+export interface MatPhoto {
+	url: string;
+	calibration: MatCalibration;
+	/** How far the picture is dimmed under the schematic, 0 to 90. */
+	dimPct: number;
+}
+
+export interface MatImageModel {
+	id: string;
+	teamId: string;
+	storagePath: string;
+	imageW: number;
+	imageH: number;
+	calibration: MatCalibration | null;
+	/** How far the picture is dimmed under the schematic, 0 to 90 percent. */
+	dimPct: number;
+	url: string | null;
 }
 
 /** Mirrors 0012's column defaults, for a team that has no profile row yet. */

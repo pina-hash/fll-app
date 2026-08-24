@@ -10,17 +10,36 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/supabase/database.types';
+import { isUsableCalibration, type MatCalibration } from './calibration';
 import {
 	bySortOrder,
 	parseScoring,
 	type LaunchModel,
+	type MatImageModel,
 	type MatSetupModel,
 	type MissionMarker,
 	type RobotProfileModel,
 	type StrategyModel
 } from './types';
 
-export const MAT_PHOTO_PATH = 'mat.jpg';
+/**
+ * THE FIELD PICTURE IS PER TEAM AND PRIVATE. The path mirrors 0017's
+ * GENERATED storage_path column exactly; the database is the authority and
+ * this is the client's copy of the same sentence, the way
+ * student-identity.ts mirrors _student_email. The storage read policy scopes
+ * on the second folder segment, so the shape of this string is load-bearing.
+ */
+export function matImagePath(teamId: string): string {
+	return `teams/${teamId}/field`;
+}
+
+/**
+ * TEN MINUTES. The picture is copyrighted: a URL that leaks is a URL that
+ * works, so it stops working quickly. The browser keeps a picture it has
+ * already decoded, so an expiry mid-session costs nothing until a reload,
+ * and the planner asks for a fresh URL when a draw actually fails.
+ */
+export const MAT_IMAGE_URL_TTL_S = 600;
 
 export interface PlannerData {
 	missions: MissionMarker[];
@@ -28,7 +47,7 @@ export interface PlannerData {
 	strategies: StrategyModel[];
 	robot: RobotProfileModel | null;
 	matSetup: MatSetupModel;
-	matPhotoUrl: string | null;
+	matImage: MatImageModel | null;
 	canEdit: boolean;
 }
 
@@ -99,13 +118,46 @@ export async function fetchStrategies(supabase: Client, teamId: string): Promise
 		.sort((a, b) => b.version - a.version);
 }
 
-export async function fetchMatPhotoUrl(supabase: Client): Promise<string | null> {
-	const { data } = await supabase.storage.from('mat').createSignedUrl(MAT_PHOTO_PATH, 60 * 60 * 8);
+/** A short-lived signed URL for this team's picture, or null if there is none. */
+export async function signMatImageUrl(supabase: Client, teamId: string): Promise<string | null> {
+	const { data } = await supabase.storage
+		.from('mat')
+		.createSignedUrl(matImagePath(teamId), MAT_IMAGE_URL_TTL_S);
 	return data?.signedUrl ?? null;
 }
 
+/**
+ * The team's field picture and its calibration. A row whose calibration
+ * cannot be inverted comes back with `calibration: null`, which the canvas
+ * reads as "do not draw it": a stored pair that somehow slipped past 0017's
+ * checks still never becomes a wrong transform on screen.
+ */
+export async function fetchMatImage(supabase: Client, teamId: string): Promise<MatImageModel | null> {
+	const { data } = await supabase
+		.from('mat_images')
+		.select('id, team_id, storage_path, image_w, image_h, origin_u, origin_v, far_u, far_v, dim_pct')
+		.eq('team_id', teamId)
+		.maybeSingle();
+	if (!data) return null;
+
+	const candidate: MatCalibration = {
+		origin: { u: data.origin_u ?? Number.NaN, v: data.origin_v ?? Number.NaN },
+		far: { u: data.far_u ?? Number.NaN, v: data.far_v ?? Number.NaN }
+	};
+	return {
+		id: data.id,
+		teamId: data.team_id,
+		storagePath: data.storage_path ?? matImagePath(teamId),
+		imageW: data.image_w,
+		imageH: data.image_h,
+		calibration: isUsableCalibration(candidate) ? candidate : null,
+		dimPct: data.dim_pct,
+		url: await signMatImageUrl(supabase, teamId)
+	};
+}
+
 export async function loadPlannerData(supabase: Client, teamId: string): Promise<PlannerData> {
-	const [missionsRes, strategies, robotRes, matRes, canEditRes, matPhotoUrl] = await Promise.all([
+	const [missionsRes, strategies, robotRes, matRes, canEditRes, matImage] = await Promise.all([
 		supabase
 			.from('missions')
 			.select('id, code, name, points_label, scoring, sort_order, position_x_mm, position_y_mm')
@@ -118,7 +170,7 @@ export async function loadPlannerData(supabase: Client, teamId: string): Promise
 			.maybeSingle(),
 		supabase.from('mat_config').select('launch_area_w_mm, launch_area_h_mm').maybeSingle(),
 		supabase.rpc('strategy_can_edit', { p_team_id: teamId }),
-		fetchMatPhotoUrl(supabase)
+		fetchMatImage(supabase, teamId)
 	]);
 
 	const missions: MissionMarker[] = (missionsRes.data ?? []).map((m) => ({
@@ -149,5 +201,5 @@ export async function loadPlannerData(supabase: Client, teamId: string): Promise
 		launchHmm: matRes.data?.launch_area_h_mm ?? null
 	};
 
-	return { missions, strategies, robot, matSetup, canEdit: canEditRes.data === true, matPhotoUrl };
+	return { missions, strategies, robot, matSetup, canEdit: canEditRes.data === true, matImage };
 }

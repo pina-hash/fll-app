@@ -1,10 +1,30 @@
+<script lang="ts" module>
+	/** Clip path ids have to be unique per mounted canvas on one page. The
+	 *  counter is module-scoped so server and client number them alike. */
+	let nextCanvasId = 0;
+</script>
+
 <script lang="ts">
 	/**
 	 * THE MAT, AS A SCHEMATIC. A plain rectangle at the real 45 by 93 inch
 	 * proportions with a millimeter coordinate system, origin at the launch
-	 * area corner, y up. NO official mat artwork is drawn, fetched or traced
-	 * here: mission models are labeled markers at mentor-recorded positions,
-	 * and the optional background is the club's own photo of its own mat.
+	 * area corner, y up. No mat artwork is drawn, fetched or traced here:
+	 * mission models are labeled markers at mentor-recorded positions.
+	 *
+	 * THE BACKGROUND PICTURE IS PLACED BY ITS CALIBRATION, NEVER STRETCHED.
+	 * `photo` carries a short-lived signed URL and the two corners a mentor
+	 * tapped; calibrationTransform() lays the picture down so its playing
+	 * surface lands exactly on this rectangle, and the clip path cuts off
+	 * whatever border walls hang outside. A picture with no calibration is
+	 * NOT DRAWN -- there is no fallback transform, because a wrong one is
+	 * invisible. The picture is copyrighted (see CLAUDE.md); it reaches this
+	 * component as a signed URL and nothing here caches or re-publishes it.
+	 *
+	 * LEGIBILITY OVER A BUSY DRAWING. A field layout is dense line art, so
+	 * with a picture underneath the overlay switches on a contrast layer: a
+	 * dimming scrim at the team's own setting, dark casings under the route,
+	 * and a dark outline behind every label (`paint-order: stroke`). Without
+	 * a picture none of that is drawn, so the plain schematic stays plain.
 	 *
 	 * PURE PROPS. This component owns no data and no queue: it reports
 	 * gestures up (tap, drag, long-press) and renders what it is handed. The
@@ -18,7 +38,8 @@
 	 * drags; a drag on open mat pans.
 	 */
 	import { MAT_HEIGHT_MM, MAT_WIDTH_MM, type PointMm } from './geometry';
-	import type { MissionMarker, WaypointModel } from './types';
+	import { calibrationTransform } from './calibration';
+	import type { MatPhoto, MissionMarker, WaypointModel } from './types';
 
 	interface Props {
 		missions: MissionMarker[];
@@ -28,7 +49,8 @@
 		/** Where the robot outline sits: usually the selected waypoint. */
 		footprint: { x: number; y: number; headingDeg: number } | null;
 		launchArea: { w: number; h: number } | null;
-		photoUrl: string | null;
+		/** Null when there is no picture, or none that has been calibrated. */
+		photo: MatPhoto | null;
 		showPhoto: boolean;
 		editable: boolean;
 		/** Mentors may drag mission markers; nobody else may. */
@@ -47,6 +69,8 @@
 		onMissionDrag?: (id: string, p: PointMm) => void;
 		onMissionDragEnd?: (id: string, from: PointMm | null) => void;
 		onNudgeWaypoint?: (id: string, dxMm: number, dyMm: number) => void;
+		/** The signed URL expired or the picture would not load. */
+		onPhotoError?: () => void;
 	}
 
 	let {
@@ -56,7 +80,7 @@
 		robot,
 		footprint,
 		launchArea,
-		photoUrl,
+		photo,
 		showPhoto,
 		editable,
 		canPlaceMissions,
@@ -72,8 +96,13 @@
 		onDeleteWaypoint,
 		onMissionDrag,
 		onMissionDragEnd,
-		onNudgeWaypoint
+		onNudgeWaypoint,
+		onPhotoError
 	}: Props = $props();
+
+	const clipId = `mat-clip-${nextCanvasId++}`;
+	/** True when the overlay has a detailed drawing to stay legible against. */
+	let overPhoto = $derived(photo !== null && showPhoto);
 
 	// viewBox margins hold the axis ticks and labels.
 	const M_LEFT = 170;
@@ -283,6 +312,7 @@
 <div class="mat" bind:this={containerEl} bind:clientWidth={containerWidth}>
 	<svg
 		bind:this={svgEl}
+		class:mat--over-photo={overPhoto}
 		viewBox="{-M_LEFT} {-M_TOP} {VIEW_W} {VIEW_H}"
 		style:width="{zoom * 100}%"
 		role="application"
@@ -309,17 +339,36 @@
 			onkeydown={matKeydown}
 		/>
 
-		{#if photoUrl && showPhoto}
-			<image
-				href={photoUrl}
-				x="0"
-				y="0"
-				width={MAT_WIDTH_MM}
-				height={MAT_HEIGHT_MM}
-				preserveAspectRatio="none"
-				opacity="0.55"
-				pointer-events="none"
-			/>
+		{#if photo && showPhoto}
+			<defs>
+				<clipPath id={clipId}>
+					<rect x="0" y="0" width={MAT_WIDTH_MM} height={MAT_HEIGHT_MM} />
+				</clipPath>
+			</defs>
+			<g clip-path="url(#{clipId})" pointer-events="none">
+				<!-- A unit square laid down by the calibration matrix: the two
+				     tapped corners land on the two corners of this rectangle,
+				     and the border walls are clipped away. -->
+				<image
+					href={photo.url}
+					x="0"
+					y="0"
+					width="1"
+					height="1"
+					preserveAspectRatio="none"
+					transform={calibrationTransform(photo.calibration)}
+					onerror={() => onPhotoError?.()}
+				/>
+				<!-- The dimming layer: what keeps the plan readable on top. -->
+				<rect
+					class="mat__scrim"
+					x="0"
+					y="0"
+					width={MAT_WIDTH_MM}
+					height={MAT_HEIGHT_MM}
+					opacity={Math.min(90, Math.max(0, photo.dimPct)) / 100}
+				/>
+			</g>
 		{/if}
 
 		<!-- Grid, every 250 mm. -->
@@ -378,6 +427,9 @@
 		<!-- Clearance corridor: the path stroked at the robot's real width. -->
 		{#if routePts.length > 1}
 			<polyline class="mat__corridor" points={routePoints} stroke-width={robot.widthMm} pointer-events="none" />
+			{#if overPhoto}
+				<polyline class="mat__route-casing" points={routePoints} pointer-events="none" />
+			{/if}
 			<polyline class="mat__route" points={routePoints} pointer-events="none" />
 		{/if}
 
@@ -591,5 +643,58 @@
 		font-weight: 800;
 		text-anchor: middle;
 		pointer-events: none;
+	}
+
+	/* ---------------------------------------------------------------------
+	   THE CONTRAST LAYER, ON ONLY WHEN A PICTURE IS UNDERNEATH.
+	   A field layout is dense line art in every colour, so nothing on top of
+	   it may rely on the ground being an even dark surface. The scrim knocks
+	   the whole picture back at the team's own setting; every label gets a
+	   dark outline drawn BEHIND its fill (paint-order: stroke); the route
+	   gets a casing wider than itself; and the grid, frame and dots come up
+	   in weight. With no picture none of this applies and the schematic is
+	   exactly as plain as it was.
+	   --------------------------------------------------------------------- */
+	.mat__scrim {
+		fill: var(--surface-0);
+	}
+	.mat--over-photo .mat__grid line {
+		stroke: var(--text-1);
+		stroke-width: 3;
+		opacity: 0.4;
+	}
+	.mat--over-photo .mat__frame {
+		stroke-width: 10;
+	}
+	.mat--over-photo text {
+		paint-order: stroke fill;
+		stroke: var(--surface-0);
+		stroke-width: 12;
+		stroke-linejoin: round;
+	}
+	.mat__route-casing {
+		fill: none;
+		stroke: var(--surface-0);
+		stroke-width: 26;
+		stroke-linejoin: round;
+		opacity: 0.85;
+	}
+	.mat--over-photo .mat__corridor {
+		opacity: 0.28;
+	}
+	.mat--over-photo .mat__ghost {
+		stroke: var(--text-1);
+		opacity: 0.6;
+	}
+	.mat--over-photo .mat__mission-dot {
+		stroke-width: 9;
+	}
+	.mat--over-photo .mat__wp-dot {
+		stroke-width: 10;
+	}
+	.mat--over-photo .mat__robot rect,
+	.mat--over-photo .mat__robot line {
+		stroke-width: 12;
+		opacity: 1;
 	}
 </style>

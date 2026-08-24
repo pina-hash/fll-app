@@ -30,21 +30,31 @@
 		defaultRobotProfile,
 		type LaunchMissionModel,
 		type LaunchModel,
+		type MatImageModel,
+		type MatPhoto,
 		type MatSetupModel,
 		type MissionMarker,
 		type RobotProfileModel,
 		type StrategyModel,
 		type WaypointModel
 	} from './types';
+	import type { MatCalibration } from './calibration';
 	import { plannerDelete, plannerInsert, plannerUpdate, type PlannerOp } from './ops';
 	import type { ConnectionState } from '$lib/student/queue.svelte';
 	import MatCanvas from './MatCanvas.svelte';
+	import MatCalibrator from './MatCalibrator.svelte';
 	import MoveList from './MoveList.svelte';
 
 	interface SnapshotResult {
 		ok: boolean;
 		message?: string;
 		strategies?: StrategyModel[];
+	}
+
+	interface PictureResult {
+		ok: boolean;
+		message: string;
+		image: MatImageModel | null;
 	}
 
 	interface Props {
@@ -55,13 +65,22 @@
 		strategies: StrategyModel[];
 		robot: RobotProfileModel | null;
 		matSetup: MatSetupModel;
-		matPhotoUrl?: string | null;
+		/** The team's field picture, its calibration and a signed URL. */
+		matImage?: MatImageModel | null;
 		connection?: ConnectionState;
 		pendingCount?: number;
 		failed?: { id: string; message: string }[];
 		onPersist?: (op: PlannerOp) => void;
 		onSnapshot?: (label: string) => Promise<SnapshotResult>;
-		onUploadPhoto?: (file: File) => Promise<{ url: string | null; message?: string }>;
+		/** All four are online-only mentor actions; each answers with the
+		 *  reloaded row so this component never rebuilds one by hand. */
+		onUploadPicture?: (file: File) => Promise<PictureResult>;
+		onSaveCalibration?: (cal: MatCalibration) => Promise<PictureResult>;
+		onRemovePicture?: () => Promise<PictureResult>;
+		/** Persists the team's dim setting. Mentors only; see dimChanged(). */
+		onSaveDim?: (pct: number) => void;
+		/** A fresh signed URL when the short-lived one has expired. */
+		onRefreshPictureUrl?: () => Promise<string | null>;
 		onDismissFailure?: (id: string) => void;
 	}
 
@@ -73,13 +92,17 @@
 		strategies,
 		robot,
 		matSetup,
-		matPhotoUrl = null,
+		matImage = null,
 		connection = 'online',
 		pendingCount = 0,
 		failed = [],
 		onPersist,
 		onSnapshot,
-		onUploadPhoto,
+		onUploadPicture,
+		onSaveCalibration,
+		onRemovePicture,
+		onSaveDim,
+		onRefreshPictureUrl,
 		onDismissFailure
 	}: Props = $props();
 
@@ -105,8 +128,16 @@
 	let zoom = $state(1);
 	let showPhoto = $state(true);
 	// svelte-ignore state_referenced_locally
-	let photoUrl = $state(matPhotoUrl);
-	let photoMsg = $state('');
+	let picture = $state<MatImageModel | null>(matImage ? { ...matImage } : null);
+	// The dim setting is applied LOCALLY the instant it moves, and persisted
+	// only for a mentor: the row is mentor-writable (0017), so a student
+	// dragging the slider adjusts their own screen for the session rather
+	// than being told a write failed.
+	// svelte-ignore state_referenced_locally
+	let dimPct = $state(matImage?.dimPct ?? 40);
+	let pictureMsg = $state('');
+	let pictureBusy = $state(false);
+	let calibrating = $state(false);
 	let snapshotOpen = $state(false);
 	let snapshotBusy = $state(false);
 	let snapshotMsg = $state('');
@@ -129,6 +160,18 @@
 	let placingMission = $derived(
 		placingMissionId ? (missionById.get(placingMissionId) ?? null) : null
 	);
+
+	/**
+	 * THE PICTURE IS DRAWN ONLY WHEN IT HAS A URL AND A CALIBRATION. There is
+	 * no fallback transform: an uncalibrated picture is left off the mat
+	 * entirely, because a guessed one is wrong invisibly.
+	 */
+	let photo = $derived<MatPhoto | null>(
+		picture && picture.url && picture.calibration
+			? { url: picture.url, calibration: picture.calibration, dimPct }
+			: null
+	);
+	let pictureNeedsCalibrating = $derived(picture !== null && picture.calibration === null);
 
 	function statsFor(l: LaunchModel) {
 		const pts = [...l.waypoints].sort(bySortOrder).map((w) => ({ x: w.xMm, y: w.yMm }));
@@ -565,18 +608,59 @@
 		persist({ kind: 'mat_setup', patch: { launch_area_w_mm: wv, launch_area_h_mm: hv } });
 	}
 
-	async function uploadPhoto(e: Event) {
+	function takePictureResult(res: { ok: boolean; message: string; image: MatImageModel | null }) {
+		pictureMsg = res.message;
+		picture = res.image ? { ...res.image } : null;
+		if (res.image) dimPct = res.image.dimPct;
+		if (picture?.calibration) showPhoto = true;
+	}
+
+	async function uploadPicture(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		input.value = '';
-		if (!file || !onUploadPhoto) return;
-		photoMsg = 'Uploading the photo...';
-		const res = await onUploadPhoto(file);
-		photoMsg = res.message ?? '';
-		if (res.url) {
-			photoUrl = res.url;
-			showPhoto = true;
-		}
+		if (!file || !onUploadPicture || pictureBusy) return;
+		pictureBusy = true;
+		pictureMsg = 'Saving the picture...';
+		takePictureResult(await onUploadPicture(file));
+		pictureBusy = false;
+		// A new picture has no calibration yet, and an uncalibrated picture is
+		// never drawn, so go straight to the two taps rather than leaving a
+		// mentor looking at an unchanged mat wondering what happened.
+		if (pictureNeedsCalibrating) calibrating = true;
+	}
+
+	async function saveCalibration(cal: MatCalibration) {
+		if (!onSaveCalibration || pictureBusy) return;
+		pictureBusy = true;
+		takePictureResult(await onSaveCalibration(cal));
+		pictureBusy = false;
+		if (picture?.calibration) calibrating = false;
+	}
+
+	async function removePicture() {
+		if (!onRemovePicture || pictureBusy) return;
+		pictureBusy = true;
+		calibrating = false;
+		takePictureResult(await onRemovePicture());
+		pictureBusy = false;
+	}
+
+	function dimChanged() {
+		if (isMentor) onSaveDim?.(dimPct);
+	}
+
+	/**
+	 * The signed URL is short lived (ten minutes: the picture is copyrighted).
+	 * A draw that fails is almost always an expiry, so ask for a fresh one
+	 * ONCE and let a second failure stand rather than looping.
+	 */
+	let urlRetried = false;
+	async function pictureFailedToLoad() {
+		if (urlRetried || !onRefreshPictureUrl || !picture) return;
+		urlRetried = true;
+		const url = await onRefreshPictureUrl();
+		if (url && picture) picture = { ...picture, url };
 	}
 
 	async function saveVersion() {
@@ -702,6 +786,19 @@
 					</p>
 				{/if}
 
+				{#if calibrating && picture && picture.url}
+					<MatCalibrator
+						url={picture.url}
+						imageW={picture.imageW}
+						imageH={picture.imageH}
+						existing={picture.calibration}
+						busy={pictureBusy}
+						message={pictureMsg}
+						onSave={saveCalibration}
+						onCancel={() => (calibrating = false)}
+						onImageError={pictureFailedToLoad}
+					/>
+				{:else}
 				<MatCanvas
 					missions={model.missions}
 					waypoints={sortedWaypoints}
@@ -709,7 +806,7 @@
 					robot={{ widthMm: model.robot.widthMm, lengthMm: model.robot.lengthMm }}
 					{footprint}
 					launchArea={launchAreaRect}
-					{photoUrl}
+					{photo}
 					{showPhoto}
 					{editable}
 					canPlaceMissions={isMentor}
@@ -726,7 +823,9 @@
 					onMissionDrag={missionDrag}
 					onMissionDragEnd={missionDragEnd}
 					onNudgeWaypoint={nudgeWaypoint}
+					onPhotoError={pictureFailedToLoad}
 				/>
+				{/if}
 
 				<div class="rp__mat-controls">
 					<div class="rp__zoom" role="group" aria-label="Zoom">
@@ -741,11 +840,30 @@
 							</button>
 						{/each}
 					</div>
-					{#if photoUrl}
+					{#if photo}
 						<label class="rp__photo-toggle">
 							<input type="checkbox" bind:checked={showPhoto} />
-							<span>Show our mat photo</span>
+							<span>Show the field picture</span>
 						</label>
+						{#if showPhoto}
+							<label class="rp__dim">
+								<span class="small muted">Dim it</span>
+								<input
+									type="range"
+									min="0"
+									max="90"
+									step="5"
+									aria-label="Dim the field picture"
+									bind:value={dimPct}
+									onchange={dimChanged}
+								/>
+								<span class="small muted rp__dim-value">{dimPct}%</span>
+							</label>
+						{/if}
+					{:else if pictureNeedsCalibrating && isMentor}
+						<p class="small rp__uncalibrated">
+							The field picture is not calibrated, so it is not shown.
+						</p>
 					{/if}
 					{#if editable}
 						<p class="rp__hint small muted">
@@ -993,12 +1111,54 @@
 									bind:value={model.matSetup.launchHmm} onchange={persistMatSetup} />
 							</label>
 						</div>
-						{#if onUploadPhoto}
-							<label class="field">
-								<span>Our mat photo (top down, cropped to the mat borders)</span>
-								<input class="input rp__file" type="file" accept="image/*" onchange={uploadPhoto} />
-							</label>
-							{#if photoMsg}<p class="small muted">{photoMsg}</p>{/if}
+						{#if onUploadPicture}
+							<div class="rp__picture">
+								<label class="field">
+									<span>Field picture (the whole layout, walls and all)</span>
+									<input
+										class="input rp__file"
+										type="file"
+										accept="image/*"
+										disabled={pictureBusy}
+										onchange={uploadPicture}
+									/>
+								</label>
+								<p class="small muted">
+									It is not cropped and it is not stretched: you tap two corners and the
+									planner works out the rest. The picture stays private to this team.
+								</p>
+
+								{#if picture}
+									{#if picture.calibration}
+										<p class="small muted">
+											Calibrated. {picture.imageW} by {picture.imageH} pixels.
+										</p>
+									{:else}
+										<p class="notice rp__uncalibrated-notice">
+											This picture has no calibration yet, so it is not shown on the mat.
+										</p>
+									{/if}
+									<div class="rp__picture-actions">
+										<button
+											class="btn btn--ghost btn--small"
+											type="button"
+											disabled={pictureBusy || !picture.url}
+											onclick={() => (calibrating = true)}
+										>
+											{picture.calibration ? 'Calibrate again' : 'Calibrate now'}
+										</button>
+										<button
+											class="btn btn--ghost btn--small"
+											type="button"
+											disabled={pictureBusy}
+											onclick={removePicture}
+										>
+											Remove the picture
+										</button>
+									</div>
+								{/if}
+								{#if pictureMsg}<p class="small muted">{pictureMsg}</p>{/if}
+							</div>
 						{/if}
 					</details>
 				{/if}
@@ -1110,6 +1270,35 @@
 		color: var(--glow-green);
 		border-color: var(--boundary);
 		background: var(--surface-2);
+	}
+	.rp__dim {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.rp__dim input[type='range'] {
+		width: 8rem;
+	}
+	.rp__dim-value {
+		font-variant-numeric: tabular-nums;
+		min-width: 2.5rem;
+	}
+	.rp__uncalibrated {
+		color: var(--amber);
+		margin: 0;
+	}
+	.rp__uncalibrated-notice {
+		color: var(--amber);
+		border-color: var(--amber);
+	}
+	.rp__picture {
+		display: grid;
+		gap: var(--space-2);
+	}
+	.rp__picture-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
 	}
 	.rp__photo-toggle {
 		display: inline-flex;
