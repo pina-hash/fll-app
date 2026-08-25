@@ -70,6 +70,7 @@
 	 */
 	import { MAT_HEIGHT_MM, MAT_WIDTH_MM, type PointMm } from './geometry';
 	import { calibrationTransform } from './calibration';
+	import { unitWord, xAxisTicks, yAxisTicks, type LengthUnit } from './units';
 	import type { MatPhoto, MissionMarker, WaypointModel } from './types';
 
 	interface Props {
@@ -91,6 +92,8 @@
 		selectedWaypointId: string | null;
 		zoom: number;
 		placingMissionCode: string | null;
+		/** The student's preferred length unit; axis labels convert, geometry stays mm. */
+		unit?: LengthUnit;
 		onTapMat?: (p: PointMm) => void;
 		onTapMission?: (id: string) => void;
 		onSelectWaypoint?: (id: string) => void;
@@ -119,6 +122,7 @@
 		selectedWaypointId,
 		zoom,
 		placingMissionCode,
+		unit = 'cm',
 		onTapMat,
 		onTapMission,
 		onSelectWaypoint,
@@ -143,8 +147,8 @@
 	const VIEW_W = MAT_WIDTH_MM + M_LEFT + M_RIGHT;
 	const VIEW_H = MAT_HEIGHT_MM + M_TOP + M_BOTTOM;
 
-	const X_TICKS = [0, 500, 1000, 1500, 2000, MAT_WIDTH_MM];
-	const Y_TICKS = [0, 500, 1000, MAT_HEIGHT_MM];
+	let xTicks = $derived(xAxisTicks(unit));
+	let yTicks = $derived(yAxisTicks(unit));
 	const GRID = 250;
 
 	/** Model y is up; svg y is down. */
@@ -360,7 +364,7 @@
 			aria-label={placingMissionCode
 				? `Tap where mission ${placingMissionCode} sits on the mat`
 				: editable
-					? 'The mat. Tap to add a waypoint.'
+					? 'The mat. Tap to add a point to the route.'
 					: 'The mat'}
 			x="0"
 			y="0"
@@ -430,18 +434,18 @@
 		<!-- Axes: millimeters from the launch area corner (bottom left). -->
 		<g class="mat__axes" pointer-events="none">
 			<rect class="mat__frame" x="0" y="0" width={MAT_WIDTH_MM} height={MAT_HEIGHT_MM} />
-			{#each X_TICKS as t (t)}
-				<line x1={t} y1={MAT_HEIGHT_MM} x2={t} y2={MAT_HEIGHT_MM + 26} />
-				<text class="mat__tick" x={t} y={MAT_HEIGHT_MM + 88} text-anchor="middle">{t}</text>
+			{#each xTicks as t (t.mm)}
+				<line x1={t.mm} y1={MAT_HEIGHT_MM} x2={t.mm} y2={MAT_HEIGHT_MM + 26} />
+				<text class="mat__tick" x={t.mm} y={MAT_HEIGHT_MM + 88} text-anchor="middle">{t.label}</text>
 			{/each}
-			{#each Y_TICKS as t (t)}
-				<line x1="-26" y1={sy(t)} x2="0" y2={sy(t)} />
-				<text class="mat__tick" x="-40" y={sy(t) + 16} text-anchor="end">{t}</text>
+			{#each yTicks as t (t.mm)}
+				<line x1="-26" y1={sy(t.mm)} x2="0" y2={sy(t.mm)} />
+				<text class="mat__tick" x="-40" y={sy(t.mm) + 16} text-anchor="end">{t.label}</text>
 			{/each}
 			<text class="mat__axis-name" x={MAT_WIDTH_MM - 10} y={MAT_HEIGHT_MM + 142} text-anchor="end">
-				x in mm from the launch corner
+				x in {unitWord(unit)} from the launch corner
 			</text>
-			<text class="mat__axis-name" x="-40" y="-20" text-anchor="start">y in mm</text>
+			<text class="mat__axis-name" x="-40" y="-20" text-anchor="start">y in {unitWord(unit)}</text>
 		</g>
 
 		<!-- Other launches' routes, ghosted for context. -->
@@ -508,7 +512,7 @@
 				class:mat__wp--selected={w.id === selectedWaypointId}
 				role="button"
 				tabindex="0"
-				aria-label="Waypoint {i + 1}"
+				aria-label="Point {i + 1} of the route"
 				transform="translate({w.xMm}, {sy(w.yMm)})"
 				onpointerdown={(e) => startWaypointDrag(e, w)}
 				onkeydown={(e) => waypointKeydown(e, w)}

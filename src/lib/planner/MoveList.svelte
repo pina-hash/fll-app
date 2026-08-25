@@ -7,25 +7,30 @@
 	 * tablet propped next to the mat while someone types them into a program.
 	 */
 	import type { Move } from './geometry';
+	import { formatLength, type LengthUnit } from './units';
 
 	interface Props {
 		moves: Move[];
 		editable: boolean;
+		/** The student's preferred length unit; drives convert, turns stay degrees. */
+		unit?: LengthUnit;
 	}
 
-	let { moves, editable }: Props = $props();
+	let { moves, editable, unit = 'cm' }: Props = $props();
 
 	const fmtTurn = (deg: number) => `${Math.abs(Math.round(deg))}°`;
-	const fmtDrive = (cm: number) => `${(Math.round(cm * 10) / 10).toFixed(1)} cm`;
+	const fmtDrive = (cm: number) => formatLength(cm * 10, unit);
 </script>
 
 <div class="ml">
 	{#if moves.length === 0}
 		<p class="ml__empty">
-			{editable ? 'Tap the mat to drop your first waypoint.' : 'No route yet.'}
+			{editable
+				? 'Tap the mat to add your first point. Two points make your first move.'
+				: 'No route yet. The Run Captain draws one by tapping the mat.'}
 		</p>
 	{:else}
-		<p class="ml__aim">Aim the robot at waypoint 2 before you launch.</p>
+		<p class="ml__aim">Before you press go, aim the robot at point 2.</p>
 		<ol class="ml__list">
 			{#each moves as move, i (i)}
 				<li class="ml__row">

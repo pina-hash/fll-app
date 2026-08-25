@@ -42,9 +42,11 @@
 		team: { id: string; name: string };
 		isMentor: boolean;
 		data: PlannerData;
+		/** Where "See an example plan" points for this audience. */
+		exampleHref?: string;
 	}
 
-	let { supabase, ownerId, team, isMentor, data }: Props = $props();
+	let { supabase, ownerId, team, isMentor, data, exampleHref }: Props = $props();
 
 	/**
 	 * Failures from the online-only actions, shown beside the queue's own. One
@@ -136,6 +138,7 @@
 	strategies={data.strategies}
 	robot={data.robot}
 	matSetup={data.matSetup}
+	{exampleHref}
 	connection={queue.connection}
 	pendingCount={queue.pendingCount}
 	failed={[

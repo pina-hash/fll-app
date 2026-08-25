@@ -24,9 +24,14 @@
 	import type { PlannerOp } from '$lib/planner/ops';
 	import type { MissionMarker, StrategyModel } from '$lib/planner/types';
 	import type { ConnectionState } from '$lib/student/queue.svelte';
+	import { SEASON_MISSIONS } from '$lib/content/example-strategy';
 
-	type Scenario = 'captain' | 'viewer' | 'mentor' | 'empty';
+	type Scenario = 'captain' | 'viewer' | 'mentor';
 	let scenario = $state<Scenario>('captain');
+	/** 'fixture' is a mid-season team; 'none' is the first screen ever. */
+	let plan = $state<'fixture' | 'none'>('fixture');
+	/** 'fresh' is a mat nobody has set up: no dots, no Base, no robot row. */
+	let matReady = $state<'ready' | 'fresh'>('ready');
 	let connection = $state<ConnectionState>('online');
 	let log = $state<string[]>([]);
 
@@ -38,34 +43,40 @@
 		log = [...log, `${log.length + 1}. ${detail}`];
 	}
 
-	const M = (
-		code: string,
-		name: string,
-		pointsLabel: string,
-		scoring: { label: string; points: number; bonus?: boolean }[],
-		sortOrder: number,
-		xMm: number | null,
-		yMm: number | null
-	): MissionMarker => ({ id: `fixture-${code}`, code, name, pointsLabel, scoring, sortOrder, xMm, yMm });
+	/**
+	 * The real 15 codes, names and scoring come from the season content module
+	 * (the same source the example plan renders from); positions here are
+	 * HARNESS FIXTURES (see the header). M13 to M15 stay unplaced so the
+	 * mentor "Place on mat" affordance is exercisable in the ready state.
+	 */
+	const FIXTURE_POSITIONS: Record<string, { x: number; y: number }> = {
+		M01: { x: 420, y: 980 },
+		M02: { x: 760, y: 860 },
+		M03: { x: 1080, y: 1010 },
+		M04: { x: 1420, y: 900 },
+		M05: { x: 1760, y: 1020 },
+		M06: { x: 2080, y: 880 },
+		M07: { x: 2140, y: 560 },
+		M08: { x: 1840, y: 420 },
+		M09: { x: 1500, y: 520 },
+		M10: { x: 1160, y: 400 },
+		M11: { x: 860, y: 520 },
+		M12: { x: 560, y: 380 }
+	};
 
-	// The real 15 codes and names; positions are fixtures (see the header).
-	const MISSIONS: MissionMarker[] = [
-		M('M01', 'Drone Survey', '20 + 10 bonus', [{ label: 'Drone is off the mat', points: 20 }, { label: 'Bonus: LiDAR map flipped AND scan marker in the survey area', points: 10, bonus: true }], 1, 420, 980),
-		M('M02', 'Exploding Seeds', '10 each seed', [{ label: 'Each seed off the stalk', points: 10 }], 2, 760, 860),
-		M('M03', 'Flip the Rock', '20 + 10 bonus', [{ label: 'Research flag is down', points: 20 }, { label: 'Bonus: rock returned to the start area', points: 10, bonus: true }], 3, 1080, 1010),
-		M('M04', 'Lucky Leaves', '10, or 30 with the bonus', [{ label: 'One leaf removed', points: 10 }, { label: 'Bonus: second leaf removed AND katydid still in its original position', points: 20, bonus: true }], 4, 1420, 900),
-		M('M05', 'Reaching Roots', '10 or 20', [{ label: 'Plant root partially extended', points: 10 }, { label: 'Plant root completely extended', points: 20 }], 5, 1760, 1020),
-		M('M06', 'Leafcutter Frenzy', '10 each fragment', [{ label: 'Ant touching nest AND each leaf fragment contained', points: 10 }], 6, 2080, 880),
-		M('M07', 'Humongous Fungus', '20 + up to two 10-pt bonuses', [{ label: 'Mycelium completely extended', points: 20 }, { label: 'Bonus: connection to the opposing team extended root', points: 10, bonus: true }], 7, 2140, 560),
-		M('M08', 'Tangled', '30', [{ label: 'Vine touching the mat', points: 30 }], 8, 1840, 420),
-		M('M09', 'Research Platform', '10 + 10 + 10', [{ label: 'Platform raised', points: 10 }, { label: 'Camera trap deployed', points: 10 }, { label: 'Seed off the tree', points: 10 }], 9, 1500, 520),
-		M('M10', 'Fragile Microhabitats', '20', [{ label: 'Root cover down / touching the mat', points: 20 }], 10, 1160, 400),
-		M('M11', 'Window to the Past', '10 + 10', [{ label: 'Spider habitat in its original position', points: 10 }, { label: 'Snail habitat in its original position', points: 10 }], 11, 860, 520),
-		M('M12', 'Forest Elder', '20 + 10', [{ label: 'Cane fully raised and touching the tree', points: 20 }, { label: 'Support tie around the post', points: 10 }], 12, 560, 380),
-		M('M13', 'Keystone Species', '30', [{ label: 'Keystone species on the restoration platform AND young trees raised', points: 30 }], 13, null, null),
-		M('M14', 'Seeds of Renewal', '5 each, +5 each bonus', [{ label: 'Each seed contained in the replantation station', points: 5 }, { label: 'Bonus: each of those seeds also touching the mat', points: 5, bonus: true }], 14, null, null),
-		M('M15', 'Biocentric Architecture', '10 + 10 + 10, + one 10-pt bonus', [{ label: 'Nesting canopy raised', points: 10 }, { label: 'Garden skylight in', points: 10 }, { label: 'Compost hatch open / touching the mat', points: 10 }, { label: 'Bonus: environmental match to the dock', points: 10, bonus: true }], 15, null, null)
-	];
+	const MISSIONS: MissionMarker[] = SEASON_MISSIONS.map((m) => ({
+		id: `fixture-${m.code}`,
+		code: m.code,
+		name: m.name,
+		pointsLabel: m.pointsLabel,
+		scoring: m.scoring,
+		sortOrder: m.sortOrder,
+		xMm: FIXTURE_POSITIONS[m.code]?.x ?? null,
+		yMm: FIXTURE_POSITIONS[m.code]?.y ?? null
+	}));
+
+	/** The first Friday: nobody has placed a dot on this team's mat yet. */
+	const FRESH_MISSIONS: MissionMarker[] = MISSIONS.map((m) => ({ ...m, xMm: null, yMm: null }));
 
 	const wp = (launchId: string, x: number, y: number, sortOrder: number) => ({
 		id: `fixture-wp-${launchId}-${sortOrder}`,
@@ -237,7 +248,20 @@
 				<option value="captain">run captain (edits)</option>
 				<option value="viewer">teammate (view only)</option>
 				<option value="mentor">mentor</option>
-				<option value="empty">no plan yet</option>
+			</select>
+		</label>
+		<label>
+			plan
+			<select bind:value={plan}>
+				<option value="fixture">two launches</option>
+				<option value="none">no plan yet</option>
+			</select>
+		</label>
+		<label>
+			mat setup
+			<select bind:value={matReady}>
+				<option value="ready">dots and Base set</option>
+				<option value="fresh">nothing set up</option>
 			</select>
 		</label>
 		<label>
@@ -259,19 +283,20 @@
 		<button type="button" onclick={() => (log = [])}>clear log</button>
 	</header>
 
-	{#key `${scenario}-${pictureMode}`}
+	{#key `${scenario}-${plan}-${matReady}-${pictureMode}`}
 		<RoutePlanner
 			team={{ id: 'fixture-team', name: 'Blue Team' }}
 			isMentor={scenario === 'mentor'}
 			canEdit={scenario === 'captain' || scenario === 'mentor'}
-			missions={MISSIONS}
-			strategies={scenario === 'empty' ? [] : STRATEGIES}
-			robot={ROBOT}
-			matSetup={MAT_SETUP}
+			missions={matReady === 'fresh' ? FRESH_MISSIONS : MISSIONS}
+			strategies={plan === 'none' ? [] : STRATEGIES}
+			robot={matReady === 'fresh' ? null : ROBOT}
+			matSetup={matReady === 'fresh' ? { launchWmm: null, launchHmm: null } : MAT_SETUP}
 			{matImage}
 			{connection}
 			pendingCount={connection === 'offline' ? 3 : 0}
 			failed={[]}
+			exampleHref="#example-not-wired-in-the-harness"
 			onPersist={record}
 			onUploadPicture={scenario === 'mentor'
 				? async () => ({ ok: true, message: 'harness: nothing is uploaded here.', image: matImage })
