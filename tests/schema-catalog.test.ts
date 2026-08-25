@@ -318,6 +318,66 @@ describe.skipIf(!linkedAvailable)(`grants on the linked project (${linkedRef ?? 
 		});
 	});
 
+	test('the hosted table and sequence defaults grant anon and authenticated nothing', async () => {
+		// The function default (above) was only ever half of it. A hosted
+		// project also hands out full DML on TABLES and SELECT/USAGE on
+		// SEQUENCES to both API roles, where the local image hands out
+		// Dxtm and w. Measured before 0023: linked anon=arwdDxtm on tables,
+		// local anon=Dxtm. Every table in this chain revokes explicitly, so
+		// nothing leaked; 0023 turns that convention into a guarantee so a
+		// table that forgets the line fails closed rather than open.
+		const rows = await remoteCatalogQuery<{ objtype: string; acl: string | null }>(
+			`select d.defaclobjtype::text as objtype, array_to_string(d.defaclacl, ' | ') as acl
+			 from pg_default_acl d join pg_namespace n on n.oid = d.defaclnamespace
+			 where n.nspname = 'public' and d.defaclobjtype in ('r', 'S')
+			   and pg_get_userbyid(d.defaclrole) = 'postgres'
+			 order by 1`
+		);
+		// Positive control on the query: if the postgres grantor had no rows at
+		// all the loop below would pass without measuring anything.
+		expect(rows.length).toBeGreaterThan(0);
+		for (const r of rows) {
+			const acl = r.acl ?? '';
+			expect({ objtype: r.objtype, anon: acl.includes('anon='), authenticated: acl.includes('authenticated=') }).toEqual({
+				objtype: r.objtype,
+				anon: false,
+				authenticated: false
+			});
+		}
+	});
+
+	test('no sequence in public is reachable by anon or authenticated', async () => {
+		// There are zero sequences in `public` today, so this asserts a rule
+		// rather than a row. It is here because the default that would have
+		// granted them SELECT and USAGE is the one 0023 just closed, and a
+		// sequence added later is exactly the case nobody would think to
+		// check.
+		const rows = await remoteCatalogQuery<{ relname: string; grantee: string }>(
+			`select c.relname, a.grantee
+			 from pg_class c
+			 join pg_namespace n on n.oid = c.relnamespace
+			 cross join lateral aclexplode(coalesce(c.relacl, '{}'::aclitem[])) x
+			 join lateral (select pg_get_userbyid(x.grantee) as grantee) a on true
+			 where n.nspname = 'public' and c.relkind = 'S' and a.grantee in ('anon', 'authenticated')`
+		);
+		expect(rows).toEqual([]);
+	});
+
+	test('team_accent_options refuses a caller who is neither a mentor nor a student', async () => {
+		// The one DEFINER function in public that had no caller check at all,
+		// direct or delegated (0023). Asserted from the catalog rather than by
+		// calling it, because proving the gate needs a signed-in identity and
+		// this suite's remote half is read-only by construction. The live
+		// both-directions proof is in tests/team-identity-accent.test.ts.
+		const [row] = await remoteCatalogQuery<{ gated: boolean; secdef: boolean }>(
+			`select pg_get_functiondef(p.oid) like '%Only a mentor or a team member%' as gated,
+			        p.prosecdef as secdef
+			 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+			 where n.nspname = 'public' and p.proname = 'team_accent_options'`
+		);
+		expect({ gated: row?.gated, secdef: row?.secdef }).toEqual({ gated: true, secdef: true });
+	});
+
 	test('the migration chain is fully applied, so these grants describe the shipped schema', async () => {
 		// A grant assertion against a database that is three migrations behind
 		// is measuring a schema nobody is running. 0019 and 0020 were applied
@@ -328,6 +388,7 @@ describe.skipIf(!linkedAvailable)(`grants on the linked project (${linkedRef ?? 
 		const applied = rows.map((r) => r.version);
 		expect(applied).toContain('0021');
 		expect(applied).toContain('0022');
+		expect(applied).toContain('0023');
 	});
 });
 

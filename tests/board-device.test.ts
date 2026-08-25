@@ -169,6 +169,25 @@ describe('what a board device can do', () => {
 		expect(asService.data?.id).toBe(theirTaskId);
 	});
 
+	test('it cannot read the accent palette, because a board picks no colour', async () => {
+		// 0023 gave team_accent_options the caller check it had never had. The
+		// gate is "a mentor or a student", and a board is neither: it is a
+		// device on a table, it holds no role and chooses nothing.
+		const { error } = await board.rpc('team_accent_options');
+		expect(error?.message).toBe('Only a mentor or a team member can see which colours are taken.');
+
+		// POSITIVE CONTROL, both halves of the gate, so the refusal above is
+		// the check firing and not the function being broken for everyone.
+		const asMentor = await mentor.client.rpc('team_accent_options');
+		expect(asMentor.error).toBeNull();
+		expect((asMentor.data as unknown as unknown[]).length).toBe(11);
+
+		const asStudent = await signIn(student.email, student.pin);
+		const studentRead = await asStudent.rpc('team_accent_options');
+		expect(studentRead.error).toBeNull();
+		expect((studentRead.data as unknown as unknown[]).length).toBe(11);
+	});
+
 	test('it resolves its own team roles through the SAME function the console uses', async () => {
 		const ok = await board.rpc('team_resolve_roles', { p_team_id: mine.teamId, p_meeting_id: meetingId });
 		expect(ok.error).toBeNull();
