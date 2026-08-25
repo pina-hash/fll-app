@@ -7,16 +7,19 @@
 	 * tablet propped next to the mat while someone types them into a program.
 	 */
 	import type { Move } from './geometry';
+	import { formatLength, type LengthUnit } from './units';
 
 	interface Props {
 		moves: Move[];
 		editable: boolean;
+		/** The student's preferred length unit; drives convert, turns stay degrees. */
+		unit?: LengthUnit;
 	}
 
-	let { moves, editable }: Props = $props();
+	let { moves, editable, unit = 'cm' }: Props = $props();
 
 	const fmtTurn = (deg: number) => `${Math.abs(Math.round(deg))}°`;
-	const fmtDrive = (cm: number) => `${(Math.round(cm * 10) / 10).toFixed(1)} cm`;
+	const fmtDrive = (cm: number) => formatLength(cm * 10, unit);
 </script>
 
 <div class="ml">

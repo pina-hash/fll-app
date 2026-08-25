@@ -57,6 +57,15 @@
 	import { plannerDelete, plannerInsert, plannerUpdate, type PlannerOp } from './ops';
 	import type { ConnectionState } from '$lib/student/queue.svelte';
 	import { setupState } from './setup';
+	import {
+		LENGTH_UNITS,
+		formatLength,
+		fromMm,
+		loadUnit,
+		saveUnit,
+		toMm,
+		type LengthUnit
+	} from './units';
 	import MatCanvas from './MatCanvas.svelte';
 	import MatCalibrator from './MatCalibrator.svelte';
 	import MoveList from './MoveList.svelte';
@@ -172,6 +181,29 @@
 	let versionLabel = $state('');
 	let coachOpen = $state(false);
 	let matSetupOpen = $state(false);
+	/**
+	 * The student's length unit, display only: the model, the queue and the
+	 * database stay millimeters (and cm/s for speed). Loaded on mount so the
+	 * server render and a storage-less browser both show the default.
+	 */
+	let unit = $state<LengthUnit>('cm');
+	onMount(() => {
+		unit = loadUnit();
+	});
+	function setUnit(u: LengthUnit) {
+		unit = u;
+		saveUnit(u);
+	}
+	/** A stored millimeter value in the display unit, at input precision. */
+	function lengthDisplay(mm: number): number {
+		const v = fromMm(mm, unit);
+		return unit === 'mm' ? Math.round(v) : Math.round(v * 10) / 10;
+	}
+	/** The typed value back to millimeters; null when the field is not a number. */
+	function parseLengthInput(e: Event): number | null {
+		const v = parseFloat((e.currentTarget as HTMLInputElement).value);
+		return Number.isFinite(v) ? toMm(v, unit) : null;
+	}
 	let matBlockEl: HTMLElement | undefined = $state();
 	let matSetupEl: HTMLElement | undefined = $state();
 
@@ -687,6 +719,18 @@
 		});
 	}
 
+	/** One Base side from the field, in the display unit; empty clears it. */
+	function setBaseSide(side: 'launchWmm' | 'launchHmm', e: Event) {
+		const raw = (e.currentTarget as HTMLInputElement).value.trim();
+		if (raw === '') {
+			model.matSetup[side] = null;
+		} else {
+			const mm = parseLengthInput(e);
+			if (mm !== null) model.matSetup[side] = mm;
+		}
+		persistMatSetup();
+	}
+
 	function persistMatSetup() {
 		const w = model.matSetup.launchWmm;
 		const h = model.matSetup.launchHmm;
@@ -998,6 +1042,7 @@
 					{selectedWaypointId}
 					{zoom}
 					placingMissionCode={placingMission?.code ?? null}
+					{unit}
 					onTapMat={tapMat}
 					onTapMission={tapMission}
 					onSelectWaypoint={(id) => (selectedWaypointId = selectedWaypointId === id ? null : id)}
@@ -1012,6 +1057,20 @@
 				{/if}
 
 				<div class="rp__mat-controls">
+					<div class="rp__units" role="group" aria-label="Units for every length shown">
+						{#each LENGTH_UNITS as u (u.id)}
+							<button
+								class="btn btn--ghost btn--small"
+								class:rp__units--on={unit === u.id}
+								type="button"
+								aria-label={u.word}
+								aria-pressed={unit === u.id}
+								onclick={() => setUnit(u.id)}
+							>
+								{u.label}
+							</button>
+						{/each}
+					</div>
 					<div class="rp__zoom" role="group" aria-label="Zoom">
 						{#each [1, 2, 3] as z (z)}
 							<button
@@ -1185,7 +1244,7 @@
 						When your team draws a route, the turn and drive numbers show up here.
 					{/if}
 				</p>
-				<MoveList {moves} {editable} />
+				<MoveList {moves} {editable} {unit} />
 			</section>
 
 			<section class="card rp__panel rp__launches-panel">
@@ -1249,7 +1308,7 @@
 									{/if}
 
 									<p class="small muted">
-										Drives {Math.round(s.drive)} cm. {l.missions.length}
+										Drives {formatLength(s.drive * 10, unit)}. {l.missions.length}
 										{l.missions.length === 1 ? 'mission' : 'missions'}.
 									</p>
 									{#if s.returnsToBase === false}
@@ -1334,19 +1393,37 @@
 				</p>
 				<div class="rp__settings-grid">
 					<label class="field">
-						<span>Width (mm)</span>
-						<input class="input" type="number" min="1" max="1143" disabled={!editable}
-							bind:value={model.robot.widthMm} onchange={persistRobot} />
+						<span>Width ({unit})</span>
+						<input class="input" type="number" min="0" max={lengthDisplay(1143)}
+							step={unit === 'mm' ? 1 : 0.1} disabled={!editable}
+							value={lengthDisplay(model.robot.widthMm)}
+							onchange={(e) => {
+								const mm = parseLengthInput(e);
+								if (mm !== null) model.robot.widthMm = mm;
+								persistRobot();
+							}} />
 					</label>
 					<label class="field">
-						<span>Length (mm)</span>
-						<input class="input" type="number" min="1" max="1143" disabled={!editable}
-							bind:value={model.robot.lengthMm} onchange={persistRobot} />
+						<span>Length ({unit})</span>
+						<input class="input" type="number" min="0" max={lengthDisplay(1143)}
+							step={unit === 'mm' ? 1 : 0.1} disabled={!editable}
+							value={lengthDisplay(model.robot.lengthMm)}
+							onchange={(e) => {
+								const mm = parseLengthInput(e);
+								if (mm !== null) model.robot.lengthMm = mm;
+								persistRobot();
+							}} />
 					</label>
 					<label class="field">
-						<span>Speed (cm per second)</span>
-						<input class="input" type="number" min="1" max="200" disabled={!editable}
-							bind:value={model.robot.speedCmS} onchange={persistRobot} />
+						<span>Speed ({unit} per second)</span>
+						<input class="input" type="number" min="0" max={lengthDisplay(2000)}
+							step={unit === 'mm' ? 1 : 0.1} disabled={!editable}
+							value={lengthDisplay(model.robot.speedCmS * 10)}
+							onchange={(e) => {
+								const mm = parseLengthInput(e);
+								if (mm !== null) model.robot.speedCmS = mm / 10;
+								persistRobot();
+							}} />
 					</label>
 					<label class="field">
 						<span>Seconds at each mission</span>
@@ -1366,14 +1443,18 @@
 					<summary class="rp__h2">Mat setup (mentor)</summary>
 					<div class="rp__settings-grid">
 						<label class="field">
-							<span>Base width (mm)</span>
-							<input class="input" type="number" min="1" max="2362"
-								bind:value={model.matSetup.launchWmm} onchange={persistMatSetup} />
+							<span>Base width ({unit})</span>
+							<input class="input" type="number" min="0" max={lengthDisplay(2362)}
+								step={unit === 'mm' ? 1 : 0.1}
+								value={model.matSetup.launchWmm === null ? '' : lengthDisplay(model.matSetup.launchWmm)}
+								onchange={(e) => setBaseSide('launchWmm', e)} />
 						</label>
 						<label class="field">
-							<span>Base height (mm)</span>
-							<input class="input" type="number" min="1" max="1143"
-								bind:value={model.matSetup.launchHmm} onchange={persistMatSetup} />
+							<span>Base height ({unit})</span>
+							<input class="input" type="number" min="0" max={lengthDisplay(1143)}
+								step={unit === 'mm' ? 1 : 0.1}
+								value={model.matSetup.launchHmm === null ? '' : lengthDisplay(model.matSetup.launchHmm)}
+								onchange={(e) => setBaseSide('launchHmm', e)} />
 						</label>
 					</div>
 					{#if onUploadPicture}
@@ -1631,10 +1712,12 @@
 		flex-wrap: wrap;
 		gap: var(--space-3);
 	}
-	.rp__zoom {
+	.rp__zoom,
+	.rp__units {
 		display: flex;
 		gap: var(--space-1);
 	}
+	.rp__units--on,
 	.rp__zoom--on {
 		color: var(--success-text);
 		border-color: var(--boundary);
