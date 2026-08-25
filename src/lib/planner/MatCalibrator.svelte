@@ -16,11 +16,18 @@
 	 * So the only defence is showing a mentor a drawing whose correctness they
 	 * can judge against the thing in front of them, before it is saved.
 	 *
-	 * THE ASPECT CHECK. Two corners on the SAME side of the mat produce a
-	 * rectangle of the wrong shape, and that is the one mis-tap arithmetic can
-	 * notice on its own: the surface is 2.07:1, so a wildly different ratio
-	 * gets a warning naming the number. It warns and does not block, because a
-	 * picture taken slightly off square is still worth calibrating.
+	 * THE ASPECT NOTE IS NOT AN ERROR MESSAGE, EVEN THOUGH IT USED TO READ AS
+	 * ONE. Calibration scales each axis independently (calibration.ts), so a
+	 * picture that is not drawn to true 2.07:1 -- the official FLL
+	 * path-planning diagram measures nearer 1.75:1 -- calibrates correctly
+	 * anyway. The arithmetic cannot tell that apart from the one mistake it
+	 * CAN catch, two corners tapped on the same side, which also produces an
+	 * off-ratio rectangle. So a wide gap from 2.07:1 gets a note naming both
+	 * numbers, but the note states the likely benign cause first and points at
+	 * the actual check: does the drawn grid sit on the mat. It never blocks
+	 * the save button, which is gated on `usable` alone, and it does not use
+	 * the bold warning treatment below, because "your picture is not to
+	 * scale" is not a problem to fix.
 	 *
 	 * TAPS AND NUMBERS ARE THE SAME STATE. The four percentage fields below
 	 * the picture drive and are driven by the taps: they are the keyboard path
@@ -387,10 +394,12 @@
 			Those two corners are almost on top of each other. Tap corners that are diagonally opposite.
 		</p>
 	{:else if candidate && aspectOff > 0.08}
-		<p class="notice cal__warn">
-			Those corners make a {tappedAspect?.toFixed(2)}:1 rectangle, but the playing surface is
-			{MAT_ASPECT.toFixed(2)}:1. Check you tapped corners that are diagonally opposite, not two on
-			the same side.
+		<p class="small muted cal__note">
+			Those corners make a {tappedAspect?.toFixed(2)}:1 rectangle; the playing surface itself is
+			{MAT_ASPECT.toFixed(2)}:1. That is often fine: this picture may simply not be drawn to true
+			scale, and each axis above is calibrated on its own. The real check is the grid drawn on the
+			picture: if it sits on the mat, save it. If it does not, you likely tapped two corners on the
+			same side instead of diagonally opposite ones -- start over and tap the opposite corner.
 		</p>
 	{:else if usable}
 		<p class="small muted cal__ok">
@@ -537,7 +546,8 @@
 		color: var(--warning);
 		border-color: var(--warning);
 	}
-	.cal__ok {
+	.cal__ok,
+	.cal__note {
 		margin: 0;
 	}
 	.cal__actions {

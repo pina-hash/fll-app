@@ -486,6 +486,19 @@
 		matSetupEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	}
 
+	/**
+	 * The calibrator renders inside matBlockEl, above the Mat setup panel a
+	 * mentor is often already scrolled past. Setting `calibrating = true` when
+	 * it is already true is a no-op with nothing to show for it, which is
+	 * exactly what read as a dead button: the calibrator did not move and
+	 * nothing on screen changed. This always scrolls to it, open or not, so
+	 * the button does something visible either way.
+	 */
+	function goToCalibrator() {
+		calibrating = true;
+		matBlockEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
 	function tapMission(missionId: string) {
 		if (!editable || !launch) return;
 		const existing = launch.missions.find((lm) => lm.missionId === missionId);
@@ -759,8 +772,12 @@
 		pictureBusy = false;
 		// A new picture has no calibration yet, and an uncalibrated picture is
 		// never drawn, so go straight to the two taps rather than leaving a
-		// mentor looking at an unchanged mat wondering what happened.
-		if (pictureNeedsCalibrating) calibrating = true;
+		// mentor looking at an unchanged mat wondering what happened. The file
+		// input that started this is inside the Mat setup panel, below the mat
+		// block the calibrator renders into, so this also scrolls there --
+		// otherwise the calibrator opens off screen and looks like nothing
+		// happened at all.
+		if (pictureNeedsCalibrating) goToCalibrator();
 	}
 
 	async function saveCalibration(cal: MatCalibration) {
@@ -955,9 +972,9 @@
 								class="btn btn--secondary btn--small"
 								type="button"
 								disabled={pictureBusy}
-								onclick={() => (calibrating = true)}
+								onclick={goToCalibrator}
 							>
-								Finish calibrating
+								{calibrating ? 'Go to the calibrator' : 'Finish calibrating'}
 							</button>
 						{:else if setup.picture === 'none' && onUploadPicture}
 							<button class="btn btn--ghost btn--small" type="button" onclick={openMatSetup}>
@@ -1475,7 +1492,12 @@
 							</p>
 
 							{#if picture}
-								{#if picture.calibration}
+								{#if calibrating}
+									<p class="small muted">
+										The calibrator is open above. Tap two corners there, check the grid sits
+										on the mat, then save it.
+									</p>
+								{:else if picture.calibration}
 									<p class="small muted">
 										Calibrated. {picture.imageW} by {picture.imageH} pixels.
 									</p>
@@ -1489,9 +1511,13 @@
 										class="btn btn--ghost btn--small"
 										type="button"
 										disabled={pictureBusy || !picture.url}
-										onclick={() => (calibrating = true)}
+										onclick={goToCalibrator}
 									>
-										{picture.calibration ? 'Calibrate again' : 'Calibrate now'}
+										{calibrating
+											? 'Go to the calibrator'
+											: picture.calibration
+												? 'Calibrate again'
+												: 'Calibrate now'}
 									</button>
 									<button
 										class="btn btn--ghost btn--small"
@@ -1503,7 +1529,7 @@
 									</button>
 								</div>
 							{/if}
-							{#if pictureMsg}<p class="small muted">{pictureMsg}</p>{/if}
+							{#if pictureMsg && !calibrating}<p class="small muted">{pictureMsg}</p>{/if}
 						</div>
 					{/if}
 				</details>

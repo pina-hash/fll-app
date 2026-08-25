@@ -188,29 +188,29 @@
 	 * fixture is light now, dense, and mid-tone in places, which is what an
 	 * overlay actually has to beat.
 	 */
-	function fixturePicture(): string {
+	function fixturePicture(picW: number, picH: number, surf: { x: number; y: number; w: number; h: number }): string {
 		const hatch: string[] = [];
-		for (let i = 0; i <= SURF.w; i += 43) {
+		for (let i = 0; i <= surf.w; i += 43) {
 			hatch.push(
-				`<line x1="${SURF.x + i}" y1="${SURF.y}" x2="${SURF.x + i + 60}" y2="${SURF.y + SURF.h}" stroke="#3aa0d8" stroke-width="2" opacity="0.55"/>`
+				`<line x1="${surf.x + i}" y1="${surf.y}" x2="${surf.x + i + 60}" y2="${surf.y + surf.h}" stroke="#3aa0d8" stroke-width="2" opacity="0.55"/>`
 			);
 		}
-		for (let i = 0; i <= SURF.h; i += 41) {
+		for (let i = 0; i <= surf.h; i += 41) {
 			hatch.push(
-				`<line x1="${SURF.x}" y1="${SURF.y + i}" x2="${SURF.x + SURF.w}" y2="${SURF.y + i - 40}" stroke="#e06666" stroke-width="2" opacity="0.5"/>`
+				`<line x1="${surf.x}" y1="${surf.y + i}" x2="${surf.x + surf.w}" y2="${surf.y + i - 40}" stroke="#e06666" stroke-width="2" opacity="0.5"/>`
 			);
 		}
 		const svg =
-			`<svg xmlns="http://www.w3.org/2000/svg" width="${PIC_W}" height="${PIC_H}" viewBox="0 0 ${PIC_W} ${PIC_H}">` +
-			`<rect width="${PIC_W}" height="${PIC_H}" fill="#e9e4dc"/>` +
-			`<rect x="30" y="46" width="${PIC_W - 60}" height="${PIC_H - 92}" fill="#d6cec3" stroke="#6f665c" stroke-width="10"/>` +
-			`<text x="${PIC_W / 2}" y="30" fill="#3d3830" font-size="24" text-anchor="middle">border wall (NOT the playing surface)</text>` +
-			`<rect x="${SURF.x}" y="${SURF.y}" width="${SURF.w}" height="${SURF.h}" fill="#f4f1ea"/>` +
+			`<svg xmlns="http://www.w3.org/2000/svg" width="${picW}" height="${picH}" viewBox="0 0 ${picW} ${picH}">` +
+			`<rect width="${picW}" height="${picH}" fill="#e9e4dc"/>` +
+			`<rect x="30" y="46" width="${picW - 60}" height="${picH - 92}" fill="#d6cec3" stroke="#6f665c" stroke-width="10"/>` +
+			`<text x="${picW / 2}" y="30" fill="#3d3830" font-size="24" text-anchor="middle">border wall (NOT the playing surface)</text>` +
+			`<rect x="${surf.x}" y="${surf.y}" width="${surf.w}" height="${surf.h}" fill="#f4f1ea"/>` +
 			hatch.join('') +
-			`<rect x="${SURF.x}" y="${SURF.y}" width="${SURF.w}" height="${SURF.h}" fill="none" stroke="#c8a415" stroke-width="4"/>` +
-			`<circle cx="${SURF.x}" cy="${SURF.y + SURF.h}" r="14" fill="#1f7a3d"/>` +
-			`<circle cx="${SURF.x + SURF.w}" cy="${SURF.y}" r="14" fill="#6b3fbf"/>` +
-			`<text x="${SURF.x + SURF.w / 2}" y="${SURF.y + SURF.h / 2}" fill="#3d3830" font-size="34" text-anchor="middle">playing surface</text>` +
+			`<rect x="${surf.x}" y="${surf.y}" width="${surf.w}" height="${surf.h}" fill="none" stroke="#c8a415" stroke-width="4"/>` +
+			`<circle cx="${surf.x}" cy="${surf.y + surf.h}" r="14" fill="#1f7a3d"/>` +
+			`<circle cx="${surf.x + surf.w}" cy="${surf.y}" r="14" fill="#6b3fbf"/>` +
+			`<text x="${surf.x + surf.w / 2}" y="${surf.y + surf.h / 2}" fill="#3d3830" font-size="34" text-anchor="middle">playing surface</text>` +
 			`</svg>`;
 		return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 	}
@@ -223,17 +223,44 @@
 		imageH: PIC_H,
 		calibration: FIXTURE_CAL,
 		dimPct: 40,
-		url: fixturePicture()
+		url: fixturePicture(PIC_W, PIC_H, SURF)
 	};
 
-	type Picture = 'none' | 'uncalibrated' | 'calibrated';
+	/**
+	 * A SECOND FIXTURE, DELIBERATELY NOT DRAWN TO SCALE. The official FLL
+	 * engineering notebook path-planning diagram is the whole field but
+	 * measures nearer 1.75:1, not the mat's own 2.07:1 -- and a mentor
+	 * calibrating one for real hit the aspect note reading as an error over
+	 * exactly this, because the check that catches a genuine mis-tap cannot
+	 * tell it apart from a legitimate picture. This fixture's playing surface
+	 * is 980 by 560, a clean 1.75:1, so tapping its real corners exercises
+	 * the note the way the false positive did, and confirms it neither
+	 * blocks the save nor reads as one.
+	 */
+	const PIC_W_NONSCALE = 1200;
+	const PIC_H_NONSCALE = 800;
+	const SURF_NONSCALE = { x: 90, y: 110, w: 980, h: 560 };
+	const FIXTURE_IMAGE_NONSCALE = {
+		id: 'fixture-mat-image-nonscale',
+		teamId: 'fixture-team',
+		storagePath: 'teams/fixture-team/field',
+		imageW: PIC_W_NONSCALE,
+		imageH: PIC_H_NONSCALE,
+		calibration: null,
+		dimPct: 40,
+		url: fixturePicture(PIC_W_NONSCALE, PIC_H_NONSCALE, SURF_NONSCALE)
+	};
+
+	type Picture = 'none' | 'uncalibrated' | 'uncalibrated-nonscale' | 'calibrated';
 	let pictureMode = $state<Picture>('none');
 	let matImage = $derived(
 		pictureMode === 'none'
 			? null
 			: pictureMode === 'uncalibrated'
 				? { ...FIXTURE_IMAGE, calibration: null }
-				: FIXTURE_IMAGE
+				: pictureMode === 'uncalibrated-nonscale'
+					? FIXTURE_IMAGE_NONSCALE
+					: FIXTURE_IMAGE
 	);
 </script>
 
@@ -277,6 +304,7 @@
 			<select bind:value={pictureMode}>
 				<option value="none">none</option>
 				<option value="uncalibrated">uploaded, not calibrated</option>
+				<option value="uncalibrated-nonscale">uploaded, not drawn to scale (1.75:1)</option>
 				<option value="calibrated">calibrated</option>
 			</select>
 		</label>
