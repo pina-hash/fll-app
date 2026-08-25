@@ -9,6 +9,23 @@
 
 import { afterAll, describe, expect, test } from 'vitest';
 import { closeDb, sql } from './db/harness';
+import {
+	linkedAvailable,
+	linkedRef,
+	linkedUnavailableReason,
+	remoteCatalogQuery,
+	warnLinkedSkipped
+} from './db/linked';
+
+// The five doors, in one place, asserted against BOTH databases below. Adding
+// a sixth is a decision, not an accident, and it has to be made twice.
+const PUBLIC_DOORS = [
+	'parent_photo_path',
+	'parent_view',
+	'student_claim_seat',
+	'team_login_roster',
+	'team_size_cap'
+];
 
 afterAll(async () => {
 	await closeDb();
@@ -159,13 +176,7 @@ describe('functions', () => {
 		const rows = await sql<{ proname: string }[]>`
 			select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 			where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute') order by 1`;
-		expect(rows.map((r) => r.proname)).toEqual([
-			'parent_photo_path',
-			'parent_view',
-			'student_claim_seat',
-			'team_login_roster',
-			'team_size_cap'
-		]);
+		expect(rows.map((r) => r.proname)).toEqual(PUBLIC_DOORS);
 	});
 
 	test('each RPC and helper resolves to exactly one pg_proc row', async () => {
@@ -201,6 +212,122 @@ describe('functions', () => {
 		for (const r of rows) {
 			expect({ fn: r.proname, anon: r.anon, authed: r.authed }).toEqual({ fn: r.proname, anon: false, authed: false });
 		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// THE SAME ASSERTIONS, AGAINST THE DATABASE WHERE THEY CAN ACTUALLY FAIL.
+//
+// Everything above this line runs against the local stack, which is built
+// from the migration chain and nothing else. That is the one environment
+// where a stray grant cannot appear, so those assertions could only ever
+// pass. They did, for twenty migrations, while the linked project had anon
+// executing all 85 functions in `public` (fixed by 0021) and `authenticated`
+// executing all 26 private helpers (fixed by 0022).
+//
+// A hosted project carries ALTER DEFAULT PRIVILEGES the local image does not,
+// so every `create function` there arrives already granted. Nothing in
+// `supabase/` asks for that and nothing in `supabase/` can see it. The only
+// way to know is to look at production.
+//
+// Skipped LOUDLY when there is no token. The announcement below is a real
+// test rather than a module-level console.warn because vitest's reporter
+// swallows output written during collection: the first version of this file
+// warned into the void and the run printed a bare "5 skipped", which is the
+// silent skip this block exists to end.
+// ---------------------------------------------------------------------------
+describe('grants on the linked project', () => {
+	// ALWAYS runs, whether or not there is a token. Its whole job is to make
+	// the difference between "checked production" and "did not check
+	// production" impossible to miss in the output.
+	test('this run states whether production was checked at all', () => {
+		const reason = linkedUnavailableReason();
+		if (reason) {
+			warnLinkedSkipped('grants on the linked project');
+		} else {
+			process.stderr.write(`
+linked project ${linkedRef} reachable: grant assertions below ran against production.
+
+`);
+		}
+		// The assertion is that the run KNOWS which of the two happened, and
+		// said so. Both outcomes are legitimate; a run that cannot tell them
+		// apart is not.
+		expect(reason === null || reason.length > 0).toBe(true);
+	});
+});
+
+describe.skipIf(!linkedAvailable)(`grants on the linked project (${linkedRef ?? 'unlinked'})`, () => {
+	test('anon can execute exactly the five public doors, and nothing else', async () => {
+		const rows = await remoteCatalogQuery<{ proname: string }>(
+			`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+			 where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'EXECUTE')
+			 order by 1`
+		);
+		expect(rows.map((r) => r.proname)).toEqual(PUBLIC_DOORS);
+	});
+
+	test('private helpers are executable by neither anon nor authenticated', async () => {
+		const rows = await remoteCatalogQuery<{ proname: string; anon: boolean; authed: boolean }>(
+			`select p.proname,
+			        has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
+			        has_function_privilege('authenticated', p.oid, 'EXECUTE') as authed
+			 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+			 where n.nspname = 'public' and p.proname like '\\_%'
+			 order by 1`
+		);
+		// Positive control on the query itself: an empty result would pass the
+		// loop below without measuring anything, which is the shape of bug this
+		// whole block is here to prevent.
+		expect(rows.length).toBeGreaterThan(0);
+		for (const r of rows) {
+			expect({ fn: r.proname, anon: r.anon, authed: r.authed }).toEqual({
+				fn: r.proname,
+				anon: false,
+				authed: false
+			});
+		}
+	});
+
+	test('anon holds no table or column privilege anywhere in public', async () => {
+		const tables = await remoteCatalogQuery(
+			`select 1 from information_schema.table_privileges where table_schema = 'public' and grantee = 'anon'`
+		);
+		expect(tables.length).toBe(0);
+		const columns = await remoteCatalogQuery(
+			`select 1 from information_schema.column_privileges where table_schema = 'public' and grantee = 'anon'`
+		);
+		expect(columns.length).toBe(0);
+	});
+
+	test('the hosted default no longer grants EXECUTE to anon or authenticated', async () => {
+		// The grants above are the symptom; this is the cause. Without it, the
+		// next migration re-opens everything the last two closed and no
+		// assertion above would notice until somebody ran this suite again.
+		const rows = await remoteCatalogQuery<{ acl: string | null }>(
+			`select array_to_string(d.defaclacl, ' | ') as acl
+			 from pg_default_acl d join pg_namespace n on n.oid = d.defaclnamespace
+			 where n.nspname = 'public' and d.defaclobjtype = 'f'
+			   and pg_get_userbyid(d.defaclrole) = 'postgres'`
+		);
+		expect(rows.length).toBe(1);
+		const acl = rows[0].acl ?? '';
+		expect({ anon: acl.includes('anon='), authenticated: acl.includes('authenticated=') }).toEqual({
+			anon: false,
+			authenticated: false
+		});
+	});
+
+	test('the migration chain is fully applied, so these grants describe the shipped schema', async () => {
+		// A grant assertion against a database that is three migrations behind
+		// is measuring a schema nobody is running. 0019 and 0020 were applied
+		// by hand and left out of the ledger once already.
+		const rows = await remoteCatalogQuery<{ version: string }>(
+			`select version from supabase_migrations.schema_migrations order by version`
+		);
+		const applied = rows.map((r) => r.version);
+		expect(applied).toContain('0021');
+		expect(applied).toContain('0022');
 	});
 });
 
