@@ -26,6 +26,37 @@
 	 * and a dark outline behind every label (`paint-order: stroke`). Without
 	 * a picture none of that is drawn, so the plain schematic stays plain.
 	 *
+	 * THE MAT IS A LIGHT PLATE ON BOTH GROUNDS, AND THAT IS A DECISION.
+	 * `data-ground="light"` on the container re-declares the light tokens for
+	 * everything inside it, so the mat looks the same whether the app around
+	 * it is white or dark. Three reasons, in order of weight:
+	 *
+	 *   1. THE DIM SLIDER WOULD OTHERWISE MEAN TWO OPPOSITE THINGS. The
+	 *      scrim is --surface-0. A real field layout is a LIGHT drawing, so
+	 *      on the white ground "dim" means "fade the picture toward white
+	 *      until the plan on top reads" -- and it works because the plan is
+	 *      dark ink. Let the scrim follow a dark ground and the same slider
+	 *      fades a light drawing toward black: at 0% a mentor gets a glaring
+	 *      white rectangle in a dim room, at 90% a black one, and somewhere
+	 *      in the middle the picture passes through the lightness of the ink
+	 *      on top of it and the labels disappear into it. A control that
+	 *      makes the thing less readable in the middle of its own range is
+	 *      worse than no control.
+	 *   2. THE CONTRAST LAYER IS MEASURED ONCE. Label outlines, the route
+	 *      casing and the ghost routes are all --surface-0 against --text-1;
+	 *      one ground means one set of measurements, over a picture this repo
+	 *      cannot see in advance anyway.
+	 *   3. THE MAT IS A PICTURE OF A PHYSICAL OBJECT. The real mat is a
+	 *      printed light surface on a table under gym lights. The schematic
+	 *      is a drawing of that, and MatCalibrator lays the mat back over the
+	 *      mentor's own photograph of it. A drawing of a light thing is light.
+	 *
+	 * WHAT IT COSTS, STATED: on the dark ground the planner is a light
+	 * rectangle in dark chrome, which is a brighter screen than the rest of
+	 * the app. That is the trade accepted for a slider that means one thing.
+	 * The rest of the planner -- toolbar, movement list, mission panel --
+	 * follows the ground normally.
+	 *
 	 * PURE PROPS. This component owns no data and no queue: it reports
 	 * gestures up (tap, drag, long-press) and renders what it is handed. The
 	 * parent mutates the model live during a drag so the movement list moves
@@ -309,7 +340,7 @@
 	}
 </script>
 
-<div class="mat" bind:this={containerEl} bind:clientWidth={containerWidth}>
+<div class="mat" data-ground="light" bind:this={containerEl} bind:clientWidth={containerWidth}>
 	<svg
 		bind:this={svgEl}
 		class:mat--over-photo={overPhoto}

@@ -4,6 +4,45 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+		<!--
+			THE GROUND IS DECIDED HERE, BEFORE ANYTHING IS PAINTED.
+
+			This script is blocking and it is FIRST in the head on purpose: it
+			runs while the head is still being parsed, before the stylesheet
+			applies and long before the body exists, so the attribute the
+			palette keys on is already on <html> at first paint. Moving it
+			below the head placeholder, making it defer, or turning it into a
+			module would each reintroduce a frame of the wrong ground.
+
+			DO NOT NAME EITHER SVELTEKIT PLACEHOLDER INSIDE A COMMENT. They are
+			substituted by a plain string replace, comments included, and the
+			markup SvelteKit injects for the head carries comments of its own:
+			the first of their closing delimiters ends THIS comment early and
+			the rest of the sentence lands on the page as body text. That is
+			exactly what happened to the sentence above when it named the head
+			placeholder, and it shipped a paragraph of build notes to the top
+			of every screen.
+
+			It is the exact source of THEME_BOOT_SCRIPT in
+			src/lib/theme/theme.ts, and tests/theme-toggle.test.ts pulls it
+			back out of this file and runs it, so the two cannot drift.
+		-->
+		<script>
+			(function () {
+				try {
+					var stored = localStorage.getItem('fll-theme');
+					var pref = stored === 'light' || stored === 'dark' ? stored : 'system';
+					var dark =
+						pref === 'dark' ||
+						(pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+					document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+					document.documentElement.setAttribute('data-theme-pref', pref);
+				} catch (e) {
+					document.documentElement.setAttribute('data-theme', 'light');
+					document.documentElement.setAttribute('data-theme-pref', 'system');
+				}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

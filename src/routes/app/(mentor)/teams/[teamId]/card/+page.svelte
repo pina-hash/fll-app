@@ -236,10 +236,18 @@
 
 	/* PAPER. The console is dark because a tablet in a lit room wants it; a
 	   printer does not. Everything but the sheet is removed. */
+	/* PAPER IS ALWAYS THE LIGHT GROUND, AND IT IS NOT FORCED HERE.
+	   The dark palette lives inside @media screen in colors.css, so a printed
+	   sheet resolves every token below to its light value with nothing in
+	   this block saying so. What IS still needed is defeating the browser's
+	   "do not print backgrounds" default and dropping the app chrome. The
+	   literals this block used to carry (#ffffff, #000000, #333333, #999999)
+	   were a second palette that happened to agree with the first; they are
+	   tokens now, so a change to the ink is a change to the sheet too. */
 	@media print {
 		:global(body) {
-			background: #ffffff;
-			color: #000000;
+			background: var(--surface-0);
+			color: var(--text-1);
 		}
 		:global(.shell__bar),
 		:global(.shell__nav),
@@ -255,25 +263,25 @@
 			display: block;
 		}
 		.sheet {
-			background: #ffffff;
-			border: 2px solid #000000;
+			background: var(--surface-0);
+			border: 2px solid var(--text-1);
 			border-radius: 0;
 			padding: 1rem;
-			color: #000000;
+			color: var(--text-1);
 		}
 		.sheet__name,
 		.sheet__codevalue {
-			color: #000000;
+			color: var(--text-1);
 		}
 		.sheet__eyebrow,
 		.sheet__codelabel,
 		.sheet__table thead th,
 		.sheet__foot {
-			color: #333333;
+			color: var(--text-2);
 		}
 		.sheet__table th,
 		.sheet__table td {
-			border-bottom: 1px solid #999999;
+			border-bottom: 1px solid var(--boundary);
 		}
 	}
 </style>

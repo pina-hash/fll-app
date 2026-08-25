@@ -180,6 +180,37 @@ export const MARKS: Record<BrandMark, MarkSpec> = {
 	}
 };
 
+/**
+ * HOW A MARK REACHES THE DARK GROUND. Two answers, and neither of them is
+ * "style it".
+ *
+ *   'reverse-file'  the official download supplies a reverse version for a
+ *                   dark background, so the ground swaps the ASSET.
+ *   'light-plate'   it does not, so the mark keeps its full-colour file and
+ *                   is given the white ground that file is specified for.
+ *
+ * There is no third answer. A filter, an invert, a blend mode or a
+ * recolouring would each be "DO NOT rotate or change the color of the logo"
+ * [BG p13] arriving by another route, and BrandLogo has no prop that could
+ * express one.
+ *
+ * WHY A PLATE IS NOT A CONTAINING SHAPE. "DO NOT add a containing shape or
+ * border" [BG p13, FLL p15] is a rule about decorating a mark: a badge, a
+ * roundel, a keyline. The plate has no border, no radius, no shadow and no
+ * colour of its own -- it is #FFFFFF, the brand's own white, and it extends
+ * past the mark's full clear space on every side, so the mark sits in the
+ * middle of a plain white field rather than inside a shape. It is the
+ * background the supplied artwork requires, supplied.
+ */
+export type DarkGroundStrategy = 'reverse-file' | 'light-plate';
+
+export function darkGroundStrategy(mark: BrandMark): DarkGroundStrategy {
+	return MARKS[mark].reverseFile ? 'reverse-file' : 'light-plate';
+}
+
+/** The plate's colour. The brand's own white, and nothing else, ever. */
+export const LIGHT_PLATE = '#ffffff';
+
 /** Thrown when a usage would break a rule. Never caught to carry on anyway. */
 export class BrandRuleError extends Error {
 	constructor(message: string) {

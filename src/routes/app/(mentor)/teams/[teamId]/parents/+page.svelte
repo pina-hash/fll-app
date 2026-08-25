@@ -204,10 +204,14 @@
 	/* PAPER. The console is dark because a tablet in a lit room wants it; a
 	   printer does not, and a QR code has to be black on white or no phone
 	   will read it. One card per half page, none of them split across a fold. */
+	/* PAPER IS ALWAYS THE LIGHT GROUND, AND IT IS NOT FORCED HERE: the dark
+	   palette is declared inside @media screen, so a sheet resolves every
+	   token to its light value on its own. This block only defeats the
+	   browser's "do not print backgrounds" default and drops the chrome. */
 	@media print {
 		:global(body) {
-			background: #ffffff;
-			color: #000000;
+			background: var(--surface-0);
+			color: var(--text-1);
 		}
 		:global(.shell__bar),
 		:global(.shell__nav),
@@ -226,25 +230,25 @@
 			gap: 0.5rem;
 		}
 		.pcard {
-			background: #ffffff;
-			color: #000000;
-			border: 2px solid #000000;
-			border-left: 6px solid #000000;
+			background: var(--surface-0);
+			color: var(--text-1);
+			border: 2px solid var(--text-1);
+			border-left: 6px solid var(--text-1);
 			border-radius: 0;
 			padding: 0.75rem;
 			margin-bottom: 0.5rem;
 		}
 		.pcard__name,
 		.pcard__url {
-			color: #000000;
+			color: var(--text-1);
 		}
 		.pcard__eyebrow,
 		.pcard__grade,
 		.pcard__note {
-			color: #333333;
+			color: var(--text-2);
 		}
 		.pcard__warn {
-			color: #000000;
+			color: var(--text-1);
 		}
 	}
 </style>

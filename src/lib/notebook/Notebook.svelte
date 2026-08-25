@@ -766,7 +766,13 @@
 		cursor: pointer;
 	}
 	.nb__tab--on {
-		color: var(--team-accent-ink, var(--success-text));
+		/* --team-accent, NOT --team-accent-ink. The ink token is what sits ON
+		   a filled accent chip; this tab is accent-coloured text on the
+		   accent WASH, so the ink token put white text on a near-white wash
+		   (measured 1.09) and, once there were two grounds, black text on a
+		   dark wash (1.28). team-accents.css derives every accent to clear
+		   4.5 against its own wash on both grounds, which is this pairing. */
+		color: var(--team-accent, var(--success-text));
 		background: var(--team-accent-wash, transparent);
 		border-color: var(--team-accent, var(--success));
 	}
@@ -798,7 +804,10 @@
 	.nb__h {
 		margin: 0;
 		font-size: var(--fs-h2);
-		color: var(--team-accent-ink, var(--text-1));
+		/* Accent-coloured heading on a card, so it is the ACCENT and not the
+		   ink that goes on one: --team-accent-ink here was white on
+		   --surface-1 at 1.09. */
+		color: var(--team-accent, var(--text-1));
 	}
 	.nb__h3 {
 		margin: 0;
@@ -933,7 +942,9 @@
 		font-family: var(--font-display);
 		font-size: var(--fs-h2);
 		font-weight: var(--fw-black);
-		color: var(--team-accent-ink, var(--text-1));
+		/* A number on a plain stat panel, not on a filled accent chip, so it
+		   is the ACCENT and not the ink that goes on one. */
+		color: var(--team-accent, var(--text-1));
 	}
 
 	.nb__recap {

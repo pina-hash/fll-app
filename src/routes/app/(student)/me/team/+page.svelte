@@ -305,7 +305,7 @@
 		gap: 0.15rem;
 		padding: var(--space-3);
 		border-radius: var(--radius-control);
-		background: rgba(255, 197, 107, 0.12);
+		background: var(--warning-wash);
 	}
 	.tt__donehead {
 		margin: var(--space-4) 0 var(--space-2);

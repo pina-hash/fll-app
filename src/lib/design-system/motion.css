@@ -1,14 +1,15 @@
-/* Motion. Keyframes are harmless to define; the CLASSES are the gate, and
-   every one of them applies only under prefers-reduced-motion: no-preference. */
-@keyframes ds-breathe {
-	0%,
-	100% {
-	}
-	50% {
-		box-shadow: 0 0 1.25rem rgba(95, 242, 182, 0.6), 0 0 3rem rgba(95, 242, 182, 0.3);
-	}
-}
+/* ==========================================================================
+   Motion. Keyframes are harmless to define; the CLASSES are the gate, and
+   every one of them applies only under prefers-reduced-motion: no-preference.
 
+   THE BREATHING GLOW IS GONE. `ds-breathe` pulsed a hard-coded mint halo
+   (rgba(95, 242, 182, ...)) left over from the bioluminescent theme 0018
+   removed. It was the last coloured glow in the repo and the last colour
+   literal outside colors.css and team-accents.css, it had no call site, and a
+   halo in any colour is the thing the FIRST guidelines forbid near a mark. A
+   second ground would have needed a second value for it, which is one value
+   too many for an animation nothing uses.
+   ========================================================================== */
 @keyframes ds-rise {
 	from {
 		opacity: 0;
@@ -21,9 +22,6 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-	.ds-breathe {
-		animation: ds-breathe 2.4s ease-in-out infinite;
-	}
 	.ds-rise {
 		animation: ds-rise 220ms ease-out both;
 	}

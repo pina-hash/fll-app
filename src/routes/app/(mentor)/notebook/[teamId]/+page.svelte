@@ -162,7 +162,10 @@
 		font-weight: var(--fw-bold);
 	}
 	.mnb__team--on {
-		color: var(--team-accent-ink, var(--text-1));
+		/* Accent-coloured label on the accent WASH, which is a pairing
+		   team-accents.css derives to clear 4.5 on both grounds. The ink
+		   token is for a filled chip and put white on a near-white wash. */
+		color: var(--team-accent, var(--text-1));
 		border-color: var(--team-accent, var(--boundary));
 		background: var(--team-accent-wash, transparent);
 	}

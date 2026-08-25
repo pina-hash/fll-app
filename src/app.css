@@ -4,8 +4,19 @@
    invent colours or redefine tokens in this file -- design against the custom
    properties the import defines. Shared classes live below.
 
-   The ground is the brand's white and the ink is FIRST black; see colors.css
-   for why, and for the measured contrast of every token used here.
+   THERE ARE TWO GROUNDS AND THIS FILE NAMES NEITHER. Every rule below is
+   written against the tokens, so the same rule serves the white ground and
+   the dark one and there is no second copy of any of them to drift. Which
+   ground is in force is decided once, before first paint, by the blocking
+   script in src/app.html; see src/lib/theme/theme.ts and colors.css for the
+   measured contrast of every token used here.
+
+   PRINT IS ALWAYS LIGHT, AND NOTHING HERE MAKES IT SO. The dark palette is
+   declared inside `@media screen` in colors.css, so a printed sheet simply
+   never sees it. A print rule in this repo therefore only ever has to defeat
+   the browser's "do not print backgrounds" default -- it never has to
+   restate a colour, and one that does is a bug waiting to disagree with the
+   token it copied.
    ========================================================================== */
 
 @import './lib/design-system/index.css';
@@ -17,7 +28,10 @@
 }
 
 html {
-	color-scheme: light;
+	/* color-scheme comes from the ground's own token block, so the browser's
+	   form controls, scrollbars and canvas follow the page rather than the
+	   operating system. Setting it here as a literal would override the
+	   ground on one of the two. */
 	background: var(--surface-page);
 }
 
@@ -84,14 +98,20 @@ code {
 	margin-bottom: var(--space-2);
 }
 /* Was a bioluminescent glow; now simply the live/done state, in the
-   text-safe green. No halo: a coloured glow is a busy background, and a
-   FIRST mark may not sit on one. */
+   text-safe green, on both grounds. No halo: a coloured glow is a busy
+   background, and a FIRST mark may not sit on one. */
 .glow {
 	color: var(--success-text);
 	font-weight: var(--fw-bold);
 }
 .error {
-	color: var(--danger);
+	/* --danger is the OFFICIAL FIRST red and measures 4.38 on white and 3.72
+	   on the dark page: on neither ground does it carry small text. It was
+	   set here at semibold, which is not "large" under WCAG at any size this
+	   app uses, so this rule was a 4.38 pairing on the shipped light ground
+	   before the second ground existed. The words of an error belong in the
+	   functional variant, which is 6.33 and 7.18. */
+	color: var(--danger-text);
 	font-weight: var(--fw-semibold);
 }
 .notice {
@@ -143,13 +163,20 @@ code {
 }
 .btn--secondary {
 	background: var(--surface-2);
-	color: var(--accent);
+	/* --accent-text, not --accent: the fill and the foreground are the same
+	   official purple on white and cannot be on the dark ground, where purple
+	   measures 1.82. */
+	color: var(--accent-text);
 	border-color: var(--boundary);
 }
 .btn--danger {
 	background: transparent;
 	color: var(--danger-text);
-	border-color: var(--danger);
+	/* The BORDER is the functional red too. The official red is 3.50 against
+	   --surface-2 on the light ground and 2.39 against it on the dark one, so
+	   as a boundary on a raised surface it fails the 3:1 floor --boundary is
+	   held to. Matching the border to the label is also what it looks like. */
+	border-color: var(--danger-text);
 }
 .btn--ghost {
 	background: transparent;

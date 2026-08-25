@@ -1,13 +1,15 @@
 /* ==========================================================================
    Spacing, radii, elevation. Layered CSS only -- no image binaries.
 
-   THE GLOWS ARE GONE. The old system was bioluminescence on deep water: every
-   identity colour carried a coloured halo, and the page had a radial backdrop.
-   Neither survives a brand review. The FIRST guidelines forbid putting a mark
-   on "busy or distracting backgrounds and colors", a coloured glow behind a
-   surface that also carries a lockup is exactly that, and a halo in a brand
-   accent is the closest thing to recolouring one. Elevation is now a plain
-   neutral shadow and the page ground is flat white.
+   THE GLOWS ARE GONE AND THE DARK GROUND DOES NOT BRING THEM BACK. The old
+   system was bioluminescence on deep water: every identity colour carried a
+   coloured halo, and the page had a radial backdrop. Neither survives a brand
+   review. The FIRST guidelines forbid putting a mark on "busy or distracting
+   backgrounds and colors", a coloured glow behind a surface that also carries
+   a lockup is exactly that, and a halo in a brand accent is the closest thing
+   to recolouring one. Elevation is a plain neutral shadow on both grounds and
+   both page grounds are flat. A dark theme is not a licence to reintroduce
+   any of it.
    ========================================================================== */
 :root {
 	--space-1: 0.25rem;
@@ -22,15 +24,25 @@
 	--radius-card: 1rem;
 	--radius-tile: 0.875rem;
 
-	/* Elevation, neutral. Nothing tinted, nothing coloured. */
-	--shadow-card: 0 1px 2px rgba(35, 31, 32, 0.06), 0 6px 16px rgba(35, 31, 32, 0.08);
-	--shadow-raised: 0 1px 3px rgba(35, 31, 32, 0.1), 0 10px 24px rgba(35, 31, 32, 0.12);
+	/* Elevation, neutral. Nothing tinted, nothing coloured, on either ground.
+	   The colour and the strength come from the ground's own token block in
+	   colors.css: a neutral shadow on the brand's black has almost nothing
+	   left to darken, so on the dark ground it goes to true black and deepens
+	   rather than staying a faint smudge nobody can see. The GEOMETRY is the
+	   same on both, which is what keeps a card the same card. */
+	--shadow-card: 0 1px 2px rgba(var(--shadow-color), var(--shadow-strength-1)),
+		0 6px 16px rgba(var(--shadow-color), var(--shadow-strength-2));
+	--shadow-raised: 0 1px 3px rgba(var(--shadow-color), calc(var(--shadow-strength-1) * 1.6)),
+		0 10px 24px rgba(var(--shadow-color), calc(var(--shadow-strength-2) * 1.5));
 
-	/* The page ground is the brand's own white. No gradient, no wash: a
-	   lockup has to sit on a plain background. */
+	/* The page ground is whichever ground is in force. No gradient, no wash,
+	   on either: a lockup has to sit on a plain background. */
 	--backdrop-deep: var(--surface-0);
 
-	/* A focus ring a child can see from across the table, in FIRST blue. */
+	/* A focus ring a child can see from across the table. --focus-ring is
+	   FIRST blue on the white ground and the functional light blue on the dark
+	   one, where the official blue measures 2.76 and would be a ring nobody
+	   could find. */
 	--focus-outline: 3px solid var(--focus-ring);
 	--focus-offset: 2px;
 }

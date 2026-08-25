@@ -74,7 +74,16 @@
 		</button>
 	</div>
 
-	<article class="np__paper">
+	<!--
+		THE PAPER IS A LIGHT PLATE ON BOTH GROUNDS. This article is a preview
+		of a printed sheet, and paper is white in a dark room too. data-ground
+		re-declares the light tokens for this subtree, so every colour inside
+		it comes from the design system and resolves to the light value even
+		when the app around it is dark -- which is also what makes the printed
+		output and the on-screen preview the same thing rather than two
+		stylesheets that agree by hand.
+	-->
+	<article class="np__paper" data-ground="light">
 		<header class="np__cover">
 			<p class="np__season"><FirstName name="season" /> · {SEASON.years}</p>
 			<h1 class="np__title">{team.name}</h1>
@@ -225,20 +234,23 @@
 </div>
 
 <style>
-	/* Screen: a paper preview on the app's dark ground. Print: just the paper. */
+	/* Screen: a paper preview on whichever ground the app is on. Print: just
+	   the paper. Every colour inside .np__paper comes from the design system
+	   and is resolved LIGHT by the data-ground attribute on that element, so
+	   the preview and the printed sheet cannot disagree. */
 	.np {
 		min-height: 100dvh;
-		background: var(--surface-0, #0b1016);
-		padding: var(--space-4, 1rem);
+		background: var(--surface-0);
+		padding: var(--space-4);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: var(--space-3, 0.75rem);
+		gap: var(--space-3);
 	}
 	.np__toolbar {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--space-3, 0.75rem);
+		gap: var(--space-3);
 		width: 100%;
 		max-width: 52rem;
 	}
@@ -247,26 +259,26 @@
 		align-items: center;
 		justify-content: center;
 		min-height: 2.75rem;
-		padding: 0 var(--space-4, 1rem);
-		border-radius: var(--radius-control, 0.5rem);
-		border: 2px solid var(--boundary, #3a4656);
+		padding: 0 var(--space-4);
+		border-radius: var(--radius-control);
+		border: 2px solid var(--boundary);
 		background: transparent;
-		color: var(--text-1, #e8eef5);
+		color: var(--text-1);
 		font: inherit;
 		font-weight: 700;
 		text-decoration: none;
 		cursor: pointer;
 	}
 	.np__toolbtn--go {
-		border-color: var(--success, #00a651);
-		color: var(--success-text, #046b37);
+		border-color: var(--success);
+		color: var(--success-text);
 	}
 
 	.np__paper {
 		width: 100%;
 		max-width: 52rem;
-		background: #ffffff;
-		color: #1a2330;
+		background: var(--surface-0);
+		color: var(--text-1);
 		border-radius: 6px;
 		padding: clamp(1.25rem, 4vw, 3rem);
 		font-family: Georgia, 'Times New Roman', serif;
@@ -280,7 +292,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.6rem;
-		border-bottom: 3px solid #1a2330;
+		border-bottom: 3px solid var(--text-1);
 		padding-bottom: 1.5rem;
 		margin-bottom: 1.5rem;
 	}
@@ -289,7 +301,7 @@
 		font-size: 0.9rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		color: #4a5768;
+		color: var(--text-2);
 	}
 	.np__title {
 		margin: 0;
@@ -298,7 +310,7 @@
 	}
 	.np__number {
 		margin: 0;
-		color: #4a5768;
+		color: var(--text-2);
 	}
 	.np__doctype {
 		margin: 0;
@@ -321,16 +333,16 @@
 		margin-top: 0.75rem;
 	}
 	.np__stat {
-		border: 1px solid #c6cdd6;
+		border: 1px solid var(--hairline);
 		border-radius: 6px;
 		padding: 0.4rem 0.7rem;
 		font-size: 0.9rem;
-		color: #4a5768;
+		color: var(--text-2);
 	}
 	.np__statn {
 		font-weight: 700;
 		font-size: 1.1rem;
-		color: #1a2330;
+		color: var(--text-1);
 	}
 
 	.np__section {
@@ -341,7 +353,7 @@
 		font-size: 1.6rem;
 	}
 	.np__sectiontitle {
-		border-bottom: 2px solid #1a2330;
+		border-bottom: 2px solid var(--text-1);
 		padding-bottom: 0.25rem;
 	}
 	.np__h3 {
@@ -354,22 +366,22 @@
 	}
 	.np__quiet {
 		margin: 0.25rem 0;
-		color: #4a5768;
+		color: var(--text-2);
 		font-style: italic;
 	}
 	.np__entry {
 		margin: 0.5rem 0 0.9rem;
 		padding-left: 0.85rem;
-		border-left: 3px solid #c6cdd6;
+		border-left: 3px solid var(--hairline);
 	}
 	.np__try[data-outcome='failed'] {
-		border-left-color: #b4690e;
+		border-left-color: var(--warning);
 	}
 	.np__try[data-outcome='worked'] {
-		border-left-color: #1e7d3c;
+		border-left-color: var(--success-text);
 	}
 	.np__try[data-outcome='mixed'] {
-		border-left-color: #17667d;
+		border-left-color: var(--link);
 	}
 	.np__tryhead {
 		margin: 0 0 0.2rem;
@@ -384,13 +396,13 @@
 		letter-spacing: 0.05em;
 	}
 	.np__outcome[data-outcome='failed'] {
-		color: #b4690e;
+		color: var(--warning);
 	}
 	.np__outcome[data-outcome='worked'] {
-		color: #1e7d3c;
+		color: var(--success-text);
 	}
 	.np__outcome[data-outcome='mixed'] {
-		color: #17667d;
+		color: var(--link);
 	}
 	.np__body {
 		margin: 0.25rem 0;
@@ -399,7 +411,7 @@
 	.np__byline {
 		margin: 0.15rem 0 0;
 		font-size: 0.85rem;
-		color: #4a5768;
+		color: var(--text-2);
 	}
 	/* Photos at a size a judge can actually read. */
 	.np__photo {
@@ -408,7 +420,7 @@
 		max-height: 18rem;
 		object-fit: contain;
 		margin: 0.5rem 0;
-		border: 1px solid #c6cdd6;
+		border: 1px solid var(--hairline);
 		border-radius: 4px;
 	}
 
@@ -421,8 +433,8 @@
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: #b4690e;
-		border: 1px solid #b4690e;
+		color: var(--warning);
+		border: 1px solid var(--warning);
 		border-radius: 4px;
 		padding: 0.05rem 0.35rem;
 		vertical-align: middle;
@@ -450,31 +462,32 @@
 	}
 	.np__cap {
 		font-size: 0.85rem;
-		color: #4a5768;
+		color: var(--text-2);
 	}
 
 	.np__foot {
 		margin-top: 2rem;
 		padding-top: 0.75rem;
-		border-top: 1px solid #c6cdd6;
+		border-top: 1px solid var(--hairline);
 		font-size: 0.9rem;
-		color: #4a5768;
+		color: var(--text-2);
 		text-align: center;
 	}
 
 	@media print {
-		/* The app's dark ground must not print as a border around the paper:
-		   html and body both paint one, and color-scheme: dark makes the
-		   browser paint the page canvas itself near-black. */
-		:global(html) {
-			color-scheme: light;
-		}
+		/* THE SHEET IS ALWAYS LIGHT, AND THE PALETTE ALREADY GUARANTEES IT:
+		   the dark tokens are declared inside @media screen, so a printed
+		   page resolves --surface-0 to white and color-scheme to light with
+		   nothing here saying so. What is still needed is stopping the app's
+		   ground painting a border around the paper -- html and body both
+		   paint one -- and that is a token now, not a literal, so it cannot
+		   disagree with the sheet it surrounds. */
 		:global(html),
 		:global(body) {
-			background: #ffffff;
+			background: var(--surface-0);
 		}
 		.np {
-			background: #ffffff;
+			background: var(--surface-0);
 			padding: 0;
 		}
 		.np__toolbar {

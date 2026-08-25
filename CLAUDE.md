@@ -115,6 +115,26 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
 - **The full suite once, at the end.** During development run only the files the change touches.
 - **Assert both directions on any visibility or gating claim.** An empty result from a denied read is indistinguishable from an empty table: the same row is shown to exist through the service role in the same test.
 - **Mutate in the PERMISSIVE direction to prove a boundary test bites.** `using (true)` reproduces the real leak; a policy commented out fails closed and reddens nothing. Restore the file byte-identically (md5) and re-verify green. The cross-team proof was mutated this way when it shipped (HISTORY: 0007).
+- **A CLAIM ABOUT WHAT A SCREEN LOOKS LIKE IS MEASURED ON EVERY SCREEN, NOT
+  SAMPLED.** Walk every rendered text node, resolve its effective foreground
+  and background through the ancestor stack (and, in SVG, through the sibling
+  shape a label is drawn on: SVG paints no background and a label on a filled
+  dot sits on a SIBLING), and report every pairing under 4.5, or 3 at
+  large-bold sizes. Both grounds, 375 and 1440, 0px horizontal overflow. Doing
+  this found seven contrast defects that were already shipped on the light
+  ground.
+- **VERIFY THE HARNESS REACHED THE SURFACE BEFORE TRUSTING WHAT IT SAYS ABOUT
+  IT.** A sweep of `/app` that follows redirects measures the LOGIN page 21
+  times and reports it as 21 clean surfaces. Check the rendered text, not the
+  status code.
+- **AN ORDERING CLAIM ABOUT PAINTING IS PROVED WITH FRAMES, NOT WITH
+  `first-contentful-paint`.** In dev the app is module-driven, so FCP lands
+  long after anything in the document and a boot script moved to the end of
+  `<body>` still "passes" an FCP ordering test. Capture the painted frames (a
+  CDP screencast) and classify them. A cold tab shows one white frame before
+  the navigation commits on either ground; that is the browser compositing the
+  outgoing blank document, and a warmed-up navigation between two app pages is
+  how you tell the two apart.
 - **`svelte-check` at the baseline: 0 errors, 0 warnings.** Re-derive it with `npx svelte-kit sync && npx svelte-check`; a session that measures a different number corrects this line in the same change.
 - **A session that creates migration files lists their full repo paths at the end of its response**, one line per file, in apply order, and states what SQL undoes each one (every file carries a `TO UNDO` section; quote it).
 
@@ -259,11 +279,58 @@ Everything in the palette comes from the official FIRST and FIRST LEGO League
 guidelines: see "FIRST branding" below, and `colors.css` for the sources and
 the measured contrast of every token.
 
-- **Light by default, on the brand's own white**, with FIRST black as the
-  ink. The accents are built for white; on black they measure 1.82 to 3.72.
-  FLL purple is the primary action, FIRST blue is links and focus, FLL green
-  is live/done, FIRST red is errors, and the brand gray is the thin rule the
-  FLL lockup guidelines prescribe.
+- **TWO MEASURED GROUNDS, NEITHER AN INVERSION OF THE OTHER.** The light
+  ground is the brand's own white with FIRST black as the ink; the dark ground
+  is FIRST black as the page, with the two surfaces above it that black mixed
+  toward the brand gray, and white mixed toward the same gray as the ink. Both
+  are derived, both are measured, and `tests/theme-contrast.test.ts`
+  re-measures the SHIPPED stylesheets rather than trusting a comment. A new
+  token, or a change to one, is measured on BOTH grounds in that test in the
+  same change. `scripts/derive-dark-palette.ts` is where the numbers come
+  from; it reproduces 0018's own recorded figures as its control.
+- **AN OFFICIAL ACCENT THAT CANNOT CARRY TEXT ON A GROUND BECOMES A FILL
+  THERE, AND ITS FOREGROUND BECOMES A DECLARED FUNCTIONAL COLOUR.** On white,
+  FLL green is 3.19 and FIRST red is 4.38; on the dark page, FLL purple is
+  1.82, FIRST blue 2.76 and FIRST red 3.72. So `--accent`, `--success` and
+  `--danger` are FILLS with a ground-independent ink, and `--accent-text`,
+  `--link`, `--success-text`, `--danger-text` and `--warning` carry the words.
+  **Never darken or lighten a brand colour and still call it the brand
+  colour**; the functional values are separate, are enumerated in `colors.css`,
+  are never brand expression, and never appear on or near a mark. That list
+  does not grow quietly.
+- **`--team-accent-ink` IS THE INK THAT SITS ON A FILLED ACCENT CHIP AND
+  NOTHING ELSE.** An accent-coloured LABEL on a card, on a surface or on the
+  accent wash is `--team-accent`, which is derived to clear 4.5 against all
+  three surfaces of its ground AND against its own wash. Using the ink token as
+  text put white on near-white in five places on the shipped light ground.
+  `--accent-ink` and `--success-ink` are likewise the inks for DIFFERENT fills
+  and are not interchangeable.
+- **THE GROUND IS RESOLVED ONCE, BEFORE FIRST PAINT, AND THE DARK PALETTE IS
+  WRITTEN DOWN ONCE.** Three states (system, light, dark), stored per device in
+  `localStorage`, collapsed to a concrete `light` or `dark` by the blocking
+  script at the top of `src/app.html`; CSS only ever sees
+  `:root[data-theme='dark']`. Do not add a `prefers-color-scheme` copy of the
+  palette: it is a second statement of one rule. `src/lib/theme/theme.ts` holds
+  the only copy of that script, and `tests/theme-toggle.test.ts` runs the one
+  in `app.html` against a stubbed browser so the two cannot drift.
+- **NEVER NAME A SVELTEKIT PLACEHOLDER INSIDE A COMMENT IN `src/app.html`.**
+  They are substituted by a plain string replace, comments included, and the
+  markup injected for the head carries comments of its own whose closing
+  delimiter ends the outer comment early -- spilling the rest of it onto the
+  page as body text on every screen.
+- **PRINT IS ALWAYS THE LIGHT GROUND, AND NO PRINT RULE RESTATES A COLOUR.**
+  The dark palette is declared inside `@media screen`, so a printed sheet never
+  sees it. An `@media print` block exists only to defeat the browser's "do not
+  print backgrounds" default and to drop the chrome; one that names a colour is
+  a second palette waiting to disagree with the first.
+- **`[data-ground='light']` FORCES A GROUND ON A SUBTREE, AND A FORCED GROUND
+  RE-DECLARES, IT DOES NOT INHERIT.** A `var()` resolves on the element that
+  DECLARES it, so anything selected on an ancestor (a team accent) inherits
+  straight through a plate unless the plate re-declares it -- which is why each
+  accent states both of its triples and the ground picks one. `color` is an
+  inherited VALUE too, already resolved on `<body>`, which is why `[data-ground]`
+  also sets it. The notebook's paper preview and the route planner's mat are
+  the two plates.
 - **No glows, no coloured backdrops.** A mark may not sit on a busy or
   distracting background, and a halo in a brand accent is the nearest thing
   to recolouring one. Elevation is a neutral shadow.
@@ -388,6 +455,17 @@ below are about DISTRIBUTION first and accuracy second. Both are load-bearing.
   SAME REASON**: it recomputes under a finger, mid-gesture, possibly offline.
   There is no SQL twin. 0017 stores the two taps and refuses a pair it could
   not invert; it does not restate the arithmetic.
+- **THE MAT IS A LIGHT PLATE ON BOTH GROUNDS.** `MatCanvas` and
+  `MatCalibrator` carry `data-ground="light"`, so the schematic, the picture,
+  the scrim and every overlay look the same whether the app around them is
+  white or dark. The dimming scrim is `--surface-0` and a real field layout is
+  a LIGHT drawing, so on a white ground "dim" means "fade the picture toward
+  white until the plan on top reads". Let the scrim follow a dark ground and
+  the same slider fades a light drawing toward black: glare at 0%, black at
+  90%, and in the middle the picture passes through the lightness of the ink on
+  top of it and the labels vanish. The cost, accepted: on the dark ground the
+  planner is a light rectangle in dark chrome. A fixture standing in for the
+  picture is a LIGHT drawing too, or the harness is testing the easy case.
 - **ANYTHING DRAWN OVER THE PICTURE CARRIES ITS OWN CONTRAST.** A layout is
   dense line art in every colour, so nothing on top may assume an even dark
   ground. `MatCanvas` switches on a contrast layer only while a picture is
@@ -435,6 +513,18 @@ behind every rule with its page number.
   and the mark withdrawn, because CSS cannot defend a subtree from those.
   Adding a prop that lets a caller change how a mark looks is the one change
   this component must never accept.
+- **THE GROUND SWAPS THE ASSET; IT NEVER STYLES THE MARK.** `BrandLogo`
+  renders BOTH supplied files and the ground's own tokens display exactly one,
+  so the right mark is right in the first painted frame rather than one
+  hydration later. There is no `variant` prop: with two grounds a caller cannot
+  know which one its mark will land on. Where the official download supplies no
+  reverse file (the FLL horizontal, vertical-icon and vertical lockups) the
+  full-colour mark gets a WHITE PLATE -- square, no border, no radius, no
+  shadow, extending past the full clear space, which is the background that
+  artwork is specified for, not a containing shape. Never a filter, an invert,
+  a blend or a recolouring, and never a prop that could ask for one. The
+  accessible name is on the wrapper, not on an image, because a `display:none`
+  image's alt text is announced by nothing.
 - **EVERY SURFACE IS A `BrandSurface`, MOUNTED AT THE ROOT LAYOUT.** It
   carries the verbatim trademark attribution and two full official logos, so
   a route added next season inherits both without its author knowing the

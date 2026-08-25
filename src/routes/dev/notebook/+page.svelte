@@ -384,7 +384,7 @@
 	@media print {
 		.hz {
 			padding: 0;
-			background: #ffffff;
+			background: var(--surface-0);
 		}
 		.hz__bar,
 		.hz__log {

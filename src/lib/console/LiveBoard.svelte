@@ -332,13 +332,13 @@
 		color: var(--text-3);
 	}
 	.stat--alarm {
-		background: rgba(255, 111, 125, 0.16);
+		background: var(--danger-wash);
 	}
 	.stat--alarm .stat__value {
 		color: var(--danger-text);
 	}
 	.stat--warn {
-		background: rgba(255, 197, 107, 0.14);
+		background: var(--warning-wash);
 	}
 	.stat--warn .stat__value {
 		color: var(--warning);
@@ -364,7 +364,15 @@
 	}
 
 	/* A blocked card breathes, so it is findable without reading. Gated by the
-	   media query, as every animation in this repo is. */
+	   media query, as every animation in this repo is.
+
+	   IT BREATHES ITS RULE, NOT A HALO. The outer half of this used to be a
+	   1.5rem amber glow in a hard-coded rgba, which is the bioluminescent
+	   theme's last survivor on the console and the one thing the FIRST
+	   guidelines are most explicit about not putting near a mark. The inset
+	   rule thickens instead: same "look here" at a glance, no light spilling
+	   onto the page, and it reads on both grounds because --warning is a
+	   token that reverses with them. */
 	@media (prefers-reduced-motion: no-preference) {
 		.tcard--loud {
 			animation: tcard-loud 2.6s ease-in-out infinite;
@@ -375,7 +383,7 @@
 				box-shadow: 0 0 0 1px var(--warning) inset;
 			}
 			50% {
-				box-shadow: 0 0 0 1px var(--warning) inset, 0 0 1.5rem rgba(255, 197, 107, 0.28);
+				box-shadow: 0 0 0 4px var(--warning) inset;
 			}
 		}
 	}

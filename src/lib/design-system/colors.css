@@ -1,12 +1,12 @@
 /* ==========================================================================
-   COLOUR TOKENS, BUILT FROM THE OFFICIAL PALETTES. Nothing here is invented
-   except where a line says so and explains why.
+   COLOUR TOKENS, BUILT FROM THE OFFICIAL PALETTES, ON TWO MEASURED GROUNDS.
+   Nothing here is invented except where a line says so and explains why.
 
    SOURCES, read and quoted rather than remembered:
      FIRST Branding & Design Guidelines, "FIRST COLOR PALETTE" (p9):
        "The FIRST color palette is comprised mainly of black with accent
-        colors of blue, red and gray. To maintain brand consistency and avoid
-        confusion, only use the established FIRST colors."
+				colors of blue, red and gray. To maintain brand consistency and avoid
+				confusion, only use the established FIRST colors."
        blue #0066B3 (PMS 286), red #ED1C24 (PMS 485),
        gray #9A989A (PMS Cool Gray 7), black #231F20 (PMS Black).
      FIRST LEGO League Branding & Lockup Guidelines, "COLOR PALETTE" (p12):
@@ -14,26 +14,61 @@
        black #231F20, purple #662D91 (PMS 266), green #00A651 (PMS 361),
        red #ED1C24 (PMS 485).
 
-   WHY THE GROUND IS WHITE AND NOT BLACK. The palettes are "mainly black" as
-   INK, not as background: the guidelines' preferred marks are the full-colour
+   WHY THE DEFAULT GROUND IS WHITE. The palettes are "mainly black" as INK,
+   not as background: the guidelines' preferred marks are the full-colour
    versions, and the reverse versions exist for "black or dark backgrounds"
    as a special case. The accents are also built for white: measured against
-   #FFFFFF they are 8.94 (purple), 5.91 (blue), 4.38 (red), 3.19 (green);
-   measured against #231F20 the same four are 1.82, 2.76, 3.72 and 5.10, so
-   on a black ground the brand's own accents cannot carry text at all. A
-   white ground is both the brand-accurate choice and the accessible one.
+   #FFFFFF they are 8.94 (purple), 5.91 (blue), 4.38 (red), 3.19 (green).
 
-   EVERY NUMBER BELOW IS MEASURED, not asserted. Ratios are WCAG contrast
-   against #FFFFFF unless stated.
+   WHY THERE IS A SECOND GROUND, AND WHAT IT IS NOT. It is not an inversion
+   of the first. On the brand's own black the same four accents measure 1.82,
+   2.76, 3.72 and 5.10, so THREE OF THE FOUR CANNOT CARRY TEXT THERE. The
+   dark ground is therefore derived, not flipped: the page is FIRST black,
+   the steps above it are that black mixed toward the brand gray, the ink is
+   white mixed toward the same gray, and every accent that cannot carry text
+   is demoted to a fill or a rule and paired with a foreground that can.
+
+   NO BRAND COLOUR IS TINTED, SCREENED OR LIGHTENED AND STILL CALLED THE
+   BRAND COLOUR. That is the rule the guidelines state outright ("DO NOT
+   rotate or change the color", BG p13) and it is the rule 0018 already
+   answered on the white ground by declaring --success-text, --danger-text
+   and --warning as separate FUNCTIONAL values that are not brand
+   expression. The dark ground needs four more of those, for the same reason
+   and under the same restriction: they are never used as a brand colour,
+   never stand in for one, and never appear on or near a FIRST mark. The
+   list is enumerated below and does not grow quietly.
+   (The guideline PDFs are FIRST's documents and are not committed; the
+   clauses relied on here are the ones quoted verbatim in
+   src/lib/brand/rules.ts and above. Nothing beyond those clauses is
+   assumed, which is why no tint or screen of a brand colour appears here.)
+
+   EVERY NUMBER BELOW IS MEASURED, not asserted, by
+   scripts/derive-dark-palette.ts, and re-measured against THIS FILE by
+   tests/theme-contrast.test.ts so the comments cannot drift from the values.
+
+   HOW THE TWO GROUNDS ARE SELECTED.
+     :root                       the light ground, and the only ground in print
+     :root[data-theme='dark']    the dark ground, screen only
+     [data-ground='light']       a subtree forced light on either ground
+   The dark block is inside @media screen, which is what makes print always
+   light without restating a single token. src/lib/theme/ resolves the
+   three-state preference (system / light / dark) to a concrete data-theme
+   before first paint.
    ========================================================================== */
-:root {
-	/* --- the official palettes, named exactly, used nowhere else as literals */
-	--first-blue: #0066b3; /* 5.91 */
-	--first-red: #ed1c24; /* 4.38 */
-	--first-gray: #9a989a; /* 2.86 -- decorative only, see --rule-gray */
-	--first-black: #231f20; /* 16.30 */
-	--fll-purple: #662d91; /* 8.94 */
-	--fll-green: #00a651; /* 3.19 */
+
+:root,
+[data-ground='light'] {
+	color-scheme: light;
+
+	/* --- the official palettes, named exactly, used nowhere else as literals.
+	   These four values are the same on both grounds. A brand colour does not
+	   change because the page did. */
+	--first-blue: #0066b3; /* 5.91 on white, 2.76 on the dark page */
+	--first-red: #ed1c24; /* 4.38 on white, 3.72 on the dark page */
+	--first-gray: #9a989a; /* 2.86 on white, 5.69 on the dark page */
+	--first-black: #231f20; /* 16.30 on white */
+	--fll-purple: #662d91; /* 8.94 on white, 1.82 on the dark page */
+	--fll-green: #00a651; /* 3.19 on white, 5.10 on the dark page */
 
 	/* --- grounds. White page; the steps above it are the two ESTABLISHED
 	   neutrals mixed toward white, so no new hue enters the system. */
@@ -44,8 +79,8 @@
 	/* --- ink. The two established neutrals, mixed toward black for the
 	   secondary steps, so secondary text clears 4.5 instead of the 2.86 the
 	   brand gray manages on its own. */
-	--text-1: var(--first-black); /* 16.30 -- body and headings */
-	--text-2: #534f51; /* 8.06 / 7.39 / 6.72 on the three grounds */
+	--text-1: var(--first-black); /* 16.30 / 14.95 / 13.58 -- body and headings */
+	--text-2: #534f51; /* 8.06 / 7.39 / 6.72 */
 	--text-3: #6b696a; /* 5.45 / 5.00 / 4.54 -- clears 4.5 on ALL THREE, which
 	                      is why it is not the brand gray: a hint sitting on a
 	                      raised control has to be readable too. */
@@ -53,9 +88,13 @@
 	/* --- semantic roles, each mapped to an official colour.
 	   PRIMARY is FLL purple: this is a FIRST LEGO League tool and purple is
 	   the division palette's signature. LINKS are FIRST blue. */
-	--accent: var(--fll-purple); /* 8.94; white on it 8.94 */
-	--accent-ink: #ffffff; /* text ON --accent */
-	--link: var(--first-blue); /* 5.91 */
+	--accent: var(--fll-purple); /* a FILL. White on it 8.94. */
+	--accent-ink: #ffffff; /* text ON --accent: 8.94 */
+	/* --accent-text is the primary colour used AS TEXT. On this ground it is
+	   exactly FLL purple, because purple carries text on white: 8.94 / 8.21 /
+	   7.45. On the dark ground it cannot be, and is declared functional. */
+	--accent-text: var(--fll-purple);
+	--link: var(--first-blue); /* 5.91 / 5.42 / 4.93 */
 	--focus-ring: var(--first-blue);
 
 	/* SUCCESS / LIVE is FLL green. At 3.19 on white it clears 3:1 for a
@@ -65,46 +104,196 @@
 	--success-ink: var(--first-black); /* 5.10 on --success */
 
 	/* DANGER is FIRST red. 4.38 on white is just under the 4.5 body-text
-	   floor, so red is a border, an icon and a large bold label; the words of
-	   an error are set in --text-1 on a red-bordered surface. Do not set
-	   small error text in red and do not darken the brand red to make it
-	   pass -- altering a brand colour is the thing the guidelines forbid. */
+	   floor, so red is a FILL and an icon; the words of an error are set in
+	   --danger-text, and a danger BORDER is --danger-text too, because the
+	   official red is 3.50 on --surface-2 here and only 2.39 on the dark
+	   ground's raised surface. Do not set small error text in red and do not
+	   darken the brand red to make it pass -- altering a brand colour is the
+	   thing the guidelines forbid. */
 	--danger: var(--first-red);
 	--danger-ink: #ffffff; /* 4.38 on --danger: large bold only */
 
-	/* --- THE THREE FUNCTIONAL COLOURS, DECLARED AS SUCH.
+	/* --- THE FUNCTIONAL COLOURS, DECLARED AS SUCH.
 	   The brand palettes are for BRAND EXPRESSION: marks, rules, primary
 	   action, links. A user interface also needs state colours that clear
-	   4.5:1 as small text, and two of the brand accents cannot (green is
-	   3.19 on white, red is 4.38). Rather than darken a brand colour and
+	   4.5:1 as small text, and on white two of the brand accents cannot
+	   (green is 3.19, red is 4.38). Rather than darken a brand colour and
 	   call it the brand colour -- which is the one thing the guidelines
 	   forbid -- the text-carrying variants are declared separate, functional
 	   values. Like a team accent, they never appear on or near a FIRST mark
 	   and never stand in for a brand colour.
 
-	   --success / --danger stay EXACTLY the official green and red and are
-	   used as fills, borders, dots and large bold labels. --success-text and
-	   --danger-text carry small text. --warning has no brand equivalent at
-	   all: "blocked" is not "error", and a mentor scanning the live board
-	   has to tell a child who is stuck from a request that failed. */
-	--success-text: #046b37; /* 6.64 / 6.09 / 5.53 on the three grounds */
+	   --warning has no brand equivalent at all: "blocked" is not "error",
+	   and a mentor scanning the live board has to tell a child who is stuck
+	   from a request that failed. */
+	--success-text: #046b37; /* 6.64 / 6.09 / 5.53 */
 	--danger-text: #bf1219; /* 6.33 / 5.81 / 5.28 */
 	--warning: #8a5a00; /* 5.93 / 5.45 / 4.95 */
 	--warning-ink: #ffffff; /* 5.93 on --warning */
+	/* A wash behind a warning or an error block. Neutral-tinted, never a
+	   screen of a brand colour: it is mixed from the ground and the
+	   functional colour, both of which are already non-brand here. */
+	--warning-wash: #fdf3e2; /* --text-1 on it 15.02 */
+	--danger-wash: #fdeceb; /* --text-1 on it 14.32 */
+	/* The scrim behind a modal sheet. Not a colour so much as a dimming, so
+	   it is the ground's own ink at an opacity, and it darkens on both. */
+	--scrim: rgba(35, 31, 32, 0.55);
 
 	/* --- rules and boundaries.
 	   --rule-gray IS the brand gray, and it is the "thin gray line" the FLL
 	   lockup guidelines prescribe between a paired FIRST logo and a division
-	   lockup. --boundary carries meaning and clears 3:1 on all three
-	   grounds with headroom (4.38 / 4.02 / 3.65). --hairline decorates
-	   (1.38 on white) and is not held to that; do not raise it. */
+	   lockup. It is the brand gray on BOTH grounds (2.86 on white, 5.69 on
+	   the dark page) and is never substituted. --boundary carries meaning and
+	   clears 3:1 on all three grounds with headroom (4.38 / 4.02 / 3.65).
+	   --hairline decorates (1.38 on white) and is not held to that; do not
+	   raise it. */
 	--rule-gray: var(--first-gray);
 	--boundary: #7a787a;
 	--hairline: #dcdbdc;
+
+	/* Elevation is a neutral shadow and nothing else: no glow, no tint. */
+	--shadow-color: 35, 31, 32; /* FIRST black, as channels for rgba() */
+	--shadow-strength-1: 0.06;
+	--shadow-strength-2: 0.08;
+
+
+	/* --- WHICH SUPPLIED LOGO FILE THIS GROUND CALLS FOR.
+	   A FIRST mark is never recoloured, filtered or inverted to suit a
+	   ground: the official downloads include a reverse file for a dark
+	   background, and the ground SWAPS THE ASSET. BrandLogo renders both
+	   supplied files and lets these two switches show exactly one, which is
+	   what makes the right mark correct in the FIRST PAINTED FRAME rather
+	   than one hydration later. They are not styling: nothing here touches
+	   how a mark looks, only which file is on the page.
+
+	   --mark-plate is for the three FLL lockups the download supplies with
+	   NO reverse file. On this ground it is transparent because none is
+	   needed. See BrandLogo.svelte for what it becomes on the other one. */
+	--mark-full-color-display: block;
+	--mark-reverse-display: none;
+	--mark-plate: transparent;
 
 	/* --- aliases the app writes against. */
 	--surface-page: var(--surface-0);
 	--text-body: var(--text-1);
 	--text-muted: var(--text-2);
 	--text-faint: var(--text-3);
+}
+
+/**
+ * A FORCED-GROUND SUBTREE RE-ESTABLISHES THE INK, NOT JUST THE TOKENS.
+ *
+ * `color` is an INHERITED VALUE, and it was resolved on <body> against
+ * whichever ground the page is on. A subtree that only redefines custom
+ * properties therefore keeps the OUTER ground's ink for anything relying on
+ * inheritance rather than declaring its own colour -- which on the route
+ * planner's light mat plate meant SVG text inheriting the dark ground's
+ * near-white ink onto a white mat, measured at 1.11. One declaration fixes
+ * every such case, present and future.
+ */
+[data-ground] {
+	color: var(--text-1);
+}
+
+/* ==========================================================================
+   THE DARK GROUND. SCREEN ONLY -- which is what makes print light without
+   restating one token. See "Print is always light" in app.css.
+
+   THE GROUND: the brand's own black is the page, and the two steps above it
+   are that black mixed toward the brand gray, exactly as the white ground's
+   steps are white mixed toward it. No new hue enters the system on this side
+   either. It is deliberately NOT the old near-black "deep water" theme 0018
+   removed: there is no radial backdrop, no coloured glow and no tinted
+   elevation anywhere below.
+
+   WHAT MOVED AND WHY. Of the four brand accents only FLL green carries text
+   here (5.10). Purple (1.82) and blue (2.76) cannot even be rules; red
+   (3.72) can be a rule on the page but not on a raised surface (2.39). So on
+   this ground purple and blue are FILLS with white ink -- both of which are
+   ground-independent pairings and stay exactly the official colours -- and
+   the four foregrounds that used to be brand colours become declared
+   functional values, in the same category as --success-text on white.
+   ========================================================================== */
+@media screen {
+	:root[data-theme='dark'],
+	[data-ground='dark'] {
+		color-scheme: dark;
+
+		/* --- grounds: FIRST black, stepped toward the brand gray. */
+		--surface-0: #231f20; /* page          -- --text-1 on it 14.69 */
+		--surface-1: #353233; /* cards, bars   -- --text-1 on it 11.43 */
+		--surface-2: #413f40; /* raised, hover -- --text-1 on it  9.42 */
+
+		/* --- ink: white, stepped toward the brand gray. --text-3 clears 4.5
+		   on ALL THREE grounds, the same rule the white ground holds. */
+		--text-1: #f3f3f3; /* 14.69 / 11.43 / 9.42 */
+		--text-2: #cdcccd; /* 10.18 /  7.92 / 6.53 */
+		--text-3: #b0aeb0; /*  7.40 /  5.76 / 4.74 */
+
+		/* --- the primary action is STILL FLL purple, unaltered, because a
+		   purple fill with white ink measures 8.94 whatever the page behind
+		   it is. Only purple AS TEXT had to move. */
+		--accent: var(--fll-purple);
+		--accent-ink: #ffffff; /* 8.94 on --accent */
+
+		/* --- THE FOUR FOREGROUNDS THAT CANNOT BE BRAND COLOURS HERE.
+		   Each is a declared FUNCTIONAL colour, not a tint of the brand
+		   colour it replaces and never presented as one. They exist because
+		   FLL purple (1.82), FIRST blue (2.76) and FIRST red (3.72) cannot
+		   carry text on this ground, and because "blocked" has no brand
+		   equivalent on either ground. They are never used as brand
+		   expression and never appear on or near a FIRST mark. */
+		--accent-text: #cc95fe; /* 7.22 / 5.62 / 4.63 */
+		--link: #65b1fe; /* 7.20 / 5.60 / 4.61 */
+		--focus-ring: #65b1fe;
+		--success-text: #03c662; /* 7.19 / 5.59 / 4.61 */
+		--danger-text: #ff8b7f; /* 7.18 / 5.59 / 4.60 */
+
+		/* --- fills keep the official colours and their ground-independent
+		   ink. Green still takes black ink; red still takes white ink and is
+		   still large-bold-only at 4.38. */
+		--success: var(--fll-green);
+		--success-ink: var(--first-black); /* 5.10 on --success */
+		--danger: var(--first-red);
+		--danger-ink: #ffffff; /* 4.38 on --danger: large bold only */
+
+		/* --warning is functional on both grounds; on this one it is a light
+		   amber taking the brand black as its ink rather than a dark amber
+		   taking white. The token pair is what stays true, not the value. */
+		--warning: #e59e2d; /* 7.19 / 5.59 / 4.61 */
+		--warning-ink: var(--first-black); /* 7.19 on --warning */
+		--warning-wash: #4a3a22; /* --text-1 on it 8.98 */
+		--danger-wash: #4a2f2c; /* --text-1 on it 9.42 */
+		--scrim: rgba(0, 0, 0, 0.72);
+
+		/* --- rules. The brand gray is a STRONGER rule here than on white
+		   (5.69 against the page), so the lockup rule needs no substitute.
+		   --boundary is a lighter neutral that clears 3:1 on all three dark
+		   grounds (5.02 / 3.91 / 3.22); --hairline decorates at 1.38, the
+		   same decorative weight it carries on white. */
+		--rule-gray: var(--first-gray);
+		--boundary: #918e8f;
+		--hairline: #3a3738;
+
+
+		/* --- THE MARKS: THE SUPPLIED REVERSE FILE, NEVER A FILTERED ONE.
+		   The official downloads carry a reverse version of the FIRST
+		   horizontal logo, the FIRST vertical logo and the FIRST LEGO League
+		   Challenge horizontal stacked lockup. Those three swap file here.
+		   The other three lockups are supplied in full colour ONLY, so they
+		   get a WHITE PLATE instead: the ground the full-colour artwork is
+		   specified for, put underneath it, rather than the artwork altered
+		   to suit this one. The plate is square, has no border, no radius and
+		   no shadow, and extends past the mark's full clear space, so it is a
+		   BACKGROUND and not a containing shape. */
+		--mark-full-color-display: none;
+		--mark-reverse-display: block;
+		--mark-plate: #ffffff;
+
+		/* Elevation on a dark ground: a neutral shadow has almost nothing to
+		   darken, so it goes to true black and deepens. Still no tint. */
+		--shadow-color: 0, 0, 0;
+		--shadow-strength-1: 0.4;
+		--shadow-strength-2: 0.5;
+	}
 }

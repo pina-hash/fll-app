@@ -1481,7 +1481,10 @@
 		gap: var(--space-2);
 	}
 	.rp__delete {
-		color: var(--danger);
+		/* The official FIRST red is 4.02 against --surface-1 on the light
+		   ground and 2.90 on the dark one: it is a fill and an icon, never a
+		   label. The functional variant is what carries the word. */
+		color: var(--danger-text);
 	}
 	.rp__add-launch {
 		margin-top: var(--space-3);

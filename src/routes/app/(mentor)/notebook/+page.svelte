@@ -51,7 +51,11 @@
 		font-family: var(--font-display);
 		font-size: var(--fs-h3);
 		font-weight: var(--fw-black);
-		color: var(--team-accent-ink, var(--text-1));
+		/* The accent, not the ink that goes ON the accent: this is a label on
+		   a .tile, not on a filled chip. --team-accent-ink here was white on
+		   --surface-2 at 1.20. Every accent is derived to clear 4.5 against
+		   all three surfaces of its ground; see team-accents.css. */
+		color: var(--team-accent, var(--text-1));
 	}
 	.nbp__todo {
 		color: var(--warning);

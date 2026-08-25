@@ -193,7 +193,15 @@
 	);
 </script>
 
-<div class="cal">
+<!--
+	THE SAME LIGHT PLATE AS THE MAT, FOR THE SAME REASON. This screen draws
+	the mat's outline, a 250 mm grid and a tick every foot over a mentor's
+	photograph of a light printed surface, and asks them to confirm it lines
+	up. The overlay's contrast is measured against that light picture; letting
+	the ground move it would change what a mentor is being asked to confirm.
+	See MatCanvas.svelte for the argument in full.
+-->
+<div class="cal" data-ground="light">
 	<div class="cal__head">
 		<h2 class="cal__title">Calibrate the field picture</h2>
 		<p class="cal__step">

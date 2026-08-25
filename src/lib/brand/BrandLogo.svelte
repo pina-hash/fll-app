@@ -22,6 +22,23 @@
 	 *  - `all: initial` on the image and `--team-accent: initial` on its
 	 *    wrapper: a team accent, an inherited colour or a page-level image
 	 *    rule cannot reach the mark. A team colour is never part of a mark.
+	 *  - THE GROUND SWAPS THE ASSET; IT NEVER STYLES THE MARK. Where the
+	 *    official download supplies a reverse file, BOTH supplied files are
+	 *    rendered and the ground's own tokens
+	 *    (--mark-full-color-display / --mark-reverse-display) show exactly
+	 *    one. Where it supplies no reverse file the full-colour mark is given
+	 *    a WHITE PLATE (--mark-plate) instead: the background that artwork is
+	 *    specified for, rather than the artwork altered to suit a background.
+	 *    There is no filter, no invert and no blend anywhere in this file,
+	 *    and no prop that could ask for one.
+	 *
+	 *    THE COST, STATED. Rendering both files means a browser fetches both,
+	 *    including the one it is not showing: about 225 KB more across the
+	 *    footer's two marks, once, then cached. The alternative was choosing
+	 *    the file in JavaScript, which cannot know the ground until after
+	 *    hydration and would therefore paint the wrong mark for a frame on
+	 *    every dark-ground load. A frame of the wrong FIRST logo is worse
+	 *    than a cached PNG.
 	 *  - An ANCESTOR's filter, blend mode, opacity or rotation CAN reach it --
 	 *    those rasterise the whole subtree and no descendant declaration
 	 *    escapes them -- so they are DETECTED instead. The mark walks its own
@@ -40,6 +57,7 @@
 	import {
 		MARKS,
 		ancestorHazard,
+		darkGroundStrategy,
 		assertMarkAllowed,
 		assertMinimumHeight,
 		clearSpacePx,
@@ -51,17 +69,18 @@
 		mark: BrandMark;
 		/** Rendered height in CSS pixels. Width follows the supplied file. */
 		height: number;
-		/** 'reverse' is the dark-background file, and only where one is
-		 *  supplied. The guidelines forbid a dark-background logo on a light
-		 *  background and vice versa, so this is a deliberate choice per
-		 *  placement, never automatic. */
-		variant?: 'full-color' | 'reverse';
 		/** Set only where the same words already sit beside the mark; it
 		 *  never adds text TO the mark. */
 		decorative?: boolean;
 	}
 
-	let { mark, height, variant = 'full-color', decorative = false }: Props = $props();
+	// THERE IS NO `variant` PROP, DELIBERATELY. The guidelines forbid a
+	// dark-background logo on a light background and vice versa, and once the
+	// page has two grounds a CALLER cannot know which one its mark will land
+	// on: the same footer renders on both, and a mentor can change the answer
+	// mid-meeting. So the ground decides, in CSS, and no call site can get it
+	// wrong by passing the other one.
+	let { mark, height, decorative = false }: Props = $props();
 
 	const register = useBrandRegister();
 	// THE INITIAL-VALUE CAPTURE IS THE DESIGN. A mark registers itself once,
@@ -129,10 +148,10 @@
 	});
 
 	let width = $derived(spec.file ? Math.round((height * spec.width) / spec.height) : 0);
-	let src = $derived(
-		variant === 'reverse' && spec.reverseFile ? spec.reverseFile : (spec.file ?? '')
-	);
 	let pad = $derived(clearSpacePx(height));
+	/** No reverse file supplied means the full-colour mark gets the white
+	 *  ground it is specified for, on whichever ground the page is. */
+	let plated = $derived(darkGroundStrategy(mark) === 'light-plate');
 </script>
 
 {#if refused}
@@ -143,27 +162,56 @@
 		{#if dev}<span class="refused__note">Brand rule: {refused}</span>{/if}
 	</span>
 {:else}
-	<!-- The wrapper exists ONLY to hold the clear space. No border, no
-	     background, no radius: a containing shape around a mark is
-	     forbidden. --team-accent is reset so a team colour cannot leak in. -->
+	<!-- The wrapper exists ONLY to hold the clear space, and on the dark
+	     ground the white plate for a mark with no reverse file. No border, no
+	     radius, no shadow: a containing shape around a mark is forbidden, and
+	     the plate is a background rather than a shape. --team-accent is reset
+	     so a team colour cannot leak in. -->
 	<span
 		bind:this={wrapper}
 		class="mark"
+		class:mark--plated={plated}
+		role={decorative ? undefined : 'img'}
+		aria-label={decorative ? undefined : spec.alt}
+		aria-hidden={decorative ? 'true' : undefined}
 		style:padding="{pad}px"
 		style:--team-accent="initial"
 		style:--team-accent-wash="initial"
 		style:--team-accent-ink="initial"
 	>
+		<!-- THE NAME IS ON THE WRAPPER, NOT ON EITHER IMAGE. Only one of the
+		     two supplied files is displayed at a time, and a display:none
+		     image's alt text is announced by nothing, so putting the name on
+		     an image would mean the mark had no accessible name on one of the
+		     two grounds. The wrapper is role="img" with the label instead, and
+		     both files are decorative. -->
 		<img
-			{src}
-			alt={decorative ? '' : spec.alt}
-			aria-hidden={decorative ? 'true' : undefined}
+			class="mark__img mark__img--full-color"
+			src={spec.file}
+			alt=""
+			aria-hidden="true"
 			decoding="async"
 			style:height="{height}px"
 			style:width="{width}px"
 			style:max-width="100%"
 			style:object-fit="contain"
 		/>
+		{#if spec.reverseFile}
+			<!-- The supplied reverse file. Exactly one of the two is displayed,
+			     by the ground's own tokens; the other is not styled, it is
+			     simply not displayed. -->
+			<img
+				class="mark__img mark__img--reverse"
+				src={spec.reverseFile}
+				alt=""
+				aria-hidden="true"
+				decoding="async"
+				style:height="{height}px"
+				style:width="{width}px"
+				style:max-width="100%"
+				style:object-fit="contain"
+			/>
+		{/if}
 	</span>
 {/if}
 
@@ -177,6 +225,16 @@
 		filter: none;
 		line-height: 0;
 	}
+	/* THE LIGHT PLATE. Only for a mark the download supplies in full colour
+	   with no reverse version, and only on a ground that needs one:
+	   --mark-plate is `transparent` on the light ground, so this declaration
+	   does nothing there. It is square, has no border, no radius and no
+	   shadow, and the wrapper's padding is the mark's full clear space, so
+	   the white extends past the clear space on every side and the mark sits
+	   in a plain field rather than inside a shape. */
+	.mark--plated {
+		background: var(--mark-plate);
+	}
 	.mark img {
 		/* Reset everything a page-level rule could have done to an image, so
 		   the mark is used exactly as supplied. The size comes back as an
@@ -184,14 +242,38 @@
 		all: initial;
 		display: block;
 	}
+	/* WHICH SUPPLIED FILE THIS GROUND SHOWS. Two declarations, no filter, no
+	   colour: the value of each token is `block` on one ground and `none` on
+	   the other, and a [data-ground='light'] subtree or a printed sheet gets
+	   the light answer by inheriting it, with nothing here to say so. */
+	.mark .mark__img--full-color {
+		display: var(--mark-full-color-display);
+	}
+	.mark .mark__img--reverse {
+		display: var(--mark-reverse-display);
+	}
+	/* A PLATED MARK HAS NO SECOND FILE TO SWAP TO, so it must not be hidden
+	   by the token that hides the full-colour file on the dark ground: the
+	   plate under it IS how it reaches that ground. Without this the three
+	   lockups with no reverse version would simply vanish in dark mode. */
+	.mark--plated .mark__img--full-color {
+		display: block;
+	}
 	.refused {
 		display: inline-block;
 	}
+	/* The dev-only note carries its OWN ground. A refusal appears wherever a
+	   mark was going to appear, which is by definition a place this component
+	   knows nothing about -- a team-accented panel, a filled header, a
+	   deliberately hostile block on the brand harness. Inheriting the
+	   background meant the explanation of the refusal was sometimes
+	   unreadable, which was measured at 1.11 on the harness. */
 	.refused__note {
 		display: inline-block;
 		padding: var(--space-1) var(--space-2);
-		border: 1px dashed var(--danger);
+		border: 1px dashed var(--danger-text);
 		border-radius: var(--radius-control);
+		background: var(--danger-wash);
 		color: var(--danger-text);
 		font-size: var(--fs-label);
 		font-weight: var(--fw-bold);

@@ -1,5 +1,6 @@
 /* ==========================================================================
-   TEAM ACCENTS: ELEVEN FUNCTIONAL COLOURS, NONE OF THEM BRAND COLOURS.
+   TEAM ACCENTS: ELEVEN FUNCTIONAL COLOURS, NONE OF THEM BRAND COLOURS,
+   MEASURED ON BOTH GROUNDS.
 
    A team's accent is DATA. `teams.accent` is an enum in the database, the
    server prints it as a `data-accent` attribute, and this file is the only
@@ -15,104 +16,229 @@
    recolours or backs a logo, and never appears inside a mark's clear space.
    BrandLogo.svelte enforces the last of those by refusing to inherit it.
 
-   RED AND BLUE ARE EXCLUDED, ON PURPOSE. The robot game mat's two launch
-   areas are red and blue; a team accent in either hue would be read as a
-   launch area on the route planner. Every accent below sits outside hue
-   [335, 25] (red) and [200, 258] (blue), and migration 0018 says the same
-   thing to anyone tempted to widen the set later.
+   RED AND BLUE ARE EXCLUDED, ON PURPOSE, ON BOTH GROUNDS. The robot game
+   mat's two launch areas are red and blue; a team accent in either hue would
+   be read as a launch area on the route planner. Every accent below sits
+   outside hue [335, 25] (red) and [200, 258] (blue), and migration 0018 says
+   the same thing to anyone tempted to widen the set later. That exclusion is
+   why the dark variants hold their hue rather than being lifted freely: an
+   unconstrained lift walked magenta from hue 326 to 336, straight into the
+   red band.
 
-   MEASURED, not asserted. Contrast against the white page ground, and the
-   ink that sits ON the accent when it is a filled chip:
+   ALL ELEVEN FAILED ON THE DARK GROUND AND ALL ELEVEN WERE RE-DERIVED.
+   NONE WAS DROPPED. Measured against the dark page (#231F20) the shipped set
+   ran from 1.81 (olive) to 3.38 (orange and purple): not one of them could
+   carry text there, because every one of them was built to be dark enough for
+   white. Dropping the failures would have meant dropping all eleven, and
+   would have orphaned whatever colour a team had already chosen, so each got
+   a dark-ground variant instead: THE SAME HUE (each ground held within 3
+   degrees of 0018's own value, measured in sRGB, which is the space the
+   launch-area exclusions are written in), lifted
+   in lightness until it clears 4.5 on all three dark surfaces, taking the
+   brand black as its ink instead of white.
 
-     bark     #6B4E32  hue  29   7.61 on white   white ink 7.61
-     orange   #A76105  hue  34   4.82            white ink 4.82
-     olive    #3B5003  hue  76   8.99            white ink 8.99
-     lime     #497E03  hue  86   4.92            white ink 4.92
-     green    #025A31  hue 152   8.37            white ink 8.37
-     sage     #427B67  hue 159   4.93            white ink 4.93
-     teal     #026478  hue 190   6.78            white ink 6.78
-     violet   #721FD1  hue 268   7.41            white ink 7.41
-     purple   #C714C7  hue 300   4.82            white ink 4.82
-     orchid   #9C117B  hue 314   7.55            white ink 7.55
-     magenta  #D4057B  hue 326   5.11            white ink 5.11
+   The variant is chosen to be the CLOSEST valid colour to the light one, not
+   the most separated: a team picks a colour by name once and it has to still
+   be that colour on the other ground. Maximising separation instead produced
+   a near-white "magenta" and a beige "orange" -- a different palette wearing
+   the same names.
 
-   Every one clears 4.5:1 on the page ground in BOTH directions, so an accent
-   can carry small text and can be a filled chip with white ink, with one
-   rule and no exceptions. Every wash carries --text-1 at 13.6 or better.
+   MEASURED, not asserted. Each row is `0018's value -> the value shipped`,
+   then that colour's contrast against --surface-0 / -1 / -2 of its own
+   ground, then its contrast against ITS OWN WASH -- which is the pairing a
+   selected chip makes: an accent-coloured label on an accent-tinted panel.
 
-   SEPARATION, measured as CIE76 dE over the eleven: the closest pair is
-   green/sage at 21.4, and the closest any accent comes to an official brand
-   colour is orchid to FLL purple at 27.9. Eleven is where that lands; a
-   twelfth in this gamut dropped the closest pair to 17.3, which is why there
-   are eleven and not twelve. Colour is never the only signal anyway -- the
-   picker names every colour and the team number is always shown.
+               LIGHT GROUND (ink #FFFFFF)                DARK GROUND (ink #231F20)
+																				s0/s1/s2  wash                            s0/s1/s2  wash
+     bark     #6B4E32 -> #6A4D32   7.72 / 7.08 / 6.43   6.50     #6B4E32 -> #CCA586   7.21 / 5.61 / 4.62   5.26
+     orange   #A76105 -> #9C5700   5.56 / 5.10 / 4.63   4.75     #A76105 -> #EB9D47   7.33 / 5.71 / 4.70   5.32
+     olive    #3B5003 -> #3B5005   8.99 / 8.25 / 7.49   7.54     #3B5003 -> #A4B46D   7.24 / 5.63 / 4.64   5.24
+     lime     #497E03 -> #417400   5.64 / 5.17 / 4.70   4.82     #497E03 -> #88BB4C   7.19 / 5.59 / 4.61   5.26
+     green    #025A31 -> #024724  10.88 / 9.98 / 9.07   9.11     #025A31 -> #53C289   7.33 / 5.71 / 4.70   5.31
+     sage     #427B67 -> #3B735F   5.52 / 5.06 / 4.60   4.69     #427B67 -> #71BAA2   7.18 / 5.59 / 4.60   5.24
+     teal     #026478 -> #036377   6.87 / 6.31 / 5.73   5.80     #026478 -> #74B7C8   7.26 / 5.65 / 4.65   5.29
+     violet   #721FD1 -> #7320D3   7.30 / 6.70 / 6.08   6.16     #721FD1 -> #C29BF2   7.19 / 5.60 / 4.61   5.22
+     purple   #C714C7 -> #B608BD   5.59 / 5.12 / 4.66   4.77     #C714C7 -> #FF76FE   7.20 / 5.60 / 4.61   5.23
+     orchid   #9C117B -> #9A137B   7.63 / 7.00 / 6.36   6.44     #9C117B -> #D998CB   7.22 / 5.62 / 4.63   5.25
+     magenta  #D4057B -> #C70074   5.71 / 5.23 / 4.75   4.87     #D4057B -> #FE83C5   7.19 / 5.60 / 4.61   5.25
 
-   The derivation script is local-assets/brand/team-palette-derivation.mjs.
+   WHY THE LIGHT COLUMN MOVED TOO, BY AT MOST dE 5 EXCEPT ONE.
+   0018 measured the eleven against the PAGE only, and against white they all
+   cleared 4.5. Measured against the two raised surfaces and against their own
+   washes -- which is where the app actually sets accent-coloured text, on
+   `.chip--on`, `.tk__tag--mine`, `.btn2--pick` and `.bp--here` -- five of them
+   did not: orange, lime, sage, purple and magenta landed between 4.02 and
+   4.75 on --surface-2 and between 4.4 and 4.9 on their washes. That is a
+   defect under the same rule the dark ground is held to, so the five are
+   nudged darker here. `green` moved further (8.37 to 10.88) because sage
+   moving darker squeezed the green/sage pair, which was already the closest
+   pair in the set; green is the colour that had room to move.
+
+   SEPARATION, measured as CIE76 dE over the eleven. Light: closest pair
+   green/sage at 21.87, nearest reference orange to #8a5a00 at 10.38. Dark:
+   closest pair violet/orchid at 21.87, nearest reference orange to #e59e2d at 10.55.
+   0018 measured its closest pair at 21.4 and rejected a twelfth colour for
+   dropping that to 17.3, so both grounds are at or above the bar it set.
+   Colour is never the only signal anyway -- the picker names every colour and
+   the team number is always shown.
+
+   The derivation script is scripts/derive-dark-palette.ts, and
+   tests/theme-contrast.test.ts re-measures this file rather than trusting the
+   table above.
    ========================================================================== */
 
-[data-accent] {
-	/* An element whose accent is unknown (or not yet chosen) still renders:
-	   it falls back to the brand's own neutral, never to an unstyled colour
-	   and never to a brand accent that would imply something. */
-	--team-accent: var(--text-2);
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: var(--surface-1);
-}
+/* ==========================================================================
+   EACH ACCENT STATES BOTH OF ITS VALUES; THE GROUND PICKS ONE.
+
+   The eleven blocks below are pure DATA: every accent carries its light-ground
+   colour and its dark-ground colour, and neither knows which ground is in
+   force. The three rules after them do the picking, once, for all eleven.
+
+   WHY IT IS BUILT THIS WAY AND NOT AS TWO TABLES OF `--team-accent`.
+   A ground can be forced on a SUBTREE -- the route planner's mat is a light
+   plate on both grounds (see MatCanvas.svelte). With two tables keyed on
+   `:root[data-theme='dark'] [data-accent]`, the `data-accent` attribute sits
+   on an ANCESTOR of that plate, so the dark rule matched outside the plate and
+   its value inherited straight in: a teal team's mat drawn with the dark
+   ground's pale teal, on white, at 2.2. That is not something the eleven
+   colours can fix, it is something the SELECTION has to fix, so the selection
+   is three generic rules a forced ground can re-run, and each colour is
+   written down exactly once.
+   ========================================================================== */
 
 [data-accent='bark'] {
-	--team-accent: #6b4e32;
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: #f0edeb;
+	--accent-on-light: #6a4d32;
+	--accent-ink-on-light: #ffffff;
+	--accent-wash-on-light: #edebea;
+	--accent-on-dark: #cca586;
+	--accent-ink-on-dark: #231f20;
+	--accent-wash-on-dark: #40352f;
 }
 [data-accent='orange'] {
-	--team-accent: #a76105;
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: #f6efe6;
+	--accent-on-light: #9c5700;
+	--accent-ink-on-light: #ffffff;
+	--accent-wash-on-light: #f1ecea;
+	--accent-on-dark: #eb9d47;
+	--accent-ink-on-dark: #231f20;
+	--accent-wash-on-dark: #483324;
 }
 [data-accent='olive'] {
-	--team-accent: #3b5003;
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: #ebeee6;
+	--accent-on-light: #3b5005;
+	--accent-ink-on-light: #ffffff;
+	--accent-wash-on-light: #ebebea;
+	--accent-on-dark: #a4b46d;
+	--accent-ink-on-dark: #231f20;
+	--accent-wash-on-dark: #37392a;
 }
 [data-accent='lime'] {
-	--team-accent: #497e03;
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: #edf2e6;
+	--accent-on-light: #417400;
+	--accent-ink-on-light: #ffffff;
+	--accent-wash-on-light: #ebeeea;
+	--accent-on-dark: #88bb4c;
+	--accent-ink-on-dark: #231f20;
+	--accent-wash-on-dark: #313a24;
 }
 [data-accent='green'] {
-	--team-accent: #025a31;
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: #e6efea;
+	--accent-on-light: #024724;
+	--accent-ink-on-light: #ffffff;
+	--accent-wash-on-light: #eaebea;
+	--accent-on-dark: #53c289;
+	--accent-ink-on-dark: #231f20;
+	--accent-wash-on-dark: #283c2f;
 }
 [data-accent='sage'] {
-	--team-accent: #427b67;
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: #ecf2f0;
+	--accent-on-light: #3b735f;
+	--accent-ink-on-light: #ffffff;
+	--accent-wash-on-light: #ebedec;
+	--accent-on-dark: #71baa2;
+	--accent-ink-on-dark: #231f20;
+	--accent-wash-on-dark: #2c3a35;
 }
 [data-accent='teal'] {
-	--team-accent: #026478;
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: #e6f0f2;
+	--accent-on-light: #036377;
+	--accent-ink-on-light: #ffffff;
+	--accent-wash-on-light: #eaecee;
+	--accent-on-dark: #74b7c8;
+	--accent-ink-on-dark: #231f20;
+	--accent-wash-on-dark: #2d393e;
 }
 [data-accent='violet'] {
-	--team-accent: #721fd1;
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: #f1e9fa;
+	--accent-on-light: #7320d3;
+	--accent-ink-on-light: #ffffff;
+	--accent-wash-on-light: #edeaf8;
+	--accent-on-dark: #c29bf2;
+	--accent-ink-on-dark: #231f20;
+	--accent-wash-on-dark: #3e3349;
 }
 [data-accent='purple'] {
-	--team-accent: #c714c7;
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: #f9e8f9;
+	--accent-on-light: #b608bd;
+	--accent-ink-on-light: #ffffff;
+	--accent-wash-on-light: #f4eaf5;
+	--accent-on-dark: #ff76fe;
+	--accent-ink-on-dark: #231f20;
+	--accent-wash-on-dark: #4e2b4c;
 }
 [data-accent='orchid'] {
-	--team-accent: #9c117b;
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: #f5e7f2;
+	--accent-on-light: #9a137b;
+	--accent-ink-on-light: #ffffff;
+	--accent-wash-on-light: #f1eaee;
+	--accent-on-dark: #d998cb;
+	--accent-ink-on-dark: #231f20;
+	--accent-wash-on-dark: #44323f;
 }
 [data-accent='magenta'] {
-	--team-accent: #d4057b;
-	--team-accent-ink: #ffffff;
-	--team-accent-wash: #fbe6f2;
+	--accent-on-light: #c70074;
+	--accent-ink-on-light: #ffffff;
+	--accent-wash-on-light: #f6eaee;
+	--accent-on-dark: #fe83c5;
+	--accent-ink-on-dark: #231f20;
+	--accent-wash-on-dark: #4e2d3d;
+}
+
+/* --- THE SELECTION, AND WHERE IT HAS TO BE DECLARED ----------------------
+
+   A `var()` is resolved on the element that DECLARES it, so `--team-accent`
+   has to be declared somewhere that can see the right pair. Two such places,
+   and both are needed:
+
+     [data-accent]           the element carrying the team's colour. This is
+                             where the pair is defined, so this is where the
+                             ground's normal answer is resolved.
+     [data-ground='light']   a subtree with a forced ground -- the route
+     [data-ground='dark']    planner's mat plate. It is a DESCENDANT of the
+                             [data-accent] element, so re-declaring here beats
+                             the inherited answer for everything inside it,
+                             with no specificity trick: a nearer declaration
+                             wins over an inherited value, always.
+
+   That second place is the whole reason each accent states both of its values
+   rather than the ground shipping two tables of `--team-accent`. With two
+   tables the dark value was selected on the ancestor and inherited straight
+   into the light plate: a teal team's mat drawn in the dark ground's pale
+   teal, on white, with the labels at 1.37. A plate cannot know WHICH accent
+   it is inside, but it can always ask for "the light one of whatever pair
+   this is", and that is what the fallback chain below says.
+
+   The fallback in each var() is the "no accent chosen yet" case, which is a
+   real state: a team that has not picked gets the brand's own neutral, never
+   an unstyled colour and never a brand accent that would imply something.
+   --text-2 on --surface-1 is 7.39 light and 7.92 dark; --surface-0 as the ink
+   on --text-2 is 8.06 and 10.18. */
+
+[data-accent],
+[data-ground='light'] {
+	--team-accent: var(--accent-on-light, var(--text-2));
+	--team-accent-ink: var(--accent-ink-on-light, #ffffff);
+	--team-accent-wash: var(--accent-wash-on-light, var(--surface-1));
+}
+
+@media screen {
+	:root[data-theme='dark'] [data-accent],
+	[data-ground='dark'] {
+		--team-accent: var(--accent-on-dark, var(--text-2));
+		--team-accent-ink: var(--accent-ink-on-dark, var(--surface-0));
+		--team-accent-wash: var(--accent-wash-on-dark, var(--surface-1));
+	}
 }
 
 /* A small square of a team's accent, for a list row or a legend. */

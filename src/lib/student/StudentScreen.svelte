@@ -392,7 +392,7 @@
 		border: 2px solid var(--danger);
 		border-radius: var(--radius-card);
 		padding: var(--space-3);
-		background: rgba(255, 111, 125, 0.12);
+		background: var(--danger-wash);
 	}
 	.sr__failed h2 {
 		margin: 0 0 var(--space-2);
@@ -515,7 +515,7 @@
 		margin: var(--space-2) 0 0;
 		padding: var(--space-3);
 		border-radius: var(--radius-control);
-		background: rgba(255, 197, 107, 0.16);
+		background: var(--warning-wash);
 		border: 2px solid var(--warning);
 		color: var(--warning);
 		font-size: var(--fs-h3);
@@ -618,7 +618,12 @@
 	.btn2--done {
 		background: var(--success);
 		border-color: var(--success);
-		color: var(--accent-ink);
+		/* --success-ink, not --accent-ink. Both are "the ink for a fill", but
+		   they are the ink for DIFFERENT fills: --accent-ink is white, for the
+		   purple primary, and white on FLL green measures 3.19 on both
+		   grounds. Green's ink is the brand black, at 5.10. This button was
+		   white-on-green at 3.19 before the second ground existed. */
+		color: var(--success-ink);
 	}
 
 	/* A link a nine-year-old taps is a button, not a line of text. */
@@ -651,7 +656,7 @@
 		min-height: 4.5rem;
 		border-radius: var(--radius-card);
 		border: 3px solid var(--warning);
-		background: rgba(255, 197, 107, 0.18);
+		background: var(--warning-wash);
 		color: var(--warning);
 		font-family: var(--font-display);
 		font-size: var(--fs-h1);
@@ -670,7 +675,7 @@
 		z-index: 10;
 		display: flex;
 		align-items: flex-end;
-		background: rgba(3, 7, 15, 0.75);
+		background: var(--scrim);
 	}
 	.sheet__panel {
 		width: 100%;

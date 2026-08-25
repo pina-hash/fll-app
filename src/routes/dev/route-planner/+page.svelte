@@ -163,30 +163,43 @@
 		far: { u: (SURF.x + SURF.w) / PIC_W, v: SURF.y / PIC_H }
 	};
 
-	/** A busy drawing, so the contrast layer has something to survive. */
+	/**
+	 * A BUSY *LIGHT* DRAWING, so the contrast layer has the real thing to
+	 * survive. It is drawn by this repo and is not a crop, a trace or a
+	 * recolouring of anyone's mat artwork; see CLAUDE.md, "The field picture".
+	 *
+	 * IT USED TO BE DARK, AND THAT MADE THE HARNESS TEST THE EASY CASE. A
+	 * real FIRST field layout is printed line art on a light ground: pale
+	 * surface, coloured mission models, dark labels. A dark fixture let every
+	 * light-coloured overlay sit on it comfortably and hid the case the
+	 * contrast layer exists for -- and once the app had a dark ground it
+	 * would also have hidden the reason the mat is a light plate. So the
+	 * fixture is light now, dense, and mid-tone in places, which is what an
+	 * overlay actually has to beat.
+	 */
 	function fixturePicture(): string {
 		const hatch: string[] = [];
 		for (let i = 0; i <= SURF.w; i += 43) {
 			hatch.push(
-				`<line x1="${SURF.x + i}" y1="${SURF.y}" x2="${SURF.x + i + 60}" y2="${SURF.y + SURF.h}" stroke="#7dd3fc" stroke-width="2" opacity="0.5"/>`
+				`<line x1="${SURF.x + i}" y1="${SURF.y}" x2="${SURF.x + i + 60}" y2="${SURF.y + SURF.h}" stroke="#3aa0d8" stroke-width="2" opacity="0.55"/>`
 			);
 		}
 		for (let i = 0; i <= SURF.h; i += 41) {
 			hatch.push(
-				`<line x1="${SURF.x}" y1="${SURF.y + i}" x2="${SURF.x + SURF.w}" y2="${SURF.y + i - 40}" stroke="#fca5a5" stroke-width="2" opacity="0.45"/>`
+				`<line x1="${SURF.x}" y1="${SURF.y + i}" x2="${SURF.x + SURF.w}" y2="${SURF.y + i - 40}" stroke="#e06666" stroke-width="2" opacity="0.5"/>`
 			);
 		}
 		const svg =
 			`<svg xmlns="http://www.w3.org/2000/svg" width="${PIC_W}" height="${PIC_H}" viewBox="0 0 ${PIC_W} ${PIC_H}">` +
-			`<rect width="${PIC_W}" height="${PIC_H}" fill="#1f2937"/>` +
-			`<rect x="30" y="46" width="${PIC_W - 60}" height="${PIC_H - 92}" fill="#374151" stroke="#9ca3af" stroke-width="10"/>` +
-			`<text x="${PIC_W / 2}" y="30" fill="#9ca3af" font-size="24" text-anchor="middle">border wall (NOT the playing surface)</text>` +
-			`<rect x="${SURF.x}" y="${SURF.y}" width="${SURF.w}" height="${SURF.h}" fill="#0b3b45"/>` +
+			`<rect width="${PIC_W}" height="${PIC_H}" fill="#e9e4dc"/>` +
+			`<rect x="30" y="46" width="${PIC_W - 60}" height="${PIC_H - 92}" fill="#d6cec3" stroke="#6f665c" stroke-width="10"/>` +
+			`<text x="${PIC_W / 2}" y="30" fill="#3d3830" font-size="24" text-anchor="middle">border wall (NOT the playing surface)</text>` +
+			`<rect x="${SURF.x}" y="${SURF.y}" width="${SURF.w}" height="${SURF.h}" fill="#f4f1ea"/>` +
 			hatch.join('') +
-			`<rect x="${SURF.x}" y="${SURF.y}" width="${SURF.w}" height="${SURF.h}" fill="none" stroke="#facc15" stroke-width="4"/>` +
-			`<circle cx="${SURF.x}" cy="${SURF.y + SURF.h}" r="14" fill="#22c55e"/>` +
-			`<circle cx="${SURF.x + SURF.w}" cy="${SURF.y}" r="14" fill="#a78bfa"/>` +
-			`<text x="${SURF.x + SURF.w / 2}" y="${SURF.y + SURF.h / 2}" fill="#facc15" font-size="34" text-anchor="middle">playing surface</text>` +
+			`<rect x="${SURF.x}" y="${SURF.y}" width="${SURF.w}" height="${SURF.h}" fill="none" stroke="#c8a415" stroke-width="4"/>` +
+			`<circle cx="${SURF.x}" cy="${SURF.y + SURF.h}" r="14" fill="#1f7a3d"/>` +
+			`<circle cx="${SURF.x + SURF.w}" cy="${SURF.y}" r="14" fill="#6b3fbf"/>` +
+			`<text x="${SURF.x + SURF.w / 2}" y="${SURF.y + SURF.h / 2}" fill="#3d3830" font-size="34" text-anchor="middle">playing surface</text>` +
 			`</svg>`;
 		return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 	}
