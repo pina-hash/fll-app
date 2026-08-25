@@ -360,7 +360,7 @@
 			aria-label={placingMissionCode
 				? `Tap where mission ${placingMissionCode} sits on the mat`
 				: editable
-					? 'The mat. Tap to add a waypoint.'
+					? 'The mat. Tap to add a point to the route.'
 					: 'The mat'}
 			x="0"
 			y="0"
@@ -508,7 +508,7 @@
 				class:mat__wp--selected={w.id === selectedWaypointId}
 				role="button"
 				tabindex="0"
-				aria-label="Waypoint {i + 1}"
+				aria-label="Point {i + 1} of the route"
 				transform="translate({w.xMm}, {sy(w.yMm)})"
 				onpointerdown={(e) => startWaypointDrag(e, w)}
 				onkeydown={(e) => waypointKeydown(e, w)}

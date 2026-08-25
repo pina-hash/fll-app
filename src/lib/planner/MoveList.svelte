@@ -22,10 +22,12 @@
 <div class="ml">
 	{#if moves.length === 0}
 		<p class="ml__empty">
-			{editable ? 'Tap the mat to drop your first waypoint.' : 'No route yet.'}
+			{editable
+				? 'Tap the mat to add your first point. Two points make your first move.'
+				: 'No route yet. The Run Captain draws one by tapping the mat.'}
 		</p>
 	{:else}
-		<p class="ml__aim">Aim the robot at waypoint 2 before you launch.</p>
+		<p class="ml__aim">Before you press go, aim the robot at point 2.</p>
 		<ol class="ml__list">
 			{#each moves as move, i (i)}
 				<li class="ml__row">

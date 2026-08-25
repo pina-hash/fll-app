@@ -34,6 +34,7 @@
 			team={{ id: data.team.id, name: data.team.name }}
 			isMentor={true}
 			data={data.planner}
+			exampleHref="/app/plan/example"
 		/>
 	{/key}
 </div>
