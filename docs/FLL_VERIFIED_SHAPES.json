@@ -1,15 +1,898 @@
 {
   "_meta": {
-    "placeholder": true,
-    "why": "THIS IS NOT THE REGISTRY. The real FLL_VERIFIED_SHAPES.json was established empirically against the SPIKE App over many probe rounds; it was not in fll-codegen-src.tar.gz and it has never been in this repo. Its contents cannot be reconstructed by reading the emitter, because a registry derived from the emitter's own opcodes would make V9 certify whatever the emitter happens to emit, which is the one thing V9 exists to prevent. It is therefore left empty rather than guessed.",
-    "effect": "shapes is empty, so V9 rejects every opcode and validate() returns a finding for each. Nothing downstream will offer a file. That is the intended failure: the SPIKE App refuses a malformed project with no diagnostic, so a codegen surface that cannot check its shapes must refuse to hand one to a student.",
-    "toReplace": "Drop the real registry in at this path. Nothing else changes: src/lib/codegen/package.ts imports it, the control suite in src/lib/codegen/__tests__ stops skipping, and /app/me/codegen starts offering downloads.",
+    "note": "Observation only. A shape enters this file when it has been seen rendering in the real SPIKE App, never when it has been reasoned about. Evidence, not authority: it records what is true of the app, and FLL_CODEGEN_SPEC.md records what the emitter must do.",
+    "app": "LEGO Education SPIKE App 3, Windows",
+    "container": {
+      "outer": {
+        "entries": [
+          "manifest.json",
+          "scratch.sb3",
+          "icon.svg"
+        ],
+        "compression": "STORED"
+      },
+      "inner": {
+        "entries": [
+          "project.json",
+          "<stub>.svg"
+        ],
+        "project_json": "DEFLATED",
+        "assets": "STORED"
+      },
+      "stub_asset_id": "deadc057000000000000000000000000",
+      "stub_asset_bytes": 0,
+      "meta_vm": "0.2.0-prerelease.20200512204241",
+      "manifest_version": 38,
+      "sounds_required": false,
+      "icon_svg_may_be_stub": true
+    },
+    "field_pattern": "A dropdown with no matching '<ns>_..-selector' or '<ns>_menu_..' opcode is a plain field on the block itself. Confirmed for AXIS, STOP, UNIT.",
+    "shadow_patterns": {
+      "selector": "<ns>_<name>-selector | <ns>_custom-<name> -> field named 'field_<opcode>'",
+      "menu": "<ns>_menu_<NAME> -> field named '<NAME>'"
+    },
+    "failure_mode": "One wrong opcode, field name, or shadow shape causes the SPIKE App to refuse the entire file with 'Could not open project' and no indication of which block is at fault. There is no partial render.",
     "namespaces": {
+      "note": "Authoritative, read off the SPIKE App extension picker 2026-08-25. The opcode table this project derived shapes from (flippertools strings.json) spans several LEGO apps. Namespaces below are the only ones this app has.",
+      "core_always_available": [
+        "flipperevents",
+        "flippermove",
+        "flippermotor",
+        "flippersensors",
+        "flipperlight",
+        "flippersound",
+        "control",
+        "operator",
+        "data",
+        "event",
+        "procedures"
+      ],
+      "extensions": {
+        "flippermoremotor": "More Motors",
+        "flippermoremove": "More Movement",
+        "flippermoresensors": "More Sensors",
+        "flippermusic": "Music",
+        "linegraphmonitor": "Line Graph",
+        "bargraphmonitor": "Bar Graph",
+        "displaymonitor": "Display",
+        "weather": "Weather Manager"
+      },
       "NOT_IN_THIS_APP": {
-        "why": "Namespaces this SPIKE App build does not carry. A block in one of these is the Probe C failure: the app refuses the whole project. Empty here for the same reason shapes is empty.",
-        "namespaces": []
+        "namespaces": [
+          "flipperdisplay",
+          "ev3motor",
+          "ev3move",
+          "ev3sensors",
+          "ev3sound",
+          "ev3display",
+          "ev3events",
+          "ev3control",
+          "horizontalmotor",
+          "horizontalmove",
+          "horizontalevents",
+          "horizontaldisplay",
+          "horizontalsound",
+          "horizontalcontrol",
+          "horizontaldisplaymonitor",
+          "horizontalbargraphmonitor",
+          "note",
+          "sound"
+        ],
+        "why": "Other LEGO products sharing one opcode table. flipperdisplay_* is the parallel of flipperlight_* for a different product and is the confirmed root cause of the Probe C failure. The picker's 'Display' extension is displaymonitor_*, on-screen images and text, not flipperdisplay_*."
+      }
+    },
+    "runs_on_hub_untethered": {
+      "note": "Decides what may appear in a competition run program. Blocks from the other extensions render on the connected device and do nothing when the hub runs standalone in a match.",
+      "yes": [
+        "flippermoremotor",
+        "flippermoremove",
+        "flippermoresensors"
+      ],
+      "no_tethered_only": [
+        "linegraphmonitor",
+        "bargraphmonitor",
+        "displaymonitor",
+        "flippermusic"
+      ],
+      "no_requires_internet": [
+        "weather"
+      ]
+    },
+    "provenance": {
+      "A_app_authored": "The SPIKE App itself wrote this shape, read from a real exported project. Strongest evidence: proves the app PRODUCES it, so enum values and field names are exact rather than accepted-by-tolerance.",
+      "B_probe_confirmed": "The emitter wrote it and the app opened and rendered it. Proves the app ACCEPTS it."
+    },
+    "unverified_deferred": {
+      "note": "Not observed, and NOT blocking Phase 1. Each affects only work scheduled for Phase 2, and each has a verified-shape alternative for anything earlier. Resolved opportunistically, never by another guessing round.",
+      "shapes": {
+        "event_broadcast": "T15 parallel tasks, Phase 2 compiler",
+        "event_whenbroadcastreceived": "T15 parallel tasks, Phase 2 compiler",
+        "flippermoremotor_motorSetStallDetection": "stall variant of T6 wall square; the timed-press variant uses verified shapes only",
+        "flippermoremotor_motorDidMovement": "same",
+        "flippermoremotor_motorStartSpeed": "attachment control; flippermotor_motorTurnForDirection and flippermotor_motorSetSpeed are verified alternatives",
+        "flippermotor_motorStop": "attachment control; startDualSpeed at 0 and motorSetSpeed at 0 are verified alternatives",
+        "flippermoresensors_setOrientation": "T17 yaw axis. Needed by any robot whose hub is NOT flat-mounted; without it the gyro reports the wrong axis and every heading in the run is meaningless. V9 correctly refused it, so the toolkit omits it and side-mounted or upright hubs are unsupported until the shape is verified.",
+        "flippermoresensors_menu_orientation": "menu shadow for the above"
       }
     }
   },
-  "shapes": {}
+  "shapes": {
+    "flipperevents_whenProgramStarts": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Project_1 export",
+      "provenance": "A"
+    },
+    "procedures_definition": {
+      "inputs": {
+        "custom_block": "prototype"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe A",
+      "provenance": "B"
+    },
+    "procedures_prototype": {
+      "inputs": {},
+      "fields": {},
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe A",
+      "note": "mutation: proccode, argumentids, argumentnames, argumentdefaults, warp",
+      "provenance": "B"
+    },
+    "procedures_call": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe A/D",
+      "note": "mutation: proccode, argumentids, warp. Labels interleave with %s inputs",
+      "provenance": "B"
+    },
+    "argument_reporter_string_number": {
+      "inputs": {},
+      "fields": {
+        "VALUE": "arg name"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe A/D",
+      "note": "Drives a numeric input as a type-3 obscured shadow",
+      "provenance": "B"
+    },
+    "flippermove_setMovementPair": {
+      "inputs": {
+        "PAIR": "flippermove_movement-port-selector"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Project_1 export",
+      "provenance": "A"
+    },
+    "flippermove_movement-port-selector": {
+      "inputs": {},
+      "fields": {
+        "field_flippermove_movement-port-selector": "AB"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Project_1 export",
+      "provenance": "A"
+    },
+    "flippermove_movementSpeed": {
+      "inputs": {
+        "SPEED": "number"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Project_1 export",
+      "provenance": "A"
+    },
+    "flippermove_move": {
+      "inputs": {
+        "DIRECTION": "flippermove_custom-icon-direction",
+        "VALUE": "number"
+      },
+      "fields": {
+        "UNIT": "rotations|degrees|seconds|cm|inches"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Project_1 export",
+      "provenance": "A"
+    },
+    "flippermove_custom-icon-direction": {
+      "inputs": {},
+      "fields": {
+        "field_flippermove_custom-icon-direction": "forward"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Project_1 export",
+      "provenance": "A"
+    },
+    "flippermove_steer": {
+      "inputs": {
+        "STEERING": "flippermove_rotation-wheel",
+        "VALUE": "number"
+      },
+      "fields": {
+        "UNIT": "rotations"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Project_1 export",
+      "provenance": "A"
+    },
+    "flippermove_rotation-wheel": {
+      "inputs": {},
+      "fields": {
+        "field_flippermove_rotation-wheel": "30"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Project_1 export",
+      "provenance": "A"
+    },
+    "flippermove_stopMove": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "flippermoremove_movementSetAcceleration": {
+      "inputs": {
+        "ACCELERATION": "flippermoremove_menu_acceleration"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B",
+      "provenance": "B"
+    },
+    "flippermoremove_menu_acceleration": {
+      "inputs": {},
+      "fields": {
+        "acceleration": "slow"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B",
+      "provenance": "B"
+    },
+    "flippermoremove_startDualSpeed": {
+      "inputs": {
+        "LEFT": "number",
+        "RIGHT": "number"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B/D",
+      "note": "Accepts reporters in both inputs",
+      "provenance": "B"
+    },
+    "flippermoremove_movementSetStopMethod": {
+      "inputs": {},
+      "fields": {
+        "STOP": "brake|hold|coast"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B2",
+      "note": "STOP is a plain field, not a shadow",
+      "provenance": "B"
+    },
+    "flippersensors_resetYaw": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "flippersensors_resetTimer": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B1",
+      "provenance": "B"
+    },
+    "flippersensors_orientationAxis": {
+      "inputs": {},
+      "fields": {
+        "AXIS": "yaw|pitch|roll"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "note": "AXIS is a plain field, not a shadow",
+      "provenance": "B"
+    },
+    "flippersensors_reflectivity": {
+      "inputs": {
+        "PORT": "flippersensors_color-sensor-selector"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B1",
+      "provenance": "B"
+    },
+    "flippersensors_color-sensor-selector": {
+      "inputs": {},
+      "fields": {
+        "field_flippersensors_color-sensor-selector": "E"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B1",
+      "provenance": "B"
+    },
+    "flippermotor_motorTurnForDirection": {
+      "inputs": {
+        "PORT": "flippermotor_multiple-port-selector",
+        "DIRECTION": "flippermotor_custom-icon-direction",
+        "VALUE": "number"
+      },
+      "fields": {
+        "UNIT": "rotations|degrees|seconds"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B3",
+      "provenance": "B"
+    },
+    "flippermotor_multiple-port-selector": {
+      "inputs": {},
+      "fields": {
+        "field_flippermotor_multiple-port-selector": "C"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B3",
+      "provenance": "B"
+    },
+    "flippermotor_custom-icon-direction": {
+      "inputs": {},
+      "fields": {
+        "field_flippermotor_custom-icon-direction": "clockwise"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B3",
+      "provenance": "B"
+    },
+    "flippermoremotor_motorSetDegreeCounted": {
+      "inputs": {
+        "PORT": "flippermoremotor_multiple-port-selector",
+        "VALUE": "number"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B4",
+      "provenance": "B"
+    },
+    "flippermoremotor_position": {
+      "inputs": {
+        "PORT": "flippermoremotor_multiple-port-selector"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B4",
+      "provenance": "B"
+    },
+    "flippermoremotor_multiple-port-selector": {
+      "inputs": {},
+      "fields": {
+        "field_flippermoremotor_multiple-port-selector": "C"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B4",
+      "provenance": "B"
+    },
+    "flippermoremotor_motorSetStopMethod": {
+      "inputs": {
+        "PORT": "flippermoremotor_multiple-port-selector"
+      },
+      "fields": {
+        "STOP": "brake|hold|coast"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B5",
+      "provenance": "B"
+    },
+    "flipperlight_lightDisplayText": {
+      "inputs": {
+        "TEXT": "string"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B6",
+      "note": "Hub matrix has NO port. flipperdisplay_* blocks carry a PORT and address an attached matrix, not the hub. Using flipperdisplay_ledMatrixText for the hub is what made Probe C unopenable.",
+      "provenance": "B"
+    },
+    "flipperlight_lightDisplayOff": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe B6",
+      "provenance": "B"
+    },
+    "control_repeat_until": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "control_wait": {
+      "inputs": {
+        "DURATION": "see app-authored file"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "A"
+    },
+    "control_if_else": {
+      "inputs": {
+        "CONDITION": "boolean",
+        "SUBSTACK": "stack",
+        "SUBSTACK2": "stack"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "operator_add": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "operator_subtract": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "operator_multiply": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "operator_mod": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "operator_gt": {
+      "inputs": {
+        "OPERAND1": "see app-authored file",
+        "OPERAND2": "see app-authored file"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "A"
+    },
+    "operator_lt": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "operator_mathop": {
+      "inputs": {
+        "NUM": "number"
+      },
+      "fields": {
+        "OPERATOR": "abs"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "data_setvariableto": {
+      "inputs": {
+        "VALUE": "any"
+      },
+      "fields": {
+        "VARIABLE": "name,id"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "data_changevariableby": {
+      "inputs": {
+        "VALUE": "number"
+      },
+      "fields": {
+        "VARIABLE": "name,id"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "data_variable": {
+      "inputs": {},
+      "fields": {
+        "VARIABLE": "name,id"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe D",
+      "provenance": "B"
+    },
+    "flippersensors_timer": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R1",
+      "provenance": "B"
+    },
+    "operator_or": {
+      "inputs": {
+        "OPERAND1": "boolean",
+        "OPERAND2": "boolean"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R1",
+      "note": "Boolean nested into boolean confirmed. This is the T12 timeout pattern: repeat until <condition or timer > limit>",
+      "provenance": "B"
+    },
+    "control_wait_until": {
+      "inputs": {
+        "CONDITION": "boolean"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R4",
+      "provenance": "B"
+    },
+    "flippersensors_isReflectivity": {
+      "inputs": {
+        "PORT": "flippersensors_color-sensor-selector",
+        "VALUE": "number"
+      },
+      "fields": {
+        "COMPARATOR": "<|>|="
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R4",
+      "note": "COMPARATOR is a plain field, matching the AXIS/STOP/UNIT pattern",
+      "provenance": "B"
+    },
+    "operator_divide": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R5",
+      "provenance": "B"
+    },
+    "operator_round": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R5",
+      "provenance": "B"
+    },
+    "operator_not": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R5",
+      "provenance": "B"
+    },
+    "operator_equals": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R5",
+      "provenance": "B"
+    },
+    "operator_and": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R5",
+      "provenance": "B"
+    },
+    "control_repeat": {
+      "inputs": {
+        "TIMES": "see app-authored file",
+        "SUBSTACK": "see app-authored file"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R5",
+      "provenance": "A"
+    },
+    "control_if": {
+      "inputs": {},
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R5",
+      "provenance": "B"
+    },
+    "flipperlight_centerButtonLight": {
+      "inputs": {
+        "COLOR": "flipperlight_color-selector-vertical"
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R6",
+      "provenance": "B"
+    },
+    "flipperlight_color-selector-vertical": {
+      "inputs": {},
+      "fields": {
+        "field_flipperlight_color-selector-vertical": "3"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "proof": "Probe R6",
+      "provenance": "B"
+    },
+    "flippermove_setDistance": {
+      "inputs": {
+        "DISTANCE": ""
+      },
+      "fields": {
+        "UNIT": "cm"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "flippermove_custom-set-move-distance-number": {
+      "inputs": {},
+      "fields": {
+        "field_flippermove_custom-set-move-distance-number": "17.5"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "flippermove_startSteer": {
+      "inputs": {
+        "STEERING": ""
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "flippermotor_motorSetSpeed": {
+      "inputs": {
+        "PORT": "",
+        "SPEED": ""
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "flippersound_beepForTime": {
+      "inputs": {
+        "NOTE": "",
+        "DURATION": ""
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "flippersound_custom-piano": {
+      "inputs": {},
+      "fields": {
+        "field_flippersound_custom-piano": "60"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "flipperevents_whenButton": {
+      "inputs": {},
+      "fields": {
+        "BUTTON": "right",
+        "EVENT": "pressed"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "flippersensors_isDistance": {
+      "inputs": {
+        "PORT": "",
+        "VALUE": ""
+      },
+      "fields": {
+        "COMPARATOR": "<",
+        "UNIT": "cm"
+      },
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "flippersensors_distance-sensor-selector": {
+      "inputs": {},
+      "fields": {
+        "field_flippersensors_distance-sensor-selector": "F"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "flippermove_startMove": {
+      "inputs": {
+        "DIRECTION": ""
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "flippersensors_isColor": {
+      "inputs": {
+        "PORT": "",
+        "VALUE": ""
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "flippersensors_color-selector": {
+      "inputs": {},
+      "fields": {
+        "field_flippersensors_color-selector": "0"
+      },
+      "shadow": true,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    },
+    "control_forever": {
+      "inputs": {
+        "SUBSTACK": ""
+      },
+      "fields": {},
+      "shadow": false,
+      "status": "verified",
+      "verified": "2026-08-25",
+      "provenance": "A",
+      "proof": "kaziarham/LEGO-Spike-Prime-SpikeApp-Projects, app-authored"
+    }
+  }
 }

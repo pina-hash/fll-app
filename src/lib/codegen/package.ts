@@ -77,7 +77,55 @@ interface RegistryShape {
   _meta: { namespaces: { NOT_IN_THIS_APP: { namespaces: string[] } } };
 }
 
+/**
+ * Why a registry cannot be used at all.
+ *
+ * PLACEHOLDER AND EMPTY ARE SEPARATE BECAUSE A PLACEHOLDER IS ALSO EMPTY, and
+ * a guard that only counted shapes would report the symptom and hide the cause.
+ * A checkout shipped with a stand-in registry once already: V9 rejected all 374
+ * blocks of the toolkit, which reads exactly like an emitter that has broken,
+ * and the true reason (nobody had put the registry in yet) appeared nowhere in
+ * the 374 findings.
+ */
+export type RegistryFaultCode = 'placeholder' | 'empty';
+
+export class RegistryFault extends Error {
+  constructor(readonly code: RegistryFaultCode, message: string) {
+    super(message);
+    this.name = 'RegistryFault';
+  }
+}
+
+/**
+ * THIS THROWS RATHER THAN RETURNING A FINDING, and the difference is the point.
+ * A finding is a statement about the PROJECT being validated; this is a
+ * statement about the VALIDATOR, which cannot answer anything until it has a
+ * registry. Returning findings here would let a broken toolchain wear the
+ * costume of a broken project.
+ */
+export function assertRegistryUsable(reg: unknown): void {
+  const meta = (reg as { _meta?: { placeholder?: unknown } })?._meta;
+  if (meta?.placeholder === true) {
+    throw new RegistryFault(
+      'placeholder',
+      'FLL_VERIFIED_SHAPES.json is a PLACEHOLDER, not the verified-shape registry. ' +
+        'V9 cannot answer, so no project can be validated and none may be handed over. ' +
+        'Put the real registry at docs/FLL_VERIFIED_SHAPES.json.'
+    );
+  }
+  const shapes = (reg as { shapes?: Record<string, unknown> })?.shapes;
+  if (!shapes || Object.keys(shapes).length === 0) {
+    throw new RegistryFault(
+      'empty',
+      'FLL_VERIFIED_SHAPES.json declares no shapes. It is not flagged as a placeholder, ' +
+        'so this is a registry that has lost its contents rather than one never filled in. ' +
+        'V9 cannot answer and no project can be validated.'
+    );
+  }
+}
+
 export function validate(o: PackOpts): Finding[] {
+  assertRegistryUsable(registry);
   const reg = registry as RegistryShape;
   const known: Set<string> = new Set(Object.keys(reg.shapes));
   const banned: Set<string> = new Set(reg._meta.namespaces.NOT_IN_THIS_APP.namespaces);

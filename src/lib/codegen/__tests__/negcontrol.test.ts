@@ -1,12 +1,3 @@
-// @ts-nocheck -- the sixteen control cases below are the tarball's, byte for
-// byte, and one of them does not typecheck under this repo's strict settings:
-// the un-annotated .find() callback in "speed floor hoisted out of the
-// tolerance branch" makes tsc report TS7022 on a `const c` whose type it
-// cannot infer without circularity. Annotating that callback would be editing
-// a control case, which is the one thing this file must not do, so the file
-// opts out of tsc instead. vitest still type-strips and RUNS every case, and
-// the emitter it exercises is fully checked. Delete this line the day the
-// control cases are allowed to change.
 // Negative controls. A check that has never failed has not been tested.
 import { expect, test } from "vitest";
 import registry from "../../../../docs/FLL_VERIFIED_SHAPES.json";
@@ -39,9 +30,11 @@ const say = (line: string) => process.stdout.write(line + "\n");
  * registry: the thirteen negative controls would "catch" on V9 noise instead of
  * on the defect each one injects, and the three positive controls would trip.
  *
- * So the suite SKIPS, LOUDLY, the way tests/db/linked.ts does. A silent skip
- * would let a bare "16 skipped" read as a pass, which is exactly what a control
- * suite exists to prevent. Drop the real registry in and this goes away.
+ * So the suite SKIPS, LOUDLY, the way tests/db/linked.ts does, rather than
+ * emitting sixteen identical RegistryFault stack traces that say nothing about
+ * the sixteen defects. The skip is NOT the guard: registry-guard.test.ts fails
+ * the run outright when the shipped registry is a placeholder, so a run in that
+ * state is red with one legible cause, never a green wall of skips.
  */
 const placeholder = (registry as { _meta: { placeholder?: boolean } })._meta.placeholder === true;
 if (placeholder) {
@@ -148,7 +141,7 @@ expectCatch("speed floor hoisted out of the tolerance branch", "V10", o => {
     if (typeof alt !== "string") return false;
     let cur: string | null = alt, seen = 0;
     while (cur && seen++ < 10) {
-      const c = (o.blocks[cur].inputs.CONDITION as any[])?.[1];
+      const c: unknown = (o.blocks[cur].inputs.CONDITION as any[])?.[1];
       if (o.blocks[cur].opcode === "control_if" && typeof c === "string") {
         const lhs = (o.blocks[c].inputs.OPERAND1 as any[])?.[1];
         if (typeof lhs === "string" && o.blocks[lhs]?.fields?.VARIABLE?.[0] === "_mag") return true;
