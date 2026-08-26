@@ -21,7 +21,10 @@ export default defineConfig({
 	},
 	test: {
 		environment: 'node',
-		include: ['tests/**/*.test.ts'],
+		// tests/ holds the integration suite, which needs the local stack. The
+		// codegen control suite lives beside the emitter it breaks on purpose and
+		// needs no database at all; both run in the one command.
+		include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
 		// ONE shared database for the whole run. Files create run-tagged rows and
 		// remove them in afterAll; running files concurrently would make one
 		// file's cleanup race another's seeding. Keep this false.

@@ -1,0 +1,15 @@
+{
+  "_meta": {
+    "placeholder": true,
+    "why": "THIS IS NOT THE REGISTRY. The real FLL_VERIFIED_SHAPES.json was established empirically against the SPIKE App over many probe rounds; it was not in fll-codegen-src.tar.gz and it has never been in this repo. Its contents cannot be reconstructed by reading the emitter, because a registry derived from the emitter's own opcodes would make V9 certify whatever the emitter happens to emit, which is the one thing V9 exists to prevent. It is therefore left empty rather than guessed.",
+    "effect": "shapes is empty, so V9 rejects every opcode and validate() returns a finding for each. Nothing downstream will offer a file. That is the intended failure: the SPIKE App refuses a malformed project with no diagnostic, so a codegen surface that cannot check its shapes must refuse to hand one to a student.",
+    "toReplace": "Drop the real registry in at this path. Nothing else changes: src/lib/codegen/package.ts imports it, the control suite in src/lib/codegen/__tests__ stops skipping, and /app/me/codegen starts offering downloads.",
+    "namespaces": {
+      "NOT_IN_THIS_APP": {
+        "why": "Namespaces this SPIKE App build does not carry. A block in one of these is the Probe C failure: the app refuses the whole project. Empty here for the same reason shapes is empty.",
+        "namespaces": []
+      }
+    }
+  },
+  "shapes": {}
+}
