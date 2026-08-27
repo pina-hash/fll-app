@@ -282,7 +282,9 @@ classes (`.card`, `.btn`, `.field`, `.input`, `.tile`, `.hero`, `.live-dot`,
 text roles). **Do not invent colours or name a font face as a literal**;
 design against the tokens. `tests/design-tokens.test.ts` fails the suite if a
 colour literal appears anywhere outside that folder, and its allowed list has
-four entries, each carrying the reason that colour cannot be a token.
+four entries, each carrying the reason that colour cannot be a token. It also
+enumerates every colour INSIDE the folder and requires each one per ground; see
+the two bullets on the alias rule below.
 
 - **THE IDENTITY IS THE IDEA PATHWAY, NOT TEAM 5669 AND NOT FIRST.** IDEA
   green is the pathway colour and is SCARCE ON PURPOSE: it carries chrome and
@@ -303,18 +305,34 @@ four entries, each carrying the reason that colour cannot be a token.
   of the app is local-first. There is deliberately no `--font-display` that
   reaches the hero face: that name invites a heading to take it.
 
-- **TWO GROUND SCOPES, AND EVERY ONE DECLARES THE COMPLETE SEMANTIC ALIAS SET
-  AS LITERAL VALUES.** `:root` and `[data-ground='dark']` share the IDEA dark
-  ramp; `[data-ground='paper']`, `[data-ground='light']` and
-  `:root[data-theme='light']` share the bone paper sheet, and `@media print`
-  restates it. **A `var()` reference or a missing alias falls back to the dark
-  value SILENTLY**, because custom-property substitution resolves where a
-  property is DECLARED. That bug has shipped twice in the sibling app and once
-  here: `--shadow-card`, `--shadow-raised`, `--backdrop-deep` and
-  `--focus-outline` were composed at `:root` out of ground-dependent `var()`s.
-  `tests/design-tokens.test.ts` asserts the scopes name the same aliases and
-  that no value contains `var(`, and carries a control that removes one alias
-  and requires the comparison to fail.
+- **TWO GROUND SCOPES, AND EVERY COLOUR IN THE TOKEN LAYER IS DECLARED IN BOTH
+  AS A LITERAL.** `:root` and `[data-ground='dark']` share the IDEA dark ramp;
+  `[data-ground='paper']`, `[data-ground='light']` and `:root[data-theme='light']`
+  share the bone paper sheet, and `@media print` restates it. **A `var()`
+  reference, a missing alias, or a colour that is not an alias at all falls back
+  to the dark value SILENTLY**, because custom-property substitution resolves
+  where a property is DECLARED. **THIS BUG HAS NOW LANDED FIVE TIMES ACROSS TWO
+  APPS AND WORN A DIFFERENT HAT EVERY TIME**: a `var()` inside an alias, a hex
+  inside a component, a composed shadow (`--shadow-card`, `--shadow-raised`,
+  `--backdrop-deep`, `--focus-outline`), a ground-blind plate, and `--season`,
+  which was declared once in the shared palette block and was therefore not an
+  alias and not something a check over the alias set could see. It shipped the
+  day AFTER the alias test did, while that test passed.
+- **SO THE CHECK NO LONGER LOOKS FOR A SHAPE; IT ENUMERATES.**
+  `tests/design-tokens.test.ts` reads every stylesheet in the token layer
+  (the DIRECTORY, so a new one is covered the day it lands), finds every custom
+  property whose value is a colour, and requires each to be declared at TWO
+  DISTINCT SITES: one the dark ground reaches and the paper ground does not,
+  and one the other way round. **Two sites is the whole test**, because one
+  declaration cannot hold two values however many ground selectors it names,
+  which is exactly how the palette block looked correct. Two sites with the
+  same value is fine (`--rule-gray` is deliberately identical on both, and
+  being written twice is what makes changing one visible). The exemptions are
+  the RAW PALETTE (`--idea-*`, `--program-*`) and the GROUND-PAIRED team-accent
+  properties, and **neither exemption is taken on trust**: the raw-palette case
+  fails if any rule anywhere references one, and the paired case fails if a
+  `-on-light` ever loses its `-on-dark`. The control puts `--season` back as it
+  shipped and requires the enumeration to flag it.
 - **IDEA MINT IS ILLEGAL ON PAPER** (1.27 on the bone sheet), so the paper
   scope redeclares the accent as deep IDEA green `#226E1D` at 5.07 with its
   hue held, and flattens every glow to zero. Same rule the sibling app applies

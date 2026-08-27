@@ -29,14 +29,20 @@
    DIFFERENT HAT, which is why the rule is "nothing outside this file names a
    colour" and not "prefer tokens".
 
-   AND IT HAD ALREADY SHIPPED HERE. Before this bundle, effects.css declared
+   AND IT HAD ALREADY SHIPPED HERE, TWICE. First: effects.css declared
    `--shadow-card`, `--shadow-raised`, `--backdrop-deep` and `--focus-outline`
-   on `:root` with a ground-dependent `var()` inside each. All four froze the
-   light ground's values into the dark one. They are ground aliases now and
-   they are literals.
+   on `:root` with a ground-dependent `var()` inside each, and all four froze
+   the light ground's values into the dark one. Then `--season`, which was
+   declared in the PALETTE BLOCK BELOW -- one declaration, a selector list
+   naming all four ground selectors, so both grounds got IDEA mint and the
+   console header wore it at 1.14 on paper on every mentor screen. All of them
+   are ground aliases now and all of them are literals.
 
-   `tests/design-tokens.test.ts` fails if the two scopes ever differ by one
-   name, if any alias value contains `var(`, or if a colour literal appears
+   THE SECOND ONE IS WHY THE CHECK CHANGED SHAPE. A check over "the alias set"
+   could never see a colour that was not an alias. `tests/design-tokens.test.ts`
+   now ENUMERATES every custom property in this folder whose value is a colour
+   and requires each to be declared at two distinct sites, one per ground; it
+   still fails if any value contains `var(`, or if a colour literal appears
    anywhere outside this folder.
 
    ==========================================================================
@@ -85,17 +91,8 @@
 	--program-fll-ink: #231f20;
 	--program-rule: #9a989a; /* FIRST gray. 6.19 on the dark page, 2.29 on paper. */
 
-	/* ---- SEASON LAYER. Unset falls back to mint, which is what this
-	   declaration is: the fallback, spelled out. Setting --season on a root
-	   (or using [data-season='bioglow'] below) is the entire annual reskin,
-	   and nothing else in the system changes when the season does. -------- */
-	--season: #8fe08a;
-}
-
-/* BIOGLOW, the 2026-27 FIRST LEGO League season. The bioluminescent cyan is
-   already in the palette as patina, so the reskin introduces no new hue. */
-[data-season='bioglow'] {
-	--season: #93d6c8;
+	/* ---- THE SEASON LAYER IS NOT DECLARED HERE. It used to be, and that was
+	   the bug: see the ground scopes below. ------------------------------- */
 }
 
 /* ==========================================================================
@@ -154,6 +151,16 @@
 	--accent-text: #8fe08a; /* 11.14 / 10.04 / 8.76 */
 	--accent-soft: rgba(143, 224, 138, 0.14);
 	--rim: #8fe08a;
+
+	/* THE SEASON WORDMARK. A GROUND ALIAS LIKE EVERYTHING ELSE HERE, AND IT
+	   WAS NOT, WHICH IS WHY IT SHIPPED UNREADABLE. It sat in the palette block
+	   at the top of this file, whose selector list names all four ground
+	   selectors at once: ONE declaration, so both grounds got IDEA mint, which
+	   is 1.14 on the bone sheet and 1.14 behind the console header bar. The
+	   console header and the login hero both paint with it. Unset, the season
+	   is the pathway green, which is what this pair is. 11.90 on --chrome-bg,
+	   11.14 / 10.04 / 8.76 on the three surfaces. */
+	--season: #8fe08a;
 
 	/* GLOW IS RATIONED: hero type and the live dot, never body copy, never
 	   behind a FIRST mark. A mark may not sit on a busy background and a halo
@@ -257,6 +264,12 @@
 	--accent-soft: rgba(34, 110, 29, 0.12);
 	--rim: #226e1d;
 
+	/* Deep IDEA green, the same literal --accent takes here and for the same
+	   reason: mint is illegal on this sheet. 4.53 on --chrome-bg, which is the
+	   header bar the wordmark is actually set on, and 5.07 / 5.07 / 4.53 on
+	   the three surfaces. */
+	--season: #226e1d;
+
 	--glow: none;
 	--glow-box: none;
 	--glow-strength: 0;
@@ -311,6 +324,43 @@
 	color: var(--fg);
 }
 
+/* --------------------------------------------------------------------------
+   THE ANNUAL RESKIN, AND IT IS A PAIR, NOT A COLOUR.
+
+   BIOGLOW, the 2026-27 FIRST LEGO League season. The bioluminescent cyan is
+   already in the palette as patina, so the reskin introduces no new hue: the
+   two literals below are this file's own --patina on each ground.
+
+   IT IS TWO RULES BECAUSE ONE RULE CANNOT HOLD TWO COLOURS. The single
+   `[data-season='bioglow']` rule this replaces named no ground at all, so it
+   would have put the dark cyan (1.98 on the bone sheet) on a printed page the
+   first time anyone set the attribute -- the same defect as the one above,
+   already written down and waiting. A season is a ground alias like the rest.
+
+   THE SELECTORS MIRROR THE GROUND SCOPES EXACTLY, including the bare `:root`
+   in the dark half, because the boot script stamps `data-theme` on the root
+   and never `data-ground`; `data-ground` is what a FORCED plate carries. The
+   paper half is one attribute more specific, so it wins the same way the
+   paper scope does.
+
+   KNOWN LIMIT, WRITTEN DOWN RATHER THAN HIDDEN: a forced paper plate INSIDE a
+   dark document inherits the dark season, because `data-season` sits on the
+   root and the compound cannot match the plate. Team accents solve that with
+   ground-named pairs, and a season would need the same treatment IF the
+   wordmark ever appeared inside a plate. It does not: the two places that
+   paint with --season are the console header and the login hero, both at
+   document level. Move the wordmark into a plate and this becomes real.
+   -------------------------------------------------------------------------- */
+:root[data-season='bioglow'],
+[data-ground='dark'][data-season='bioglow'] {
+	--season: #93d6c8; /* 11.45 on --chrome-bg, 10.71 / 9.65 / 8.43 */
+}
+[data-ground='paper'][data-season='bioglow'],
+[data-ground='light'][data-season='bioglow'],
+:root[data-theme='light'][data-season='bioglow'] {
+	--season: #286a5d; /* 4.54 on --chrome-bg, 5.08 / 5.08 / 4.54 */
+}
+
 /* PRINT IS ALWAYS THE PAPER GROUND, and it says so once, here, rather than in
    an @media print block in every stylesheet that ever names a colour. */
 @media print {
@@ -341,6 +391,7 @@
 		--accent-text: #226e1d;
 		--accent-soft: rgba(34, 110, 29, 0.12);
 		--rim: #226e1d;
+		--season: #226e1d;
 		--glow: none;
 		--glow-box: none;
 		--glow-strength: 0;

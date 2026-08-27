@@ -167,13 +167,22 @@
 		font-weight: var(--fw-bold);
 		white-space: nowrap;
 	}
-	/* THE ACTIVE STATE IS THE PATHWAY GREEN, which is what --accent-text is on
-	   both grounds. Green is scarce on purpose: in the whole console chrome it
-	   marks the season wordmark and the tab you are on, and nothing else. */
+	/* THE ACTIVE STATE IS THE PATHWAY GREEN, which is what --accent is on both
+	   grounds. Green is scarce on purpose: in the whole console chrome it marks
+	   the season wordmark and the tab you are on, and nothing else.
+
+	   IT IS A FILLED PILL AND NOT GREEN TEXT ON A GREEN WASH. --accent-text on
+	   --accent-soft measured 3.88 on the paper ground: --accent-soft is a 12%
+	   wash and this bar's ground is --chrome-bg, so the ink lands on #c8cdb5,
+	   darker than any of the three surfaces --accent-text was derived against.
+	   --accent with --accent-ink is the fill-and-declared-ink pairing the
+	   palette measures on both grounds (11.14 dark, 5.07 paper), and it is what
+	   the primary button and the generator's current step already use, so "the
+	   one you are on" says the same thing everywhere in the app. */
 	.shell__tab--on {
-		color: var(--accent-text);
-		border-color: var(--accent-text);
-		background: var(--accent-soft);
+		color: var(--accent-ink);
+		border-color: var(--accent);
+		background: var(--accent);
 	}
 
 	.shell__main {

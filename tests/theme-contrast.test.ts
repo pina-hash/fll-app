@@ -113,6 +113,17 @@ const FOREGROUNDS: { token: string; floor: number; why?: string; surfaces?: read
 	{ token: '--fg', floor: 4.5 },
 	{ token: '--fg-hero', floor: 4.5 },
 	{
+		token: '--season',
+		floor: 4.5,
+		surfaces: ['--surface-0', '--surface-1', '--surface-2', '--chrome-bg'],
+		why:
+			'the season wordmark, which is set on the console header bar and the login ' +
+			'hero. --chrome-bg is in the list because the header bar IS the ground it ' +
+			'lands on and it is not one of the three surfaces: on paper it is #dfdaca, ' +
+			'where the mint this token used to carry on BOTH grounds measured 1.14. It ' +
+			'is set at 18px/700, so 3:1 would do; it is held to 4.5 because it clears it.'
+	},
+	{
 		token: '--fg-dim',
 		floor: 4.5,
 		surfaces: ['--surface-0', '--surface-1'],
