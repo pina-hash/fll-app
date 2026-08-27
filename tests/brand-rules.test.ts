@@ -11,6 +11,8 @@
 // which mounts the REAL BrandLogo; see the bundle's history entry.
 
 import { describe, expect, test } from 'vitest';
+import { render } from 'svelte/server';
+import FirstName from '../src/lib/brand/FirstName.svelte';
 import {
 	BrandRuleError,
 	MARKS,
@@ -204,6 +206,55 @@ describe('the season names are text, and carry the right symbol', () => {
 		// trademark symbol rather than a registered one.
 		expect(SEASON.first).not.toBe('FIRST');
 		expect(SEASON.challenge).not.toBe('FLL');
+	});
+});
+
+/**
+ * THE NAMES AS RENDERED, NOT AS WRITTEN.
+ *
+ * This is the only place in the suite that mounts a component, and it is here
+ * because the defect it guards against was INVISIBLE IN THE SOURCE. The markup
+ * had a newline and two tabs between LEGO and League; Svelte trims whitespace
+ * at the start of an {#if} block's content, so the compiler dropped it and the
+ * page said "FIRSTLEGO League Challenge" -- on every mentor screen, for the
+ * whole of the bundle that shipped it. Reading the file proved nothing. Reading
+ * the DOM proved it in one line.
+ *
+ * `svelte/server`'s render is the cheapest DOM there is: no browser, no jsdom,
+ * and the same compiled output the first paint of every page uses. FirstName
+ * falls back to its own empty name register with no surface above it, so the
+ * (R) lands on the first use in each of these, which is the rule.
+ */
+describe('the names as a reader sees them, rendered', () => {
+	const text = (name: 'first' | 'fll' | 'challenge' | 'season' | 'first-season') =>
+		render(FirstName, { props: { name } }).body.replace(/<[^>]*>/g, '');
+
+	test('every name has its spaces, and the words are separate words', () => {
+		expect(text('first')).toBe('FIRST\u00ae');
+		expect(text('fll')).toBe('FIRST\u00ae LEGO\u00ae League');
+		expect(text('challenge')).toBe('FIRST\u00ae LEGO\u00ae League Challenge');
+		expect(text('season')).toBe('FIRST\u00ae LEGO\u00ae League Challenge BIOGLOW\u2122');
+		expect(text('first-season')).toBe('FIRST\u00ae CANOPY\u2122');
+	});
+
+	test('the two runs that were fused stay separated, stated as their own case', () => {
+		// These are the exact strings the shipped page produced. They are asserted
+		// as absences rather than left implied by the equalities above, because
+		// this is the regression and it should name itself when it comes back.
+		for (const n of ['fll', 'challenge', 'season'] as const) {
+			expect(text(n)).not.toMatch(/FIRST\u00ae?LEGO/);
+			expect(text(n)).not.toMatch(/LeagueChallenge/);
+		}
+	});
+
+	test('FIRST is the element the italic rule selects, and LEGO is not', () => {
+		// The class list carries Svelte's scope hash, so these match the class
+		// rather than the whole attribute. What is being asserted is which
+		// element each name is in: `.first` is the one the stylesheet italicises
+		// and `.lego` is the one it must never touch.
+		const html = render(FirstName, { props: { name: 'fll' } }).body;
+		expect(html).toMatch(/<i class="first[^"]*">FIRST<\/i>/);
+		expect(html).toMatch(/<span class="lego[^"]*">LEGO<\/span>/);
 	});
 });
 

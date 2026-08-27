@@ -51,13 +51,27 @@
 	const legoMark = name === 'first' || name === 'first-season' ? false : claimFirstUse(reg, 'LEGO');
 </script>
 
+<!--
+	EVERY SPACE BETWEEN TWO NAMES IS AN EXPLICIT {' '}, AND THAT IS NOT A STYLE
+	CHOICE. Svelte trims whitespace at the START of an {#if} block's content, so
+	the newline-and-tabs that used to sit there vanished at compile time and the
+	rendered text read "FIRSTLEGO League" and "LeagueChallenge". The source
+	looked correct, the DOM did not, and the marks are governed by guidelines
+	that are not negotiable: FIRST and LEGO are separate names and Challenge is
+	a separate word. An {' '} expression is emitted verbatim and cannot be
+	trimmed, so the spacing no longer depends on how the file happens to be
+	indented. tests/brand-rules.test.ts asserts the RENDERED text, not this
+	markup.
+-->
 <span class="n"
 	><span class="mark"><i class="first">FIRST</i>{#if firstMark}<sup>®</sup>{/if}</span
-	>{#if name !== 'first' && name !== 'first-season'}
-		<span class="mark"><span class="lego">LEGO</span>{#if legoMark}<sup>®</sup>{/if}</span> League{#if name === 'challenge' || name === 'season'}
-			Challenge{/if}{#if name === 'season'}
-			<span class="mark">{SEASON.challenge}<sup>™</sup></span>{/if}{/if}{#if name === 'first-season'}
-		<span class="mark">{SEASON.first}<sup>™</sup></span>{/if}</span
+	>{#if name !== 'first' && name !== 'first-season'}{' '}<span class="mark"
+			><span class="lego">LEGO</span>{#if legoMark}<sup>®</sup>{/if}</span
+		>{' '}League{#if name === 'challenge' || name === 'season'}{' '}Challenge{/if}{#if name === 'season'}{' '}<span
+			class="mark">{SEASON.challenge}<sup>™</sup></span
+		>{/if}{/if}{#if name === 'first-season'}{' '}<span class="mark"
+			>{SEASON.first}<sup>™</sup></span
+		>{/if}</span
 >
 
 <style>

@@ -451,8 +451,10 @@ the rest of `/app` is.
 ## The code generator
 
 `src/lib/codegen/` turns a robot configuration into SPIKE Prime word-block
-`.llsp3` projects. `/app/me/codegen` is the student surface, `/dev/codegen` the
-harness. The governing pair is `docs/FLL_CODEGEN_SPEC.md` (what the emitter must
+`.llsp3` projects. `/app/me/codegen` is the student surface,
+`/app/codegen/[teamId]` the mentor's door onto the same one, `/dev/codegen` the
+harness; all three mount `CodegenPage.svelte` and differ only in the transport
+they hand it. The governing pair is `docs/FLL_CODEGEN_SPEC.md` (what the emitter must
 do) and `docs/FLL_VERIFIED_SHAPES.json` (what is true of the app). Where they
 disagree about a RULE the spec governs; where they disagree about whether a
 SHAPE works the registry governs and the spec is corrected.
@@ -483,8 +485,13 @@ SHAPE works the registry governs and the spec is corrected.
   IS A DIFFERENT STATE FROM ABSENT.** Each entry names the verified alternative
   covering the gap. `flippermoresensors_setOrientation` is the live one: T17's
   yaw axis is recorded on `robot_configs` and NOT emitted, so any hub that is
-  not flat-mounted is unsupported and the form says so rather than generating a
-  file that turns the wrong way.
+  not flat-mounted is unsupported. **A QUESTION WHOSE ANSWER IS THROWN AWAY IS
+  NOT ASKED.** The form used to collect the axis and the emitter used to ignore
+  it, which is a child spending attention on a control that changes nothing.
+  The column and its `up` default stay, the screen no longer carries the
+  control, and `CodegenPage.svelte` holds the note saying it returns when the
+  shape is verified. Restoring the control is part of verifying the shape, not
+  a step before it.
 - **`assertRegistryUsable()` THROWS, IT DOES NOT RETURN A FINDING, AND
   PLACEHOLDER IS KEPT APART FROM EMPTY.** A finding describes the PROJECT; a
   missing registry describes the VALIDATOR, and letting a broken toolchain wear
@@ -507,6 +514,22 @@ SHAPE works the registry governs and the spec is corrected.
 - **`pack()` uses `Math.random()` and `new Date()`**, so two runs of the same
   configuration differ by a few bytes and never hash equal. Compare structure,
   never bytes.
+- **WHAT IS PLUGGED INTO WHICH PORT IS ONE QUESTION, ASKED ONCE, AND
+  `movement_pair` IS DERIVED FROM IT.** `left_motor`, `right_motor`,
+  `movement_pair`, `left_color_port`, `right_color_port` and
+  `attachment_motors` are six columns answering one question, and the form
+  asked it six times. `src/lib/codegen/ports.ts` is that question as data: one
+  `PortRole` per port, and `configPortsFromMap()` is the ONLY producer of a
+  `movementPair`, which is `leftMotor + rightMotor` and therefore cannot
+  disagree with the two drive ports the way a text box beside two dropdowns
+  could. An incomplete map produces `null`, never a half-built config, so it
+  cannot reach the transport or the emitter, and a stored row that already
+  disagrees with itself is repaired when it is opened.
+  `tests/codegen-ports.test.ts` holds both halves: the property, over every map
+  two moves from the default, and the structural half, which goes red if a
+  second file assigns `movementPair` at all. Same rule as "A DERIVED ANSWER IS
+  DEFINED ONCE", applied on the client because this derivation is a screen's
+  arithmetic and not a database read.
 
 ## The field picture
 

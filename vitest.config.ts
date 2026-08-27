@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { fileURLToPath } from 'node:url';
 import { config as loadEnv } from 'dotenv';
 
@@ -14,6 +15,17 @@ import { config as loadEnv } from 'dotenv';
 loadEnv({ path: fileURLToPath(new URL('./.env.test', import.meta.url)) });
 
 export default defineConfig({
+	/**
+	 * THE SVELTE PLUGIN IS HERE FOR ONE REASON: a claim about what a component
+	 * RENDERS has to be measured on the rendered text. `FirstName` looked
+	 * correct in source and emitted "FIRSTLEGO League" in the DOM, because
+	 * Svelte trims whitespace at an {#if} boundary. Reading the markup could
+	 * not have caught that and cannot catch it coming back, so
+	 * tests/brand-rules.test.ts renders the component through `svelte/server`.
+	 * It is NOT here to turn this into a component-test suite; everything else
+	 * in tests/ is still node-side integration against the local stack.
+	 */
+	plugins: [svelte({ compilerOptions: { runes: true } })],
 	resolve: {
 		alias: {
 			$lib: fileURLToPath(new URL('./src/lib', import.meta.url))
