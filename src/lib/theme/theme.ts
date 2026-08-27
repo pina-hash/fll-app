@@ -41,25 +41,39 @@ export function isThemePreference(value: unknown): value is ThemePreference {
 	return value === 'system' || value === 'light' || value === 'dark';
 }
 
-/** The three states collapsed to the two grounds. */
+/**
+ * The three states collapsed to the two grounds.
+ *
+ * `system` RESOLVES TO DARK, NOT TO THE OPERATING SYSTEM, and that is the one
+ * thing about this resolver that is not obvious. The dark ground IS the IDEA
+ * identity: it is where the green ramp, the mint and the bone live, and a
+ * child opening this app is meant to see green before they see anything else.
+ * A device in light mode following its own setting would open the app on the
+ * paper sheet, which is the PRINT ground and a deliberately quiet one.
+ *
+ * The light option has not gone anywhere. It is an explicit choice on the
+ * toggle, it resolves to the paper ground, and it is the same ground a run
+ * sheet prints on, so choosing it is a preview of the printout rather than a
+ * second theme to maintain.
+ */
 export function resolveGround(preference: ThemePreference, systemPrefersDark: boolean): Ground {
 	if (preference === 'light') return 'light';
-	if (preference === 'dark') return 'dark';
-	return systemPrefersDark ? 'dark' : 'light';
+	return 'dark';
 }
 
-/** What each option says on the toggle. Fourth-grade reading level: the
- *  students using this are nine, and "Match my device" is a sentence they
- *  can read where "System" is a word they cannot. */
+/* What each option says on the toggle. Fourth-grade reading level: the
+   students using this are nine. The labels say what the option DOES. `system` no longer follows the device,
+   so calling it "Match my device" would be a sentence a nine-year-old could
+   test and find untrue. It is the app's own ground, which is the green one. */
 export const THEME_LABELS: Record<ThemePreference, string> = {
-	system: 'Match my device',
-	light: 'Light',
+	system: 'App colours',
+	light: 'Paper',
 	dark: 'Dark'
 };
 
 export const THEME_SHORT_LABELS: Record<ThemePreference, string> = {
-	system: 'Auto',
-	light: 'Light',
+	system: 'App',
+	light: 'Paper',
 	dark: 'Dark'
 };
 
@@ -87,13 +101,10 @@ export const THEME_BOOT_SCRIPT = `(function () {
 	try {
 		var stored = localStorage.getItem('fll-theme');
 		var pref = stored === 'light' || stored === 'dark' ? stored : 'system';
-		var dark =
-			pref === 'dark' ||
-			(pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-		document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+		document.documentElement.setAttribute('data-theme', pref === 'light' ? 'light' : 'dark');
 		document.documentElement.setAttribute('data-theme-pref', pref);
 	} catch (e) {
-		document.documentElement.setAttribute('data-theme', 'light');
+		document.documentElement.setAttribute('data-theme', 'dark');
 		document.documentElement.setAttribute('data-theme-pref', 'system');
 	}
 })();`;

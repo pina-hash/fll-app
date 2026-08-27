@@ -107,7 +107,13 @@ describe('the boot script is placed so that it runs before first paint', () => {
 describe('the ground it stamps, for every state the device can be in', () => {
 	const cases: { stored: string | null; systemPrefersDark: boolean; ground: string; pref: string }[] =
 		[
-			{ stored: null, systemPrefersDark: false, ground: 'light', pref: 'system' },
+			// `system` NO LONGER FOLLOWS THE DEVICE. The dark ground IS the IDEA
+			// identity, and a child opening this app is meant to see green before
+			// they see anything else; a light-mode iPad following its own setting
+			// would open on the paper sheet, which is the PRINT ground. Both rows
+			// below therefore answer 'dark', and the control underneath is what
+			// proves the explicit choices still override.
+			{ stored: null, systemPrefersDark: false, ground: 'dark', pref: 'system' },
 			{ stored: null, systemPrefersDark: true, ground: 'dark', pref: 'system' },
 			{ stored: 'light', systemPrefersDark: false, ground: 'light', pref: 'light' },
 			{ stored: 'light', systemPrefersDark: true, ground: 'light', pref: 'light' },
@@ -124,16 +130,20 @@ describe('the ground it stamps, for every state the device can be in', () => {
 		}
 	);
 
-	it('the control: a manual override actually overrides the system', () => {
-		// If these two ever agreed with the system setting, the override
-		// would be doing nothing and every case above would still pass.
+	it('the control: an explicit choice still overrides the default', () => {
+		// The default is now 'dark' whatever the device says, so the case that
+		// carries weight is 'light': if the stored preference were ignored, every
+		// row above would still pass and the toggle would be decoration.
 		expect(boot({ stored: 'light', systemPrefersDark: true })[GROUND_ATTRIBUTE]).toBe('light');
+		expect(boot({ stored: 'light', systemPrefersDark: false })[GROUND_ATTRIBUTE]).toBe('light');
 		expect(boot({ stored: 'dark', systemPrefersDark: false })[GROUND_ATTRIBUTE]).toBe('dark');
 	});
 
 	it('a value nobody wrote is ignored rather than trusted', () => {
 		const attributes = boot({ stored: 'midnight-neon', systemPrefersDark: false });
-		expect(attributes[GROUND_ATTRIBUTE]).toBe('light');
+		// Falls back to `system`, which since the IDEA ground layer landed means
+		// the app's own dark ground rather than the operating system's answer.
+		expect(attributes[GROUND_ATTRIBUTE]).toBe('dark');
 		expect(attributes[PREFERENCE_ATTRIBUTE]).toBe('system');
 	});
 
@@ -142,7 +152,9 @@ describe('the ground it stamps, for every state the device can be in', () => {
 		// throw from getItem rather than returning null. An exception here
 		// would abort head parsing and take the page down with it.
 		const attributes = boot({ storageThrows: true, systemPrefersDark: true });
-		expect(attributes[GROUND_ATTRIBUTE]).toBe('light');
+		// The catch branch lands on the IDENTITY ground, not on paper. A device
+		// that cannot remember still opens the app looking like the app.
+		expect(attributes[GROUND_ATTRIBUTE]).toBe('dark');
 		expect(attributes[PREFERENCE_ATTRIBUTE]).toBe('system');
 	});
 });

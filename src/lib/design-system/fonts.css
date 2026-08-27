@@ -1,38 +1,45 @@
 /* ==========================================================================
-   THE BRAND FACE IS ROBOTO, AND IT IS FREELY LICENSED, SO NOTHING IS
-   SUBSTITUTED FOR IT.
+   THE FACES. Two of them, from Google Fonts, SELF-HOSTED.
 
-   FIRST Branding & Design Guidelines, "FIRST FONTS" (p29): the Roboto font
-   family, in "Regular, Italic, Bold, Bold Italic, and Bold Condensed", is the
-   primary font of the FIRST branding system, and the guide itself says the
-   weights "can be accessed free of charge along with additional font weights
-   at fonts.google.com/specimen/Roboto." Arial is named as the permitted
-   substitute (p30) and is the fallback below for a device with neither.
-   Roboto ships under the SIL Open Font License 1.1, which permits web use and
-   self-hosting, so there is no licensing reason to reach for a lookalike.
+   --font-hero  Chakra Petch   display ONLY: hero type and wordmarks
+   --font-body  Rajdhani       all running copy and every heading
+   --font-mono  JetBrains Mono join codes, PINs, clocks. Not an identity face.
 
-   SELF-HOSTED, NOT HOTLINKED. The previous stylesheet pulled its faces from
-   fonts.googleapis.com at runtime. This app is local-first by design: a
-   student's tablet has to work in a gym with no uplink, and a webfont request
-   that never returns is a screen of fallback metrics mid-meeting. @fontsource
-   vendors the same files into the bundle, so the faces are as offline as the
-   rest of the app. It also removes a third-party request from every page,
-   which is the right default for a tool used by nine-year-olds.
+   SELF-HOSTED, NOT PRECONNECTED. Both are offered as a preconnect to
+   fonts.googleapis.com; this app takes the other option on purpose. It is
+   local-first by design: a student's tablet has to work in a gym with no
+   uplink, and a webfont request that never returns is a screen of fallback
+   metrics mid-meeting. @fontsource vendors the same files into the bundle, so
+   the faces are as offline as the rest of the app, and it removes a
+   third-party request from every page a nine-year-old loads.
 
-   Bold Condensed is a separate family on Google Fonts (Roboto Condensed);
-   it is loaded at 700 only, for the places the brand uses it: short all-caps
-   labels where the full-width face would wrap.
+   CHAKRA PETCH IS DISPLAY ONLY AND THE RULE IS ENFORCED BY THE TOKEN NAME.
+   It is a squared, technical face with tight apertures: excellent at hero
+   size, tiring as running copy on a 375px phone at arm's length. There is no
+   `--font-display` any more precisely so that a heading cannot reach for it
+   out of habit; headings take --font-body, which is what Rajdhani is for.
 
-   The mono face is NOT a brand concern. It exists for join codes, PINs and
-   clocks, where a distinct 0/O and 1/l/I is the whole point, and it is
-   self-hosted for the same offline reason.
+   Rajdhani ships 300-700; 400/500/600/700 are loaded. Chakra Petch loads 600
+   and 700 only, because nothing below a hero uses it. Both are SIL Open Font
+   License 1.1, which permits web use and self-hosting.
+
+   THE MONO FACE IS NOT AN IDENTITY CONCERN. It exists where a distinct 0/O
+   and 1/l/I is the whole point, and is self-hosted for the same offline
+   reason.
+
+   ROBOTO IS GONE FROM THE APP'S OWN TYPE and stays available to nothing. It
+   was here as the FIRST brand face; the FIRST guidelines govern the MARKS and
+   the FIRST name in text, not the typography of a team's own tool, and the
+   marks are artwork files that carry their own lettering.
    ========================================================================== */
 
-@import '@fontsource/roboto/400.css';
-@import '@fontsource/roboto/400-italic.css';
-@import '@fontsource/roboto/500.css';
-@import '@fontsource/roboto/700.css';
-@import '@fontsource/roboto/700-italic.css';
-@import '@fontsource/roboto-condensed/700.css';
+@import '@fontsource/chakra-petch/600.css';
+@import '@fontsource/chakra-petch/700.css';
+
+@import '@fontsource/rajdhani/400.css';
+@import '@fontsource/rajdhani/500.css';
+@import '@fontsource/rajdhani/600.css';
+@import '@fontsource/rajdhani/700.css';
+
 @import '@fontsource/jetbrains-mono/500.css';
 @import '@fontsource/jetbrains-mono/700.css';

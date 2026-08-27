@@ -1,15 +1,80 @@
 /* ==========================================================================
-   Motion. Keyframes are harmless to define; the CLASSES are the gate, and
-   every one of them applies only under prefers-reduced-motion: no-preference.
+   MOTION. FOUR TRANSITIONS, ported as ARCHITECTURE from frc-app's four-slide
+   library. Four because four is enough, and because a longer list becomes a
+   menu of presentation-software defaults that every screen picks from
+   differently.
 
-   THE BREATHING GLOW IS GONE. `ds-breathe` pulsed a hard-coded mint halo
-   (rgba(95, 242, 182, ...)) left over from the bioluminescent theme 0018
-   removed. It was the last coloured glow in the repo and the last colour
-   literal outside colors.css and team-accents.css, it had no call site, and a
-   halo in any colour is the thing the FIRST guidelines forbid near a mark. A
-   second ground would have needed a second value for it, which is one value
-   too many for an animation nothing uses.
+     .ds-shutter   content, general          a blade wipe with a mint rim
+     .ds-boot      data, telemetry, a clock  a HUD de-blur
+     .ds-banner    a divider or a statement  an angled pass
+     .ds-cut       a quiet beat              0.14s, no movement at all
+
+   Element entrances are a separate, smaller list: .ds-rise | fade | stamp.
+
+   ==========================================================================
+   TWO RULES, BOTH INHERITED, BOTH LOAD-BEARING
+   ==========================================================================
+
+   1. EVERY ANIMATION IS GATED BEHIND prefers-reduced-motion: no-preference
+      INSIDE THIS LIBRARY. Do not add a second gate at a call site and do not
+      remove this one. One gate means one place to check.
+
+   2. BASE STYLES ARE THE VISIBLE END STATE. A class on its own changes
+      nothing: nothing runs until the element sits inside a `.ds-run`
+      container. That is what keeps print, a PDF, a reduced-motion device and
+      a server-rendered first paint COMPLETE. A student's tablet that never
+      finishes hydrating still shows the whole screen.
+
+      This is why hide-until-clicked is prohibited here. An element that is
+      invisible until a class arrives is an element missing from every one of
+      those four outputs.
+
+   THE GLOW THAT USED TO LIVE HERE IS STILL GONE. `ds-breathe` pulsed a
+   hard-coded mint halo left over from the 0018 theme, which was both a colour
+   literal outside the token layer and a halo near a mark. The mint is back as
+   an identity colour, the halo is not, and --glow is a rationed ground alias
+   rather than an animation.
    ========================================================================== */
+
+/* ---- the four transitions ------------------------------------------------ */
+@keyframes ds-shutter {
+	from {
+		clip-path: inset(0 100% 0 0);
+	}
+	to {
+		clip-path: inset(0 0 0 0);
+	}
+}
+@keyframes ds-boot {
+	from {
+		opacity: 0;
+		filter: blur(8px);
+	}
+	to {
+		opacity: 1;
+		filter: blur(0);
+	}
+}
+@keyframes ds-banner {
+	from {
+		opacity: 0;
+		transform: translateX(-2.5%) skewX(-6deg);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes ds-cut {
+	from {
+		opacity: 0.001;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+/* ---- element entrances --------------------------------------------------- */
 @keyframes ds-rise {
 	from {
 		opacity: 0;
@@ -20,9 +85,62 @@
 		transform: none;
 	}
 }
+@keyframes ds-fade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+@keyframes ds-stamp {
+	from {
+		opacity: 0;
+		transform: scale(0.94);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
 
 @media (prefers-reduced-motion: no-preference) {
+	/* The four. A transition class alone does nothing outside .ds-run. */
+	:where(.ds-run) .ds-shutter {
+		animation: ds-shutter var(--dur-slide) var(--ease-in-out) both;
+	}
+	:where(.ds-run) .ds-boot {
+		animation: ds-boot var(--dur-slide) var(--ease-out) both;
+	}
+	:where(.ds-run) .ds-banner {
+		animation: ds-banner var(--dur-slide) var(--ease-out) both;
+	}
+	:where(.ds-run) .ds-cut {
+		animation: ds-cut var(--dur-cut) linear both;
+	}
+
+	/* Entrances. .ds-rise keeps its old name and its old call sites. */
 	.ds-rise {
-		animation: ds-rise 220ms ease-out both;
+		animation: ds-rise var(--dur-in) var(--ease-out) both;
+	}
+	:where(.ds-run) .ds-fade {
+		animation: ds-fade var(--dur-in) var(--ease-out) both;
+	}
+	:where(.ds-run) .ds-stamp {
+		animation: ds-stamp var(--dur-in) var(--ease-snap) both;
+	}
+
+	/* Stagger, +0.06s a step. Small, because these are screens and not slides. */
+	.ds-d1 {
+		animation-delay: 0.06s;
+	}
+	.ds-d2 {
+		animation-delay: 0.12s;
+	}
+	.ds-d3 {
+		animation-delay: 0.18s;
+	}
+	.ds-d4 {
+		animation-delay: 0.24s;
 	}
 }

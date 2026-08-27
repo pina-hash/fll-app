@@ -281,7 +281,7 @@
 		color: var(--text-1);
 		border-radius: 6px;
 		padding: clamp(1.25rem, 4vw, 3rem);
-		font-family: Georgia, 'Times New Roman', serif;
+		font-family: var(--font-paper);
 		font-size: 1.05rem;
 		line-height: 1.55;
 		overflow-wrap: anywhere;

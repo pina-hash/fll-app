@@ -108,91 +108,91 @@
 
 [data-accent='bark'] {
 	--accent-on-light: #6a4d32;
-	--accent-ink-on-light: #ffffff;
-	--accent-wash-on-light: #edebea;
+	--accent-ink-on-light: #eae6d8;
+	--accent-wash-on-light: #e4ded0;
 	--accent-on-dark: #cca586;
-	--accent-ink-on-dark: #231f20;
-	--accent-wash-on-dark: #40352f;
+	--accent-ink-on-dark: #131a13;
+	--accent-wash-on-dark: #37392c;
 }
 [data-accent='orange'] {
-	--accent-on-light: #9c5700;
-	--accent-ink-on-light: #ffffff;
-	--accent-wash-on-light: #f1ecea;
+	--accent-on-light: #905000;
+	--accent-ink-on-light: #eae6d8;
+	--accent-wash-on-light: #e5dfcd;
 	--accent-on-dark: #eb9d47;
-	--accent-ink-on-dark: #231f20;
-	--accent-wash-on-dark: #483324;
+	--accent-ink-on-dark: #131a13;
+	--accent-wash-on-dark: #3c3722;
 }
 [data-accent='olive'] {
 	--accent-on-light: #3b5005;
-	--accent-ink-on-light: #ffffff;
-	--accent-wash-on-light: #ebebea;
+	--accent-ink-on-light: #eae6d8;
+	--accent-wash-on-light: #e1dfcd;
 	--accent-on-dark: #a4b46d;
-	--accent-ink-on-dark: #231f20;
-	--accent-wash-on-dark: #37392a;
+	--accent-ink-on-dark: #131a13;
+	--accent-wash-on-dark: #313b28;
 }
 [data-accent='lime'] {
-	--accent-on-light: #417400;
-	--accent-ink-on-light: #ffffff;
-	--accent-wash-on-light: #ebeeea;
+	--accent-on-light: #3c6c00;
+	--accent-ink-on-light: #eae6d8;
+	--accent-wash-on-light: #e1e0cd;
 	--accent-on-dark: #88bb4c;
-	--accent-ink-on-dark: #231f20;
-	--accent-wash-on-dark: #313a24;
+	--accent-ink-on-dark: #131a13;
+	--accent-wash-on-dark: #2c3c23;
 }
 [data-accent='green'] {
 	--accent-on-light: #024724;
-	--accent-ink-on-light: #ffffff;
-	--accent-wash-on-light: #eaebea;
+	--accent-ink-on-light: #eae6d8;
+	--accent-wash-on-light: #dedecf;
 	--accent-on-dark: #53c289;
-	--accent-ink-on-dark: #231f20;
-	--accent-wash-on-dark: #283c2f;
+	--accent-ink-on-dark: #131a13;
+	--accent-wash-on-dark: #243d2d;
 }
 [data-accent='sage'] {
-	--accent-on-light: #3b735f;
-	--accent-ink-on-light: #ffffff;
-	--accent-wash-on-light: #ebedec;
+	--accent-on-light: #366957;
+	--accent-ink-on-light: #eae6d8;
+	--accent-wash-on-light: #e1e0d2;
 	--accent-on-dark: #71baa2;
-	--accent-ink-on-dark: #231f20;
-	--accent-wash-on-dark: #2c3a35;
+	--accent-ink-on-dark: #131a13;
+	--accent-wash-on-dark: #293c31;
 }
 [data-accent='teal'] {
 	--accent-on-light: #036377;
-	--accent-ink-on-light: #ffffff;
-	--accent-wash-on-light: #eaecee;
+	--accent-ink-on-light: #eae6d8;
+	--accent-wash-on-light: #dedfd3;
 	--accent-on-dark: #74b7c8;
-	--accent-ink-on-dark: #231f20;
-	--accent-wash-on-dark: #2d393e;
+	--accent-ink-on-dark: #131a13;
+	--accent-wash-on-dark: #293c37;
 }
 [data-accent='violet'] {
 	--accent-on-light: #7320d3;
-	--accent-ink-on-light: #ffffff;
-	--accent-wash-on-light: #edeaf8;
+	--accent-ink-on-light: #eae6d8;
+	--accent-wash-on-light: #e4dcd8;
 	--accent-on-dark: #c29bf2;
-	--accent-ink-on-dark: #231f20;
-	--accent-wash-on-dark: #3e3349;
+	--accent-ink-on-dark: #131a13;
+	--accent-wash-on-dark: #36373d;
 }
 [data-accent='purple'] {
-	--accent-on-light: #b608bd;
-	--accent-ink-on-light: #ffffff;
-	--accent-wash-on-light: #f4eaf5;
+	--accent-on-light: #a907af;
+	--accent-ink-on-light: #eae6d8;
+	--accent-wash-on-light: #e7dbd6;
 	--accent-on-dark: #ff76fe;
-	--accent-ink-on-dark: #231f20;
-	--accent-wash-on-dark: #4e2b4c;
+	--accent-ink-on-dark: #131a13;
+	--accent-wash-on-dark: #3f313f;
 }
 [data-accent='orchid'] {
 	--accent-on-light: #9a137b;
-	--accent-ink-on-light: #ffffff;
-	--accent-wash-on-light: #f1eaee;
+	--accent-ink-on-light: #eae6d8;
+	--accent-wash-on-light: #e6dbd3;
 	--accent-on-dark: #d998cb;
-	--accent-ink-on-dark: #231f20;
-	--accent-wash-on-dark: #44323f;
+	--accent-ink-on-dark: #131a13;
+	--accent-wash-on-dark: #393737;
 }
 [data-accent='magenta'] {
-	--accent-on-light: #c70074;
-	--accent-ink-on-light: #ffffff;
-	--accent-wash-on-light: #f6eaee;
+	--accent-on-light: #bb006d;
+	--accent-ink-on-light: #eae6d8;
+	--accent-wash-on-light: #e8dbd3;
 	--accent-on-dark: #fe83c5;
-	--accent-ink-on-dark: #231f20;
-	--accent-wash-on-dark: #4e2d3d;
+	--accent-ink-on-dark: #131a13;
+	--accent-wash-on-dark: #3f3336;
 }
 
 /* --- THE SELECTION, AND WHERE IT HAS TO BE DECLARED ----------------------
@@ -225,19 +225,35 @@
    --text-2 on --surface-1 is 7.39 light and 7.92 dark; --surface-0 as the ink
    on --text-2 is 8.06 and 10.18. */
 
+/* THE DARK GROUND IS THE DEFAULT, so it is what a bare [data-accent] resolves
+   to, and paper is the exception that re-declares. That is the inverse of the
+   old arrangement, and it follows the ground layer: a document with no ground
+   attribute is dark, so an accent with no ground attribute must be too. */
 [data-accent],
-[data-ground='light'] {
+[data-ground='dark'] {
+	--team-accent: var(--accent-on-dark, var(--text-2));
+	--team-accent-ink: var(--accent-ink-on-dark, var(--surface-0));
+	--team-accent-wash: var(--accent-wash-on-dark, var(--surface-1));
+}
+
+/* A forced paper plate is a DESCENDANT of the [data-accent] element, so a
+   nearer declaration beats the inherited one with no specificity trick. This
+   is the whole reason each accent states BOTH of its pairs rather than the
+   ground shipping two tables: a plate cannot know which accent it is inside,
+   but it can always ask for "the paper one of whatever pair this is". */
+[data-ground='paper'],
+[data-ground='light'],
+:root[data-theme='light'] [data-accent] {
 	--team-accent: var(--accent-on-light, var(--text-2));
-	--team-accent-ink: var(--accent-ink-on-light, #ffffff);
+	--team-accent-ink: var(--accent-ink-on-light, var(--surface-0));
 	--team-accent-wash: var(--accent-wash-on-light, var(--surface-1));
 }
 
-@media screen {
-	:root[data-theme='dark'] [data-accent],
-	[data-ground='dark'] {
-		--team-accent: var(--accent-on-dark, var(--text-2));
-		--team-accent-ink: var(--accent-ink-on-dark, var(--surface-0));
-		--team-accent-wash: var(--accent-wash-on-dark, var(--surface-1));
+@media print {
+	[data-accent] {
+		--team-accent: var(--accent-on-light, var(--text-2));
+		--team-accent-ink: var(--accent-ink-on-light, var(--surface-0));
+		--team-accent-wash: var(--accent-wash-on-light, var(--surface-1));
 	}
 }
 

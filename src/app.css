@@ -46,10 +46,14 @@ body {
 	-webkit-font-smoothing: antialiased;
 }
 
+/* HEADINGS TAKE THE BODY FACE. --font-hero is Chakra Petch and is display
+   only: hero type and wordmarks. A heading in it at 1.15rem on a 375px phone
+   is tiring to read, which is the whole reason the two tokens are named for
+   their ROLE rather than for their size. */
 h1,
 h2,
 h3 {
-	font-family: var(--font-display);
+	font-family: var(--font-body);
 	line-height: var(--lh-tight);
 	margin: 0 0 var(--space-3);
 }
@@ -97,12 +101,33 @@ code {
 	color: var(--text-faint);
 	margin-bottom: var(--space-2);
 }
-/* Was a bioluminescent glow; now simply the live/done state, in the
-   text-safe green, on both grounds. No halo: a coloured glow is a busy
-   background, and a FIRST mark may not sit on one. */
+/* The live/done state, in the pathway green, on both grounds. Still no halo
+   in running copy: --glow is rationed to hero type and the live dot, and a
+   FIRST mark may not sit on a busy background. */
 .glow {
 	color: var(--success-text);
 	font-weight: var(--fw-bold);
+}
+/* Hero type. The ONE place --font-hero is legal outside a wordmark, and the
+   one place --glow is legal at all. */
+.hero {
+	font-family: var(--font-hero);
+	font-size: var(--fs-hero);
+	font-weight: var(--fw-bold);
+	letter-spacing: var(--track-hero);
+	line-height: var(--lh-tight);
+	color: var(--fg-hero);
+	text-shadow: var(--glow);
+}
+/* LIVE and REC. Crimson, and the only two things besides an error that may
+   carry it. Never identity. */
+.live-dot {
+	display: inline-block;
+	width: 0.6rem;
+	height: 0.6rem;
+	border-radius: 50%;
+	background: var(--live);
+	flex: none;
 }
 .error {
 	/* --danger is the OFFICIAL FIRST red and measures 4.38 on white and 3.72
@@ -163,9 +188,11 @@ code {
 }
 .btn--secondary {
 	background: var(--surface-2);
-	/* --accent-text, not --accent: the fill and the foreground are the same
-	   official purple on white and cannot be on the dark ground, where purple
-	   measures 1.82. */
+	/* --accent-text, not --accent: on the dark ground the fill and the
+	   foreground happen to be the same mint, but on paper the fill is deep
+	   green with a bone ink and the foreground is that same deep green on the
+	   sheet. Two roles, two tokens, so the ground can move one without the
+	   other. */
 	color: var(--accent-text);
 	border-color: var(--boundary);
 }

@@ -278,21 +278,58 @@ THREE populations, one Auth instance. The boundary for all of them is `0002`'s t
 The token layer is `src/lib/design-system/` (pure CSS custom properties:
 `fonts`, `colors`, `typography`, `effects`, `motion`, `team-accents`, entered
 through `index.css`), imported once by `src/app.css`, which holds the shared
-classes (`.card`, `.btn`, `.field`, `.input`, `.tile`, text roles). **Do not
-invent colours or name a font face as a literal**; design against the tokens.
-Everything in the palette comes from the official FIRST and FIRST LEGO League
-guidelines: see "FIRST branding" below, and `colors.css` for the sources and
-the measured contrast of every token.
+classes (`.card`, `.btn`, `.field`, `.input`, `.tile`, `.hero`, `.live-dot`,
+text roles). **Do not invent colours or name a font face as a literal**;
+design against the tokens. `tests/design-tokens.test.ts` fails the suite if a
+colour literal appears anywhere outside that folder, and its allowed list has
+four entries, each carrying the reason that colour cannot be a token.
 
-- **TWO MEASURED GROUNDS, NEITHER AN INVERSION OF THE OTHER.** The light
-  ground is the brand's own white with FIRST black as the ink; the dark ground
-  is FIRST black as the page, with the two surfaces above it that black mixed
-  toward the brand gray, and white mixed toward the same gray as the ink. Both
-  are derived, both are measured, and `tests/theme-contrast.test.ts`
+- **THE IDENTITY IS THE IDEA PATHWAY, NOT TEAM 5669 AND NOT FIRST.** IDEA
+  green is the pathway colour and is SCARCE ON PURPOSE: it carries chrome and
+  marks (the season wordmark, the active nav tab, the primary button, a focus
+  ring) and nothing else. Content accents are brass, patina and copper, and
+  they live in the content layer. Crimson is LIVE, REC and error ONLY and is
+  never identity. The FIRST and FIRST LEGO League palettes survive as the
+  PROGRAM LAYER (`--program-fll*`), which colours program chrome and never
+  content, never identity.
+- **THE ARCHITECTURE CAME FROM `FRC_Design_System.md`** in the sibling
+  `frc-app` (`src/lib/design-system/docs/`), ported as ARCHITECTURE and not as
+  appearance: a token layer as the single source of colour, ground scopes set
+  by an attribute on a root, and a four-transition motion library. No Techmen
+  gold, no 5669 seal, no Space Grotesk.
+- **THE FACES ARE Chakra Petch (`--font-hero`, DISPLAY ONLY) AND Rajdhani
+  (`--font-body`, everything else, headings included).** Both self-hosted via
+  @fontsource rather than preconnected, for the same offline reason the rest
+  of the app is local-first. There is deliberately no `--font-display` that
+  reaches the hero face: that name invites a heading to take it.
+
+- **TWO GROUND SCOPES, AND EVERY ONE DECLARES THE COMPLETE SEMANTIC ALIAS SET
+  AS LITERAL VALUES.** `:root` and `[data-ground='dark']` share the IDEA dark
+  ramp; `[data-ground='paper']`, `[data-ground='light']` and
+  `:root[data-theme='light']` share the bone paper sheet, and `@media print`
+  restates it. **A `var()` reference or a missing alias falls back to the dark
+  value SILENTLY**, because custom-property substitution resolves where a
+  property is DECLARED. That bug has shipped twice in the sibling app and once
+  here: `--shadow-card`, `--shadow-raised`, `--backdrop-deep` and
+  `--focus-outline` were composed at `:root` out of ground-dependent `var()`s.
+  `tests/design-tokens.test.ts` asserts the scopes name the same aliases and
+  that no value contains `var(`, and carries a control that removes one alias
+  and requires the comparison to fail.
+- **IDEA MINT IS ILLEGAL ON PAPER** (1.27 on the bone sheet), so the paper
+  scope redeclares the accent as deep IDEA green `#226E1D` at 5.07 with its
+  hue held, and flattens every glow to zero. Same rule the sibling app applies
+  to Techmen Gold, same reason.
+- Both grounds are derived and measured, and `tests/theme-contrast.test.ts`
   re-measures the SHIPPED stylesheets rather than trusting a comment. A new
   token, or a change to one, is measured on BOTH grounds in that test in the
-  same change. `scripts/derive-dark-palette.ts` is where the numbers come
+  same change. `scripts/derive-dark-palette.ts` is where the arithmetic comes
   from; it reproduces 0018's own recorded figures as its control.
+- **THE DEFAULT GROUND IS THE IDENTITY, NOT THE OPERATING SYSTEM.**
+  `resolveGround('system')` answers `dark` whatever the device prefers,
+  because a child opening this app is meant to see green before they see
+  anything else and the paper sheet is the PRINT ground. `light` remains an
+  explicit choice and resolves to paper, which makes choosing it a preview of
+  the printout rather than a second theme to maintain.
 - **AN OFFICIAL ACCENT THAT CANNOT CARRY TEXT ON A GROUND BECOMES A FILL
   THERE, AND ITS FOREGROUND BECOMES A DECLARED FUNCTIONAL COLOUR.** On white,
   FLL green is 3.19 and FIRST red is 4.38; on the dark page, FLL purple is
@@ -608,12 +645,14 @@ behind every rule with its page number.
   possessive. Season names (CANOPY, BIOGLOW) are unregistered per the IP
   policy's Attachment A and take ™, and they are TEXT in the surrounding
   face: setting them differently would create the appearance of a new logo.
-- **THE PALETTE AND THE FACE ARE THE OFFICIAL ONES.** FIRST black, blue,
-  red, gray; FIRST LEGO League purple, green, red; Roboto (and Roboto
-  Condensed), which the guidelines themselves point at Google Fonts for and
-  which is OFL-licensed, self-hosted so a tablet with no uplink still has it.
-  The ground is WHITE because the brand accents are built for white: on black
-  they measure 1.82 to 3.72 and cannot carry text at all.
+- **THE FIRST PALETTE IS THE PROGRAM LAYER, NOT THE APP'S IDENTITY.** The
+  published FIRST LEGO League values (`#ED1C24 / #00A651 / #662D91 / #231F20`)
+  are used unmodified and colour PROGRAM CHROME only: the lockups, the program
+  rail, the thin FIRST-gray rule between a FIRST logo and a division lockup.
+  They never colour content and never compete with IDEA green for identity.
+  The app's own palette and faces are the IDEA pathway's; see "Visual theme".
+  The MARKS are untouched by any of this: they are artwork files, used as
+  supplied, and a ground swaps the asset rather than styling the mark.
 - **THREE FUNCTIONAL COLOURS ARE DECLARED NON-BRAND, AND THAT LIST DOES NOT
   GROW QUIETLY.** `--success-text`, `--danger-text` and `--warning` exist
   because green (3.19) and red (4.38) cannot clear 4.5:1 as small text and

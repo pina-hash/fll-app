@@ -107,8 +107,11 @@
 		justify-content: space-between;
 		gap: var(--space-4);
 		padding: var(--space-3) var(--space-4);
+		/* CHROME, not a card. --chrome-bg is the ground's own edge tone, so the
+		   bar reads as the app's frame rather than as the first panel of the
+		   page. Same rule on both grounds; only the literal differs. */
 		border-bottom: 1px solid var(--boundary);
-		background: var(--surface-1);
+		background: var(--chrome-bg);
 	}
 	.shell__brand {
 		display: flex;
@@ -123,11 +126,15 @@
 		gap: 0.1rem;
 		min-width: 0;
 	}
+	/* THE SEASON IS THE ONE WORDMARK IN THE CONSOLE CHROME, so it is the one
+	   place --font-hero appears here, and it carries --season, which is mint
+	   until a season sets it. */
 	.shell__season-name {
-		font-family: var(--font-display);
+		font-family: var(--font-hero);
 		font-weight: var(--fw-bold);
 		font-size: var(--fs-h3);
 		letter-spacing: var(--track-label);
+		color: var(--season);
 	}
 	.shell__season-name sup {
 		font-size: 0.55em;
@@ -145,7 +152,7 @@
 		gap: var(--space-2);
 		padding: var(--space-2) var(--space-4);
 		border-bottom: 1px solid var(--hairline);
-		background: var(--surface-1);
+		background: var(--chrome-bg);
 		overflow-x: auto;
 	}
 	.shell__tab {
@@ -155,15 +162,18 @@
 		padding: 0 var(--space-4);
 		border-radius: var(--radius-control);
 		border: 1px solid transparent;
-		color: var(--text-2);
+		color: var(--chrome-fg);
 		text-decoration: none;
 		font-weight: var(--fw-bold);
 		white-space: nowrap;
 	}
+	/* THE ACTIVE STATE IS THE PATHWAY GREEN, which is what --accent-text is on
+	   both grounds. Green is scarce on purpose: in the whole console chrome it
+	   marks the season wordmark and the tab you are on, and nothing else. */
 	.shell__tab--on {
-		color: var(--success-text);
-		border-color: var(--boundary);
-		background: var(--surface-2);
+		color: var(--accent-text);
+		border-color: var(--accent-text);
+		background: var(--accent-soft);
 	}
 
 	.shell__main {

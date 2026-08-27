@@ -29,19 +29,16 @@
 		-->
 		<script>
 			(function () {
-				try {
-					var stored = localStorage.getItem('fll-theme');
-					var pref = stored === 'light' || stored === 'dark' ? stored : 'system';
-					var dark =
-						pref === 'dark' ||
-						(pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-					document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-					document.documentElement.setAttribute('data-theme-pref', pref);
-				} catch (e) {
-					document.documentElement.setAttribute('data-theme', 'light');
-					document.documentElement.setAttribute('data-theme-pref', 'system');
-				}
-			})();
+	try {
+		var stored = localStorage.getItem('fll-theme');
+		var pref = stored === 'light' || stored === 'dark' ? stored : 'system';
+		document.documentElement.setAttribute('data-theme', pref === 'light' ? 'light' : 'dark');
+		document.documentElement.setAttribute('data-theme-pref', pref);
+	} catch (e) {
+		document.documentElement.setAttribute('data-theme', 'dark');
+		document.documentElement.setAttribute('data-theme-pref', 'system');
+	}
+})();
 		</script>
 		%sveltekit.head%
 	</head>

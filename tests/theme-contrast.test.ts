@@ -71,22 +71,34 @@ function resolve(tokens: Record<string, string>, name: string, seen = new Set<st
 	return resolve(tokens, ref[1], seen);
 }
 
-const LIGHT_DECLS = declarations(block(COLORS, ":root, [data-ground='light']"));
-const DARK_DECLS = declarations(block(COLORS, ":root[data-theme='dark'], [data-ground='dark']"));
-/** The dark block restates only what moves; everything else is inherited. */
-const DARK_ALL = { ...LIGHT_DECLS, ...DARK_DECLS };
+/**
+ * EACH SCOPE IS SELF-CONTAINED NOW, which is why there is no merge here any
+ * more. The old dark block restated only what moved and this file had to spread
+ * the light block underneath it to resolve anything; that spread was the bug's
+ * shape written into the test. Every scope declares the complete alias set as
+ * literals, so each one is read on its own and a missing alias throws
+ * `unresolved token` rather than silently measuring the other ground's value.
+ * tests/design-tokens.test.ts is what asserts the completeness itself.
+ */
+const PALETTE = declarations(
+	block(COLORS, ":root, [data-ground='dark'], [data-ground='paper'], [data-ground='light']")
+);
+const DARK_DECLS = declarations(block(COLORS, ":root, [data-ground='dark'] {"));
+const PAPER_DECLS = declarations(
+	block(COLORS, "[data-ground='paper'], [data-ground='light'], :root[data-theme='light']")
+);
 
 const GROUNDS = {
-	light: (n: string) => resolve(LIGHT_DECLS, n),
-	dark: (n: string) => resolve(DARK_ALL, n)
+	paper: (n: string) => resolve({ ...PALETTE, ...PAPER_DECLS }, n),
+	dark: (n: string) => resolve({ ...PALETTE, ...DARK_DECLS }, n)
 } as const;
 type GroundName = keyof typeof GROUNDS;
-const BOTH: GroundName[] = ['light', 'dark'];
+const BOTH: GroundName[] = ['paper', 'dark'];
 
 const SURFACES = ['--surface-0', '--surface-1', '--surface-2'] as const;
 
 /** Every foreground token, and the floor it is held to. */
-const FOREGROUNDS: { token: string; floor: number; why?: string }[] = [
+const FOREGROUNDS: { token: string; floor: number; why?: string; surfaces?: readonly string[] }[] = [
 	{ token: '--text-1', floor: 4.5 },
 	{ token: '--text-2', floor: 4.5 },
 	{ token: '--text-3', floor: 4.5 },
@@ -94,7 +106,24 @@ const FOREGROUNDS: { token: string; floor: number; why?: string }[] = [
 	{ token: '--link', floor: 4.5 },
 	{ token: '--success-text', floor: 4.5 },
 	{ token: '--danger-text', floor: 4.5 },
-	{ token: '--warning', floor: 4.5 }
+	{ token: '--warning', floor: 4.5 },
+	{ token: '--brass', floor: 4.5 },
+	{ token: '--patina', floor: 4.5 },
+	{ token: '--copper', floor: 4.5 },
+	{ token: '--fg', floor: 4.5 },
+	{ token: '--fg-hero', floor: 4.5 },
+	{
+		token: '--fg-dim',
+		floor: 4.5,
+		surfaces: ['--surface-0', '--surface-1'],
+		why:
+			'the specified IDEA --dim, shipped as given. It measures 4.35 on --surface-2 ' +
+			'and 3.60 on --plate, so metadata takes it on the page and on a card only; ' +
+			'a raised panel takes --fg. --text-3 is the lifted variant the running ' +
+			'labels use, and it is held to all three above.'
+	},
+	{ token: '--gear', floor: 3, why: 'linework and inactive strokes, never text' },
+	{ token: '--boundary', floor: 3, why: 'a boundary carries meaning and is held to 3:1, not 4.5' }
 ];
 
 /** A fill and the ink that sits on it. */
@@ -143,8 +172,8 @@ describe('the arithmetic reproduces the figures 0018 recorded', () => {
 describe.each(BOTH)('%s ground: every text pairing clears AA', (ground) => {
 	const t = GROUNDS[ground];
 
-	it.each(FOREGROUNDS)('$token on all three surfaces', ({ token, floor }) => {
-		for (const surface of SURFACES) {
+	it.each(FOREGROUNDS)('$token on the surfaces it is used on', ({ token, floor, surfaces }) => {
+		for (const surface of surfaces ?? SURFACES) {
 			const ratio = wcag(t(token), t(surface));
 			expect(
 				ratio,
@@ -178,35 +207,68 @@ describe.each(BOTH)('%s ground: every text pairing clears AA', (ground) => {
 		expect(ratio).toBeLessThan(2);
 	});
 
-	it('the three surfaces are distinguishable from one another', () => {
-		expect(wcag(t('--surface-0'), t('--surface-1'))).toBeGreaterThan(1.05);
-		expect(wcag(t('--surface-1'), t('--surface-2'))).toBeGreaterThan(1.05);
+	it('the surfaces are distinguishable, or say why they are not', () => {
+		// ON PAPER --surface-0 AND --surface-1 ARE THE SAME SHEET, DELIBERATELY.
+		// A card printed on paper is not a different colour of paper; it is a
+		// rule and a shadow on the same sheet. Only --surface-2, the recessed
+		// well, is a separate tone. On the dark ground all three step apart.
+		const pairs: [string, string][] =
+			ground === 'paper'
+				? [
+						['--surface-0', '--surface-2'],
+						['--surface-1', '--surface-2']
+					]
+				: [
+						['--surface-0', '--surface-1'],
+						['--surface-1', '--surface-2'],
+						['--surface-0', '--surface-2']
+					];
+		for (const [a, b] of pairs) {
+			const ratio = wcag(t(a), t(b));
+			expect(ratio, `${a} and ${b} are ${ratio.toFixed(3)} apart`).toBeGreaterThan(1.05);
+		}
+		if (ground === 'paper') expect(t('--surface-0')).toBe(t('--surface-1'));
 	});
 });
 
 describe('the official colours are never altered', () => {
-	it('both grounds carry the same six official values', () => {
+	it('the FIRST LEGO League program values are used unmodified on both grounds', () => {
+		// PROGRAM CHROME ONLY. These colour the lockups and the program rail and
+		// never content or identity, which is why they sit in the shared palette
+		// rather than in a ground scope: a ground may not retint a program mark.
+		expect(GROUNDS.dark('--program-fll')).toBe('#ed1c24');
+		expect(GROUNDS.dark('--program-fll-explore')).toBe('#00a651');
+		expect(GROUNDS.dark('--program-fll-discover')).toBe('#662d91');
+		expect(GROUNDS.dark('--program-fll-ink')).toBe('#231f20');
 		for (const token of [
-			'--first-blue',
-			'--first-red',
-			'--first-gray',
-			'--first-black',
-			'--fll-purple',
-			'--fll-green'
+			'--program-fll',
+			'--program-fll-explore',
+			'--program-fll-discover',
+			'--program-fll-ink'
 		]) {
-			expect(GROUNDS.dark(token), `${token} moved between grounds`).toBe(GROUNDS.light(token));
+			expect(GROUNDS.dark(token), `${token} moved between grounds`).toBe(GROUNDS.paper(token));
 		}
 	});
 
-	it('the lockup rule is the brand gray on both grounds', () => {
-		expect(GROUNDS.light('--rule-gray')).toBe('#9a989a');
+	it('the lockup rule is the FIRST gray on both grounds', () => {
+		expect(GROUNDS.paper('--rule-gray')).toBe('#9a989a');
 		expect(GROUNDS.dark('--rule-gray')).toBe('#9a989a');
 	});
 
-	it('the primary fill and its ink are the official purple on both grounds', () => {
+	it('the pathway green is the identity, and it moves between grounds', () => {
+		// IDEA mint measures 1.27 on the bone sheet, so paper carries deep IDEA
+		// green instead. The IDENTITY is the same; the value cannot be.
+		expect(GROUNDS.dark('--accent')).toBe('#8fe08a');
+		expect(GROUNDS.paper('--accent')).toBe('#226e1d');
+		expect(GROUNDS.dark('--accent')).not.toBe(GROUNDS.paper('--accent'));
+	});
+
+	it('crimson is status and never identity', () => {
+		// It is LIVE, REC and error only. If it ever equalled the accent on
+		// either ground it would have become the identity colour by accident.
 		for (const g of BOTH) {
-			expect(GROUNDS[g]('--accent')).toBe('#662d91');
-			expect(GROUNDS[g]('--accent-ink')).toBe('#ffffff');
+			expect(GROUNDS[g]('--live')).toBe(GROUNDS[g]('--crimson'));
+			expect(GROUNDS[g]('--crimson')).not.toBe(GROUNDS[g]('--accent'));
 		}
 	});
 
@@ -215,12 +277,12 @@ describe('the official colours are never altered', () => {
 		// text. One that landed next door to the colour it replaced would be a
 		// tint of a brand colour wearing another name, which is the thing the
 		// guidelines forbid. 10 dE is roughly "plainly a different colour".
-		const brand = ['#0066b3', '#ed1c24', '#662d91', '#00a651'];
+		const brand = ['#ed1c24', '#00a651', '#662d91', '#231f20'];
 		for (const g of BOTH) {
 			for (const token of ['--accent-text', '--link', '--success-text', '--danger-text', '--warning']) {
 				const value = GROUNDS[g](token);
-				// On the light ground --accent-text and --link ARE the brand
-				// colours, unaltered, which is allowed: they are not variations.
+				// A functional value that IS a program colour, unaltered, would be
+				// allowed; none is, so nothing is skipped here today.
 				if (brand.includes(value)) continue;
 				for (const b of brand) {
 					expect(
@@ -256,7 +318,10 @@ const ACCENT_NAMES = [
  */
 function accentTokens(ground: GroundName, name: string): Record<string, string> {
 	const pair = declarations(block(ACCENTS, `[data-accent='${name}']`));
-	const suffix = ground === 'light' ? 'on-light' : 'on-dark';
+	// The pair is still named on-light / on-dark; the GROUND is now paper /
+	// dark. The paper sheet takes the light half, which is what
+	// team-accents.css's own selection rule says.
+	const suffix = ground === 'paper' ? 'on-light' : 'on-dark';
 	return {
 		'--team-accent': pair[`--accent-${suffix}`],
 		'--team-accent-wash': pair[`--accent-wash-${suffix}`],
@@ -291,19 +356,36 @@ describe.each(BOTH)('%s ground: the eleven team accents', (ground) => {
 		}
 	});
 
-	it('the eleven stay as separable as the set 0018 shipped on white', () => {
+	/**
+	 * THE PAPER FLOOR IS LOWER THAN THE DARK ONE, AND IT IS A MEASUREMENT OF A
+	 * TRADE RATHER THAN A RELAXED STANDARD.
+	 *
+	 * 0018 measured its closest pair at 21.35 against a WHITE ground and
+	 * rejected a twelfth colour for dropping it to 17.3. The paper sheet is
+	 * bone #EAE6D8, not white: it carries about four fifths of white's
+	 * luminance, so five of the eleven no longer cleared 4.5 on it and had to
+	 * sit darker. Darkening a set compresses it in Lab, and the closest pair
+	 * (olive/lime) went from 22.80 to 18.88.
+	 *
+	 * The alternative was moving olive or lime further apart, which changes a
+	 * colour a team chose by name on a ground they will almost never see, to
+	 * protect a floor that was derived on a third ground. So the values hold
+	 * their hue to within 0.3 degrees, the number is recorded here, and it is
+	 * asserted so a future edit cannot compress the set further without saying
+	 * so. The dark ground, which is the one the app runs on, keeps 21.3.
+	 */
+	it('the eleven stay separable, to the floor measured on this ground', () => {
 		const values = ACCENT_NAMES.map((n) => accentTokens(ground, n)['--team-accent']);
 		let closest = Infinity;
 		for (let i = 0; i < values.length; i++)
 			for (let j = i + 1; j < values.length; j++)
 				closest = Math.min(closest, dE76(values[i], values[j]));
-		// 0018 measured its closest pair (green/sage) at 21.35 and rejected a
-		// twelfth colour for dropping it to 17.3.
-		expect(closest, `closest pair is dE ${closest.toFixed(2)}`).toBeGreaterThanOrEqual(21.3);
+		const floor = ground === 'paper' ? 18.8 : 21.3;
+		expect(closest, `closest pair is dE ${closest.toFixed(2)}`).toBeGreaterThanOrEqual(floor);
 	});
 
 	it('holds 0018\'s hue: each ground within 3 degrees of it, the two within 6', () => {
-		if (ground === 'light') return;
+		if (ground === 'paper') return;
 		// The derivation constrains BOTH grounds to within 3 degrees of the
 		// colour 0018 shipped, which is what makes a team's colour still that
 		// team's colour. Two variants each 3 degrees off in opposite
@@ -326,7 +408,7 @@ describe.each(BOTH)('%s ground: the eleven team accents', (ground) => {
 		const apart = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
 		for (const name of ACCENT_NAMES) {
 			const seed = srgbHue(SEED_HUES[name]);
-			const lightHue = srgbHue(accentTokens('light', name)['--team-accent']);
+			const lightHue = srgbHue(accentTokens('paper', name)['--team-accent']);
 			const darkHue = srgbHue(accentTokens('dark', name)['--team-accent']);
 			expect(apart(lightHue, seed), `${name} light drifted from 0018`).toBeLessThanOrEqual(3);
 			expect(apart(darkHue, seed), `${name} dark drifted from 0018`).toBeLessThanOrEqual(3);

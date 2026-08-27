@@ -1,299 +1,388 @@
 /* ==========================================================================
-   COLOUR TOKENS, BUILT FROM THE OFFICIAL PALETTES, ON TWO MEASURED GROUNDS.
-   Nothing here is invented except where a line says so and explains why.
+   COLOUR. THE SINGLE SOURCE. Nothing outside this file names a colour.
 
-   SOURCES, read and quoted rather than remembered:
-     FIRST Branding & Design Guidelines, "FIRST COLOR PALETTE" (p9):
-       "The FIRST color palette is comprised mainly of black with accent
-				colors of blue, red and gray. To maintain brand consistency and avoid
-				confusion, only use the established FIRST colors."
-       blue #0066B3 (PMS 286), red #ED1C24 (PMS 485),
-       gray #9A989A (PMS Cool Gray 7), black #231F20 (PMS Black).
-     FIRST LEGO League Branding & Lockup Guidelines, "COLOR PALETTE" (p12):
-       "comprised mainly of black with accent colors of purple, green, and red"
-       black #231F20, purple #662D91 (PMS 266), green #00A651 (PMS 361),
-       red #ED1C24 (PMS 485).
+   ARCHITECTURE PORTED FROM frc-app's FRC_Design_System.md (v1.7,
+   src/lib/design-system/docs/), read at 644b809. What is inherited is
+   ARCHITECTURE, NOT APPEARANCE: a token layer as the single source of colour,
+   ground scopes set by an attribute on a root, and a four-transition motion
+   library. None of Team 5669's identity crosses over. No Techmen gold, no
+   5669 seal, no Space Grotesk. This app's identity is the IDEA pathway.
 
-   WHY THE DEFAULT GROUND IS WHITE. The palettes are "mainly black" as INK,
-   not as background: the guidelines' preferred marks are the full-colour
-   versions, and the reverse versions exist for "black or dark backgrounds"
-   as a special case. The accents are also built for white: measured against
-   #FFFFFF they are 8.94 (purple), 5.91 (blue), 4.38 (red), 3.19 (green).
+   ==========================================================================
+   THE ALIAS RULE. THIS IS THE WHOLE FILE.
+   ==========================================================================
 
-   WHY THERE IS A SECOND GROUND, AND WHAT IT IS NOT. It is not an inversion
-   of the first. On the brand's own black the same four accents measure 1.82,
-   2.76, 3.72 and 5.10, so THREE OF THE FOUR CANNOT CARRY TEXT THERE. The
-   dark ground is therefore derived, not flipped: the page is FIRST black,
-   the steps above it are that black mixed toward the brand gray, the ink is
-   white mixed toward the same gray, and every accent that cannot carry text
-   is demoted to a fill or a rule and paired with a foreground that can.
+   EVERY GROUND SCOPE BELOW DECLARES THE COMPLETE SEMANTIC ALIAS SET AS
+   LITERAL VALUES. Never `var(--something)`. Never an alias declared only once
+   at the root and inherited by the other scope.
 
-   NO BRAND COLOUR IS TINTED, SCREENED OR LIGHTENED AND STILL CALLED THE
-   BRAND COLOUR. That is the rule the guidelines state outright ("DO NOT
-   rotate or change the color", BG p13) and it is the rule 0018 already
-   answered on the white ground by declaring --success-text, --danger-text
-   and --warning as separate FUNCTIONAL values that are not brand
-   expression. The dark ground needs four more of those, for the same reason
-   and under the same restriction: they are never used as a brand colour,
-   never stand in for one, and never appear on or near a FIRST mark. The
-   list is enumerated below and does not grow quietly.
-   (The guideline PDFs are FIRST's documents and are not committed; the
-   clauses relied on here are the ones quoted verbatim in
-   src/lib/brand/rules.ts and above. Nothing beyond those clauses is
-   assumed, which is why no tint or screen of a brand colour appears here.)
+   WHY, mechanically: custom-property substitution resolves where a property
+   is DECLARED, not where it is used. `--accent: var(--mint)` written once on
+   `:root` computes to mint ON :ROOT and then inherits that already-resolved
+   string into every descendant, so a paper subtree keeps the dark ground's
+   value while looking like it themed correctly. There is no error, no
+   warning, and no visual clue until somebody prints the page.
 
-   EVERY NUMBER BELOW IS MEASURED, not asserted, by
-   scripts/derive-dark-palette.ts, and re-measured against THIS FILE by
-   tests/theme-contrast.test.ts so the comments cannot drift from the values.
+   THIS EXACT BUG HAS SHIPPED TWICE IN THE SIBLING APP: once at token level,
+   once as a hardcoded hex inside a component's backplate that no ground could
+   retint. A LITERAL COLOUR INSIDE A COMPONENT IS THE SAME BUG WEARING A
+   DIFFERENT HAT, which is why the rule is "nothing outside this file names a
+   colour" and not "prefer tokens".
 
-   HOW THE TWO GROUNDS ARE SELECTED.
-     :root                       the light ground, and the only ground in print
-     :root[data-theme='dark']    the dark ground, screen only
-     [data-ground='light']       a subtree forced light on either ground
-   The dark block is inside @media screen, which is what makes print always
-   light without restating a single token. src/lib/theme/ resolves the
-   three-state preference (system / light / dark) to a concrete data-theme
-   before first paint.
+   AND IT HAD ALREADY SHIPPED HERE. Before this bundle, effects.css declared
+   `--shadow-card`, `--shadow-raised`, `--backdrop-deep` and `--focus-outline`
+   on `:root` with a ground-dependent `var()` inside each. All four froze the
+   light ground's values into the dark one. They are ground aliases now and
+   they are literals.
+
+   `tests/design-tokens.test.ts` fails if the two scopes ever differ by one
+   name, if any alias value contains `var(`, or if a colour literal appears
+   anywhere outside this folder.
+
+   ==========================================================================
+   THE PALETTE. Raw named colours. NOT aliases: no rule below points at these
+   by name, they exist so a reader can see where an alias's literal came from.
+   ==========================================================================
+
+   IDENTITY
+     IDEA green is the pathway colour and is SCARCE ON PURPOSE. It carries
+     chrome and marks. It is not a highlighter: content accents are brass,
+     patina and copper, and they live in the content layer.
+
+   MEASURED, not asserted. Every figure below is a contrast ratio against the
+   dark ramp's --bg0 / --bg1 / --bg2 / --plate, computed by
+   scripts/derive-palette.mjs and re-measured from the shipped stylesheet by
+   tests/theme-contrast.test.ts.
    ========================================================================== */
 
 :root,
+[data-ground='dark'],
+[data-ground='paper'],
 [data-ground='light'] {
-	color-scheme: light;
+	/* ---- IDEA identity ---------------------------------------------------- */
+	--idea-mint: #8fe08a; /* 11.14 / 10.04 / 8.76 / 7.24  key type, active, success, glow */
+	--idea-bone: #eae6d8; /* 14.19 / 12.78 / 11.16 / 9.22  body copy. NEVER pure white. */
+	--idea-dim: #87947c; /*  5.53 /  4.99 / 4.35 / 3.60  metadata */
+	--idea-gear: #75846f; /*  4.46 /  4.02 / 3.51 / 2.90  structure, linework */
 
-	/* --- the official palettes, named exactly, used nowhere else as literals.
-	   These four values are the same on both grounds. A brand colour does not
-	   change because the page did. */
-	--first-blue: #0066b3; /* 5.91 on white, 2.76 on the dark page */
-	--first-red: #ed1c24; /* 4.38 on white, 3.72 on the dark page */
-	--first-gray: #9a989a; /* 2.86 on white, 5.69 on the dark page */
-	--first-black: #231f20; /* 16.30 on white */
-	--fll-purple: #662d91; /* 8.94 on white, 1.82 on the dark page */
-	--fll-green: #00a651; /* 3.19 on white, 5.10 on the dark page */
+	/* ---- content accents. Never identity, never chrome. -------------------- */
+	--idea-brass: #d3c68e; /* 10.33 / 9.31 / 8.13 / 6.71  callouts */
+	--idea-patina: #93d6c8; /* 10.71 / 9.65 / 8.43 / 6.96  metadata */
+	--idea-copper: #d99a55; /*  7.35 / 6.62 / 5.78 / 4.77  warning */
 
-	/* --- grounds. White page; the steps above it are the two ESTABLISHED
-	   neutrals mixed toward white, so no new hue enters the system. */
-	--surface-0: #ffffff; /* page */
-	--surface-1: #f5f5f5; /* cards, bars   -- black on it 14.95 */
-	--surface-2: #ebeaeb; /* raised, hover -- black on it 13.58 */
+	/* ---- status. CRIMSON IS LIVE, REC AND ERROR ONLY, NEVER IDENTITY. ------
+	   4.86 / 4.38 / 3.82 / 3.16 as a foreground, so it is a FILL and a DOT
+	   here, and the words of an error take --danger-text (see the scopes). */
+	--idea-crimson: #d95f5f;
 
-	/* --- ink. The two established neutrals, mixed toward black for the
-	   secondary steps, so secondary text clears 4.5 instead of the 2.86 the
-	   brand gray manages on its own. */
-	--text-1: var(--first-black); /* 16.30 / 14.95 / 13.58 -- body and headings */
-	--text-2: #534f51; /* 8.06 / 7.39 / 6.72 */
-	--text-3: #6b696a; /* 5.45 / 5.00 / 4.54 -- clears 4.5 on ALL THREE, which
-	                      is why it is not the brand gray: a hint sitting on a
-	                      raised control has to be readable too. */
+	/* ---- PROGRAM LAYER. FIRST LEGO League, published values, used
+	   unmodified. PROGRAM CHROME ONLY: the lockups, the program rail, the
+	   thin rule between a FIRST logo and a division lockup. Never content,
+	   never identity, and never a substitute for IDEA green. -------------- */
+	--program-fll: #ed1c24;
+	--program-fll-explore: #00a651;
+	--program-fll-discover: #662d91;
+	--program-fll-ink: #231f20;
+	--program-rule: #9a989a; /* FIRST gray. 6.19 on the dark page, 2.29 on paper. */
 
-	/* --- semantic roles, each mapped to an official colour.
-	   PRIMARY is FLL purple: this is a FIRST LEGO League tool and purple is
-	   the division palette's signature. LINKS are FIRST blue. */
-	--accent: var(--fll-purple); /* a FILL. White on it 8.94. */
-	--accent-ink: #ffffff; /* text ON --accent: 8.94 */
-	/* --accent-text is the primary colour used AS TEXT. On this ground it is
-	   exactly FLL purple, because purple carries text on white: 8.94 / 8.21 /
-	   7.45. On the dark ground it cannot be, and is declared functional. */
-	--accent-text: var(--fll-purple);
-	--link: var(--first-blue); /* 5.91 / 5.42 / 4.93 */
-	--focus-ring: var(--first-blue);
+	/* ---- SEASON LAYER. Unset falls back to mint, which is what this
+	   declaration is: the fallback, spelled out. Setting --season on a root
+	   (or using [data-season='bioglow'] below) is the entire annual reskin,
+	   and nothing else in the system changes when the season does. -------- */
+	--season: #8fe08a;
+}
 
-	/* SUCCESS / LIVE is FLL green. At 3.19 on white it clears 3:1 for a
-	   border or a large label and NOTHING ELSE: green never carries small
-	   text on white. As a fill it takes BLACK ink (5.10), not white (3.19). */
-	--success: var(--fll-green);
-	--success-ink: var(--first-black); /* 5.10 on --success */
+/* BIOGLOW, the 2026-27 FIRST LEGO League season. The bioluminescent cyan is
+   already in the palette as patina, so the reskin introduces no new hue. */
+[data-season='bioglow'] {
+	--season: #93d6c8;
+}
 
-	/* DANGER is FIRST red. 4.38 on white is just under the 4.5 body-text
-	   floor, so red is a FILL and an icon; the words of an error are set in
-	   --danger-text, and a danger BORDER is --danger-text too, because the
-	   official red is 3.50 on --surface-2 here and only 2.39 on the dark
-	   ground's raised surface. Do not set small error text in red and do not
-	   darken the brand red to make it pass -- altering a brand colour is the
-	   thing the guidelines forbid. */
-	--danger: var(--first-red);
-	--danger-ink: #ffffff; /* 4.38 on --danger: large bold only */
+/* ==========================================================================
+   GROUND SCOPES. Two of them. THE SAME ALIAS NAMES IN EACH, EVERY VALUE A
+   LITERAL. Adding an alias means adding it to BOTH blocks in the same edit;
+   the test is what stops the second half being forgotten.
 
-	/* --- THE FUNCTIONAL COLOURS, DECLARED AS SUCH.
-	   The brand palettes are for BRAND EXPRESSION: marks, rules, primary
-	   action, links. A user interface also needs state colours that clear
-	   4.5:1 as small text, and on white two of the brand accents cannot
-	   (green is 3.19, red is 4.38). Rather than darken a brand colour and
-	   call it the brand colour -- which is the one thing the guidelines
-	   forbid -- the text-carrying variants are declared separate, functional
-	   values. Like a team accent, they never appear on or near a FIRST mark
-	   and never stand in for a brand colour.
+   ORDER IS LOAD-BEARING. The dark block is first and `:root` shares it, so a
+   document with no ground attribute at all resolves the COMPLETE dark set
+   rather than resolving partially. Partial resolution is the dangerous state:
+   the palette alone still paints green and looks almost right. The paper
+   block comes second so that on an element carrying both (a print root, say)
+   the later block wins the specificity tie.
+   ========================================================================== */
 
-	   --warning has no brand equivalent at all: "blocked" is not "error",
-	   and a mentor scanning the live board has to tell a child who is stuck
-	   from a request that failed. */
-	--success-text: #046b37; /* 6.64 / 6.09 / 5.53 */
-	--danger-text: #bf1219; /* 6.33 / 5.81 / 5.28 */
-	--warning: #8a5a00; /* 5.93 / 5.45 / 4.95 */
-	--warning-ink: #ffffff; /* 5.93 on --warning */
-	/* A wash behind a warning or an error block. Neutral-tinted, never a
-	   screen of a brand colour: it is mixed from the ground and the
-	   functional colour, both of which are already non-brand here. */
-	--warning-wash: #fdf3e2; /* --text-1 on it 15.02 */
-	--danger-wash: #fdeceb; /* --text-1 on it 14.32 */
-	/* The scrim behind a modal sheet. Not a colour so much as a dimming, so
-	   it is the ground's own ink at an opacity, and it darkens on both. */
-	--scrim: rgba(35, 31, 32, 0.55);
+/* --------------------------------------------------------------------------
+   DARK. The default, and the identity. A child opening this app sees IDEA
+   green on a dark ground before they see anything else.
+   -------------------------------------------------------------------------- */
+:root,
+[data-ground='dark'] {
+	--ground: dark;
 
-	/* --- rules and boundaries.
-	   --rule-gray IS the brand gray, and it is the "thin gray line" the FLL
-	   lockup guidelines prescribe between a paired FIRST logo and a division
-	   lockup. It is the brand gray on BOTH grounds (2.86 on white, 5.69 on
-	   the dark page) and is never substituted. --boundary carries meaning and
-	   clears 3:1 on all three grounds with headroom (4.38 / 4.02 / 3.65).
-	   --hairline decorates (1.38 on white) and is not held to that; do not
-	   raise it. */
-	--rule-gray: var(--first-gray);
-	--boundary: #7a787a;
-	--hairline: #dcdbdc;
+	--bg0: #131a13; /* page */
+	--bg1: #1b241b; /* cards */
+	--bg2: #242f23; /* inputs, header bars */
+	--plate: #2e3d2e; /* raised panels. Takes --fg only; --fg-dim is 3.60 here. */
+	--edge: #0d120c; /* linework, letterbox, chrome edge */
 
-	/* Elevation is a neutral shadow and nothing else: no glow, no tint. */
-	--shadow-color: 35, 31, 32; /* FIRST black, as channels for rgba() */
-	--shadow-strength-1: 0.06;
-	--shadow-strength-2: 0.08;
+	/* The three surfaces every existing rule in this repo is written against. */
+	--surface-0: #131a13;
+	--surface-1: #1b241b;
+	--surface-2: #242f23;
+	--surface-page: #131a13;
+	--backdrop-deep: #131a13;
 
+	--fg: #eae6d8; /* bone, never pure white */
+	--fg-dim: #87947c;
+	--fg-structure: #75846f;
+	/* THE INK LADDER. Three steps, and EVERY ONE clears 4.5 on all three
+	   surfaces, which is the standing rule in this repo and the reason --text-3
+	   is not simply --dim: the specified #87947C measures 4.35 on --surface-2,
+	   one step short, and a label is exactly the small text that would land
+	   there. --fg-dim above IS the specified value, for the metadata role it
+	   was specified for; the ladder is what running labels take. */
+	--text-1: #eae6d8; /* 14.19 / 12.78 / 11.16 */
+	--text-2: #a3ad97; /*  7.58 /  6.83 /  5.96  --idea-dim lifted, hue held */
+	--text-3: #8a977f; /*  5.75 /  5.18 /  4.52  --idea-dim lifted, hue held */
+	--text-body: #eae6d8;
+	--text-muted: #a3ad97;
+	--text-faint: #8a977f;
 
-	/* --- WHICH SUPPLIED LOGO FILE THIS GROUND CALLS FOR.
-	   A FIRST mark is never recoloured, filtered or inverted to suit a
-	   ground: the official downloads include a reverse file for a dark
-	   background, and the ground SWAPS THE ASSET. BrandLogo renders both
-	   supplied files and lets these two switches show exactly one, which is
-	   what makes the right mark correct in the FIRST PAINTED FRAME rather
-	   than one hydration later. They are not styling: nothing here touches
-	   how a mark looks, only which file is on the page.
+	--fg-hero: #8fe08a;
+	--accent: #8fe08a; /* a FILL. --accent-ink on it is 11.14. */
+	--accent-ink: #131a13;
+	--accent-text: #8fe08a; /* 11.14 / 10.04 / 8.76 */
+	--accent-soft: rgba(143, 224, 138, 0.14);
+	--rim: #8fe08a;
 
-	   --mark-plate is for the three FLL lockups the download supplies with
-	   NO reverse file. On this ground it is transparent because none is
-	   needed. See BrandLogo.svelte for what it becomes on the other one. */
+	/* GLOW IS RATIONED: hero type and the live dot, never body copy, never
+	   behind a FIRST mark. A mark may not sit on a busy background and a halo
+	   in any colour is exactly that. */
+	--glow: 0 0 18px rgba(143, 224, 138, 0.38);
+	--glow-box: 0 0 14px rgba(143, 224, 138, 0.28);
+	--glow-strength: 1;
+
+	--gear: #75846f;
+	--boundary: #75846f; /* 4.46 / 4.02 / 3.51, clears the 3:1 floor a boundary is held to */
+	--hairline: #2b352a; /* decorative only, not held to 3:1 */
+	--rule-gray: #9a989a;
+
+	--brass: #d3c68e;
+	--patina: #93d6c8;
+	--copper: #d99a55;
+
+	--live: #d95f5f;
+	--crimson: #d95f5f;
+
+	--success: #8fe08a;
+	--success-ink: #131a13; /* 11.14 on --success */
+	--success-text: #8fe08a; /* 11.14 / 10.04 / 8.76 */
+	--danger: #d95f5f;
+	--danger-ink: #131a13; /* 4.86 on --danger */
+	--danger-text: #e38989; /* 6.93 / 6.24 / 5.45  crimson lifted, hue held */
+	--danger-wash: #33201f;
+	--warning: #d99a55; /* 7.35 / 6.62 / 5.78 */
+	--warning-ink: #131a13; /* 7.35 on --warning */
+	--warning-wash: #332a1c;
+
+	--link: #8fe08a;
+	--focus-ring: #8fe08a;
+	--focus-outline: 3px solid #8fe08a;
+
+	--chrome-bg: #0d120c;
+	--chrome-fg: #8a977f;
+
+	/* THE MARKS: the supplied reverse artwork, never a filtered one. The three
+	   lockups with no reverse file get a WHITE PLATE, which is the background
+	   that artwork is specified for, put underneath it. */
+	--mark-full-color-display: none;
+	--mark-reverse-display: block;
+	--mark-plate: #ffffff;
+
+	--scrim: rgba(0, 0, 0, 0.72);
+	--selection-bg: rgba(143, 224, 138, 0.3);
+
+	--shadow-color: 0, 0, 0;
+	--shadow-strength-1: 0.4;
+	--shadow-strength-2: 0.5;
+	--shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 16px rgba(0, 0, 0, 0.5);
+	--shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.64), 0 10px 24px rgba(0, 0, 0, 0.75);
+
+	color-scheme: dark;
+	background-color: var(--bg0);
+	color: var(--fg);
+}
+
+/* --------------------------------------------------------------------------
+   PAPER. The light sheet. Ready before anything needs it, because printing a
+   run sheet is coming, and already in use for the two plates that must be
+   light whatever the app around them is (the route planner's mat and its
+   calibrator, which carry [data-ground='light']).
+
+   IDEA MINT IS ILLEGAL HERE. #8FE08A on the sheet measures 1.27, so the
+   accent is redeclared as deep IDEA green #226E1D at 5.07, its hue held
+   exactly. GLOW IS FLATTENED TO ZERO: a halo reads as mud on a light sheet.
+   -------------------------------------------------------------------------- */
+[data-ground='paper'],
+[data-ground='light'],
+:root[data-theme='light'] {
+	--ground: paper;
+
+	--bg0: #eae6d8;
+	--bg1: #eae6d8;
+	--bg2: #dfdaca;
+	--plate: #eae6d8;
+	--edge: #c9c3b0;
+
+	--surface-0: #eae6d8;
+	--surface-1: #eae6d8;
+	--surface-2: #dfdaca;
+	--surface-page: #eae6d8;
+	--backdrop-deep: #eae6d8;
+
+	--fg: #131a13; /* the dark ground's page, as ink. 14.19 / 14.19 / 12.68 */
+	--fg-dim: #596351; /*  5.05 / 5.05 / 4.51 */
+	--fg-structure: #71806b;
+	--text-1: #131a13;
+	--text-2: #3f4a3c; /*  7.45 / 7.45 / 6.66 */
+	--text-3: #596351; /*  5.05 / 5.05 / 4.51 */
+	--text-body: #131a13;
+	--text-muted: #3f4a3c;
+	--text-faint: #596351;
+
+	--fg-hero: #226e1d;
+	--accent: #226e1d; /* 5.07. --accent-ink on it is 5.07. */
+	--accent-ink: #eae6d8;
+	--accent-text: #226e1d; /* 5.07 / 5.07 / 4.53 */
+	--accent-soft: rgba(34, 110, 29, 0.12);
+	--rim: #226e1d;
+
+	--glow: none;
+	--glow-box: none;
+	--glow-strength: 0;
+
+	--gear: #71806b;
+	--boundary: #71806b; /* 3.36 / 3.36 / 3.00 */
+	--hairline: #d3ccb9;
+	--rule-gray: #9a989a;
+
+	--brass: #6c5f2a; /* 5.08 / 5.08 / 4.54 */
+	--patina: #286a5d; /* 5.08 / 5.08 / 4.54 */
+	--copper: #86551e; /* 5.04 / 5.04 / 4.51 */
+
+	--live: #b42b2b;
+	--crimson: #b42b2b; /* 5.06 / 5.06 / 4.52 */
+
+	--success: #226e1d;
+	--success-ink: #eae6d8; /* 5.07 on --success */
+	--success-text: #226e1d;
+	--danger: #b42b2b;
+	--danger-ink: #eae6d8; /* 5.06 on --danger */
+	--danger-text: #b42b2b;
+	--danger-wash: #f4e3e0;
+	--warning: #86551e;
+	--warning-ink: #eae6d8; /* 5.04 on --warning */
+	--warning-wash: #f3ebda;
+
+	--link: #226e1d;
+	--focus-ring: #226e1d;
+	--focus-outline: 3px solid #226e1d;
+
+	--chrome-bg: #dfdaca;
+	--chrome-fg: #3f4a3c;
+
+	/* On a light sheet the full-colour artwork is the correct file and needs no
+	   plate under it. */
 	--mark-full-color-display: block;
 	--mark-reverse-display: none;
 	--mark-plate: transparent;
 
-	/* --- aliases the app writes against. */
-	--surface-page: var(--surface-0);
-	--text-body: var(--text-1);
-	--text-muted: var(--text-2);
-	--text-faint: var(--text-3);
+	--scrim: rgba(19, 26, 19, 0.55);
+	--selection-bg: rgba(34, 110, 29, 0.25);
+
+	--shadow-color: 19, 26, 19;
+	--shadow-strength-1: 0.06;
+	--shadow-strength-2: 0.08;
+	--shadow-card: 0 1px 2px rgba(19, 26, 19, 0.06), 0 6px 16px rgba(19, 26, 19, 0.08);
+	--shadow-raised: 0 1px 3px rgba(19, 26, 19, 0.096), 0 10px 24px rgba(19, 26, 19, 0.12);
+
+	color-scheme: light;
+	background-color: var(--bg0);
+	color: var(--fg);
 }
 
-/**
- * A FORCED-GROUND SUBTREE RE-ESTABLISHES THE INK, NOT JUST THE TOKENS.
- *
- * `color` is an INHERITED VALUE, and it was resolved on <body> against
- * whichever ground the page is on. A subtree that only redefines custom
- * properties therefore keeps the OUTER ground's ink for anything relying on
- * inheritance rather than declaring its own colour -- which on the route
- * planner's light mat plate meant SVG text inheriting the dark ground's
- * near-white ink onto a white mat, measured at 1.11. One declaration fixes
- * every such case, present and future.
- */
-[data-ground] {
-	color: var(--text-1);
-}
-
-/* ==========================================================================
-   THE DARK GROUND. SCREEN ONLY -- which is what makes print light without
-   restating one token. See "Print is always light" in app.css.
-
-   THE GROUND: the brand's own black is the page, and the two steps above it
-   are that black mixed toward the brand gray, exactly as the white ground's
-   steps are white mixed toward it. No new hue enters the system on this side
-   either. It is deliberately NOT the old near-black "deep water" theme 0018
-   removed: there is no radial backdrop, no coloured glow and no tinted
-   elevation anywhere below.
-
-   WHAT MOVED AND WHY. Of the four brand accents only FLL green carries text
-   here (5.10). Purple (1.82) and blue (2.76) cannot even be rules; red
-   (3.72) can be a rule on the page but not on a raised surface (2.39). So on
-   this ground purple and blue are FILLS with white ink -- both of which are
-   ground-independent pairings and stay exactly the official colours -- and
-   the four foregrounds that used to be brand colours become declared
-   functional values, in the same category as --success-text on white.
-   ========================================================================== */
-@media screen {
-	:root[data-theme='dark'],
-	[data-ground='dark'] {
-		color-scheme: dark;
-
-		/* --- grounds: FIRST black, stepped toward the brand gray. */
-		--surface-0: #231f20; /* page          -- --text-1 on it 14.69 */
-		--surface-1: #353233; /* cards, bars   -- --text-1 on it 11.43 */
-		--surface-2: #413f40; /* raised, hover -- --text-1 on it  9.42 */
-
-		/* --- ink: white, stepped toward the brand gray. --text-3 clears 4.5
-		   on ALL THREE grounds, the same rule the white ground holds. */
-		--text-1: #f3f3f3; /* 14.69 / 11.43 / 9.42 */
-		--text-2: #cdcccd; /* 10.18 /  7.92 / 6.53 */
-		--text-3: #b0aeb0; /*  7.40 /  5.76 / 4.74 */
-
-		/* --- the primary action is STILL FLL purple, unaltered, because a
-		   purple fill with white ink measures 8.94 whatever the page behind
-		   it is. Only purple AS TEXT had to move. */
-		--accent: var(--fll-purple);
-		--accent-ink: #ffffff; /* 8.94 on --accent */
-
-		/* --- THE FOUR FOREGROUNDS THAT CANNOT BE BRAND COLOURS HERE.
-		   Each is a declared FUNCTIONAL colour, not a tint of the brand
-		   colour it replaces and never presented as one. They exist because
-		   FLL purple (1.82), FIRST blue (2.76) and FIRST red (3.72) cannot
-		   carry text on this ground, and because "blocked" has no brand
-		   equivalent on either ground. They are never used as brand
-		   expression and never appear on or near a FIRST mark. */
-		--accent-text: #cc95fe; /* 7.22 / 5.62 / 4.63 */
-		--link: #65b1fe; /* 7.20 / 5.60 / 4.61 */
-		--focus-ring: #65b1fe;
-		--success-text: #03c662; /* 7.19 / 5.59 / 4.61 */
-		--danger-text: #ff8b7f; /* 7.18 / 5.59 / 4.60 */
-
-		/* --- fills keep the official colours and their ground-independent
-		   ink. Green still takes black ink; red still takes white ink and is
-		   still large-bold-only at 4.38. */
-		--success: var(--fll-green);
-		--success-ink: var(--first-black); /* 5.10 on --success */
-		--danger: var(--first-red);
-		--danger-ink: #ffffff; /* 4.38 on --danger: large bold only */
-
-		/* --warning is functional on both grounds; on this one it is a light
-		   amber taking the brand black as its ink rather than a dark amber
-		   taking white. The token pair is what stays true, not the value. */
-		--warning: #e59e2d; /* 7.19 / 5.59 / 4.61 */
-		--warning-ink: var(--first-black); /* 7.19 on --warning */
-		--warning-wash: #4a3a22; /* --text-1 on it 8.98 */
-		--danger-wash: #4a2f2c; /* --text-1 on it 9.42 */
-		--scrim: rgba(0, 0, 0, 0.72);
-
-		/* --- rules. The brand gray is a STRONGER rule here than on white
-		   (5.69 against the page), so the lockup rule needs no substitute.
-		   --boundary is a lighter neutral that clears 3:1 on all three dark
-		   grounds (5.02 / 3.91 / 3.22); --hairline decorates at 1.38, the
-		   same decorative weight it carries on white. */
-		--rule-gray: var(--first-gray);
-		--boundary: #918e8f;
-		--hairline: #3a3738;
-
-
-		/* --- THE MARKS: THE SUPPLIED REVERSE FILE, NEVER A FILTERED ONE.
-		   The official downloads carry a reverse version of the FIRST
-		   horizontal logo, the FIRST vertical logo and the FIRST LEGO League
-		   Challenge horizontal stacked lockup. Those three swap file here.
-		   The other three lockups are supplied in full colour ONLY, so they
-		   get a WHITE PLATE instead: the ground the full-colour artwork is
-		   specified for, put underneath it, rather than the artwork altered
-		   to suit this one. The plate is square, has no border, no radius and
-		   no shadow, and extends past the mark's full clear space, so it is a
-		   BACKGROUND and not a containing shape. */
-		--mark-full-color-display: none;
-		--mark-reverse-display: block;
-		--mark-plate: #ffffff;
-
-		/* Elevation on a dark ground: a neutral shadow has almost nothing to
-		   darken, so it goes to true black and deepens. Still no tint. */
-		--shadow-color: 0, 0, 0;
-		--shadow-strength-1: 0.4;
-		--shadow-strength-2: 0.5;
+/* PRINT IS ALWAYS THE PAPER GROUND, and it says so once, here, rather than in
+   an @media print block in every stylesheet that ever names a colour. */
+@media print {
+	:root {
+		--ground: paper;
+		--bg0: #eae6d8;
+		--bg1: #eae6d8;
+		--bg2: #dfdaca;
+		--plate: #eae6d8;
+		--edge: #c9c3b0;
+		--surface-0: #eae6d8;
+		--surface-1: #eae6d8;
+		--surface-2: #dfdaca;
+		--surface-page: #eae6d8;
+		--backdrop-deep: #eae6d8;
+		--fg: #131a13;
+		--fg-dim: #596351;
+		--fg-structure: #71806b;
+		--text-1: #131a13;
+		--text-2: #3f4a3c;
+		--text-3: #596351;
+		--text-body: #131a13;
+		--text-muted: #3f4a3c;
+		--text-faint: #596351;
+		--fg-hero: #226e1d;
+		--accent: #226e1d;
+		--accent-ink: #eae6d8;
+		--accent-text: #226e1d;
+		--accent-soft: rgba(34, 110, 29, 0.12);
+		--rim: #226e1d;
+		--glow: none;
+		--glow-box: none;
+		--glow-strength: 0;
+		--gear: #71806b;
+		--boundary: #71806b;
+		--hairline: #d3ccb9;
+		--rule-gray: #9a989a;
+		--brass: #6c5f2a;
+		--patina: #286a5d;
+		--copper: #86551e;
+		--live: #b42b2b;
+		--crimson: #b42b2b;
+		--success: #226e1d;
+		--success-ink: #eae6d8;
+		--success-text: #226e1d;
+		--danger: #b42b2b;
+		--danger-ink: #eae6d8;
+		--danger-text: #b42b2b;
+		--danger-wash: #f4e3e0;
+		--warning: #86551e;
+		--warning-ink: #eae6d8;
+		--warning-wash: #f3ebda;
+		--link: #226e1d;
+		--focus-ring: #226e1d;
+		--focus-outline: 3px solid #226e1d;
+		--chrome-bg: #dfdaca;
+		--chrome-fg: #3f4a3c;
+		--mark-full-color-display: block;
+		--mark-reverse-display: none;
+		--mark-plate: transparent;
+		--scrim: rgba(19, 26, 19, 0.55);
+		--selection-bg: rgba(34, 110, 29, 0.25);
+		--shadow-color: 19, 26, 19;
+		--shadow-strength-1: 0.06;
+		--shadow-strength-2: 0.08;
+		--shadow-card: 0 1px 2px rgba(19, 26, 19, 0.06), 0 6px 16px rgba(19, 26, 19, 0.08);
+		--shadow-raised: 0 1px 3px rgba(19, 26, 19, 0.096), 0 10px 24px rgba(19, 26, 19, 0.12);
+		color-scheme: light;
 	}
+}
+
+/* Selection follows the ground. */
+::selection {
+	background: var(--selection-bg);
 }

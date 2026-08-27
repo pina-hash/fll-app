@@ -545,14 +545,23 @@
 		padding: var(--space-6) var(--space-4);
 		max-width: 28rem;
 		margin: 0 auto;
+		background: var(--surface-page);
 	}
 	.login__brand {
 		text-align: center;
 	}
+	/* THE FIRST THING ANYBODY SEES. The season wordmark, in the hero face, in
+	   the pathway green. --season is mint until a season sets it, so this line
+	   is both the identity and the entire annual reskin. --glow is a ground
+	   alias and is flattened to none on paper, so the halo simply is not there
+	   when this screen is printed or read on the light sheet. */
 	.login__brand h1 {
+		font-family: var(--font-hero);
 		font-size: var(--fs-hero);
 		letter-spacing: var(--track-hero);
 		margin: 0;
+		color: var(--season);
+		text-shadow: var(--glow);
 	}
 	/* The roster is the screen a returning child lands on, so it is the biggest
 	   thing on it. 5.5rem is 88px: a thumb on a shared iPad held at arm's length
@@ -612,7 +621,11 @@
 	.login__back {
 		margin-top: var(--space-3);
 	}
+	/* A code is read aloud across a noisy room and typed by a nine-year-old, so
+	   it is set in the mono face at hero size in the pathway green: the thing on
+	   this screen that is being acted on. */
 	.input--code {
+		color: var(--accent-text);
 		font-family: var(--font-mono);
 		font-size: var(--fs-h2);
 		letter-spacing: 0.25em;

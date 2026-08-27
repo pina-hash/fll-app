@@ -89,7 +89,11 @@
 		padding: var(--space-5) var(--space-4);
 		margin-top: var(--space-6);
 		border-top: 1px solid var(--hairline);
-		background: var(--surface-0);
+		/* CHROME, like the header bar it bookends. --chrome-bg is the ground's
+		   own edge tone on both grounds; the marks sit on a FLAT plate with no
+		   texture and no glow behind them, which is what the FIRST guidelines
+		   require and why the footer never takes an accent. */
+		background: var(--chrome-bg);
 	}
 	.bf__marks {
 		display: flex;
