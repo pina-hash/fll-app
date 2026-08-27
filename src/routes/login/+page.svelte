@@ -10,6 +10,7 @@
 		normalizeJoinCode,
 		studentEmail
 	} from '$lib/auth/student-identity';
+	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -52,14 +53,32 @@
 	 * in this file would drift from it within a season. What is checked here is
 	 * only what saves a round trip, plus the one thing the server cannot see:
 	 * whether the two PIN boxes agree.
+	 *
+	 * AND A SEAT CODE IS TYPED ONCE PER DEVICE, EVER. `data.roster` is this
+	 * iPad's remembered team, resolved on the server from a cookie before the
+	 * page was sent (see $lib/auth/device-team). When it is there the screen
+	 * OPENS ON THE ROSTER: tap your name, type your PIN, in. No team code, no
+	 * seat code, no name retyped. When it is not -- a brand new device, a
+	 * private tab, an iPad whose website data was cleared -- this is exactly the
+	 * screen it always was, starting at the code field, and the seat-code door
+	 * is still the first thing under it for a child holding a card.
 	 */
-	let step: 'code' | 'name' | 'pin' | 'card' | 'card-you' | 'card-pin' = $state('code');
+	// SEEDED ONCE, then owned by this screen. untrack() is the point and not a
+	// formality: a child who has tapped through to the PIN box must not be thrown
+	// back to the roster because some unrelated load re-ran. The remembered team
+	// only changes when the device is signed into, which is a full navigation.
+	const remembered = untrack(() => (data.roster as Roster | null) ?? null);
+	let roster: Roster | null = $state(remembered);
+	let step: 'code' | 'name' | 'pin' | 'card' | 'card-you' | 'card-pin' = $state(
+		remembered ? 'name' : 'code'
+	);
 	let code = $state('');
-	let roster: Roster | null = $state(null);
 	let chosen: RosterStudent | null = $state(null);
 	let pin = $state('');
 	let busy = $state(false);
 	let message = $state('');
+	/** Focused the instant a name is tapped, so the keypad is already up. */
+	let pinBox: HTMLInputElement | null = $state(null);
 
 	// --- the "I have a seat code" form ---------------------------------------
 	let seatCode = $state('');
@@ -103,11 +122,29 @@
 		pin = '';
 		message = '';
 		step = 'pin';
+		/**
+		 * The tap that chose the name IS the user gesture iOS requires to open a
+		 * keyboard, so the focus happens inside that handler's chain. A tick later
+		 * and the input does not exist yet; a tap later and the child has had to
+		 * aim at a box for no reason.
+		 */
+		queueMicrotask(() => pinBox?.focus());
 	}
 
-	async function signInStudent(event: SubmitEvent) {
-		event.preventDefault();
-		if (!roster || !chosen) return;
+	/**
+	 * A PIN IS EXACTLY SIX DIGITS, so the sixth digit is the whole message. Kept
+	 * to the digit COUNT rather than to a keystroke, so a paste behaves the same
+	 * as typing; the Sign in button stays for anyone who gets here another way.
+	 */
+	function pinTyped(event: Event) {
+		const value = (event.currentTarget as HTMLInputElement).value;
+		pin = value;
+		if (isValidPin(value) && !busy) void signInStudent();
+	}
+
+	async function signInStudent(event?: SubmitEvent) {
+		event?.preventDefault();
+		if (!roster || !chosen || busy) return;
 		message = '';
 		if (!isValidPin(pin)) {
 			message = 'Your PIN is 6 numbers.';
@@ -258,6 +295,11 @@
 			step = 'name';
 			chosen = null;
 		} else if (step === 'name') {
+			// Only reachable when this device does NOT remember a team, i.e. the
+			// roster was looked up by hand a moment ago. When it DOES remember, the
+			// way off the roster is the forget form, because a client-side step
+			// back would leave the cookie behind and the next load would land right
+			// back here.
 			step = 'code';
 			roster = null;
 		} else if (step === 'card') {
@@ -312,14 +354,23 @@
 				</button>
 			</div>
 		{:else if step === 'name' && roster}
-			<p class="muted">Team <strong>{roster.team_name}</strong> · which one are you?</p>
+			<!-- teams.name IS "Team 1" through "Team 4", so a "Team" prefix here
+			     reads "Team Team 1". The name is the identity; nothing is added. -->
+			<p class="roster__team"><strong>{roster.team_name}</strong></p>
+			<p class="muted">Tap your name.</p>
 			{#if roster.students.length === 0}
-				<p>Nobody has signed in yet.</p>
+				<p>Nobody has signed in yet. Use the code on your card.</p>
 			{:else}
-				<ul class="tiles">
+				<!--
+					A GRID OF NAMES SIZED FOR A THUMB. Six seats is the cap, so this is
+					two columns of chunky slabs rather than a list, a dropdown or a box
+					to type into. Nine-year-olds on a shared iPad find their own name
+					faster than they type anything.
+				-->
+				<ul class="roster">
 					{#each roster.students as student (student.slug)}
 						<li>
-							<button class="tile" type="button" onclick={() => pickStudent(student)}>
+							<button class="roster__name" type="button" onclick={() => pickStudent(student)}>
 								{displayName(student.first_name, student.last_initial)}
 							</button>
 						</li>
@@ -334,7 +385,22 @@
 				</button>
 			</div>
 
-			<button class="btn btn--ghost login__wide login__back" type="button" onclick={back}>Different team</button>
+			<!--
+				THE ESCAPE. A shared iPad moves between tables, so leaving this team
+				has to be one tap and has to actually forget. A plain POST, because a
+				GET that clears device state is a GET a prefetch can fire, and because
+				this is the one control on the screen that must work with no
+				JavaScript at all.
+			-->
+			{#if remembered}
+				<form method="post" action="?/forget" class="login__escape">
+					<button class="btn btn--ghost login__wide" type="submit">Not my team</button>
+				</form>
+			{:else}
+				<button class="btn btn--ghost login__wide login__back" type="button" onclick={back}>
+					Different team
+				</button>
+			{/if}
 		{:else if step === 'pin' && roster && chosen}
 			<form onsubmit={signInStudent}>
 				<p class="muted">
@@ -349,7 +415,9 @@
 						pattern="[0-9]*"
 						maxlength="6"
 						autocomplete="off"
-						bind:value={pin}
+						bind:this={pinBox}
+						value={pin}
+						oninput={pinTyped}
 						disabled={busy}
 					/>
 				</label>
@@ -486,13 +554,41 @@
 		letter-spacing: var(--track-hero);
 		margin: 0;
 	}
-	.tiles {
+	/* The roster is the screen a returning child lands on, so it is the biggest
+	   thing on it. 5.5rem is 88px: a thumb on a shared iPad held at arm's length
+	   across a table, not a mouse pointer. */
+	.roster {
 		list-style: none;
 		padding: 0;
 		margin: var(--space-3) 0;
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
 		gap: var(--space-3);
+	}
+	.roster__name {
+		width: 100%;
+		min-height: 5.5rem;
+		padding: var(--space-3);
+		border-radius: var(--radius-tile);
+		border: 2px solid var(--boundary);
+		background: var(--surface-2);
+		color: var(--text-body);
+		font: inherit;
+		font-size: var(--fs-h3);
+		font-weight: var(--fw-black);
+		line-height: 1.15;
+		cursor: pointer;
+	}
+	.roster__name:hover {
+		border-color: var(--link);
+	}
+	.roster__team {
+		margin: 0;
+		font-size: var(--fs-h3);
+		color: var(--text-body);
+	}
+	.login__escape {
+		margin-top: var(--space-3);
 	}
 	.row {
 		display: flex;

@@ -4,6 +4,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import type { Database } from '$lib/supabase/database.types';
 import { fetchPrincipal } from '$lib/auth/principal';
+import { rememberDeviceTeam } from '$lib/auth/device-team';
 
 /**
  * One server-side Supabase client per request, holding the session cookies.
@@ -52,6 +53,26 @@ const authedPrefixes = ['/app'];
 const authGuard: Handle = async ({ event, resolve }) => {
 	event.locals.claims = await resolveClaims(event.locals.supabase);
 	event.locals.principal = event.locals.claims ? await fetchPrincipal(event.locals.supabase) : null;
+
+	/**
+	 * THE DEVICE REMEMBERS ITS TEAM, AND IT LEARNS IT HERE RATHER THAN ON THE
+	 * LOGIN SCREEN. Every way in ends with a student principal resolving on this
+	 * request: the seat-code card, the roster and PIN, a mentor resetting a PIN.
+	 * Writing it at the one point they all pass through means no door can be
+	 * added later that forgets to, and the client never touches it.
+	 *
+	 * STUDENTS ONLY. A mentor's console spans all four teams, so a team
+	 * remembered from a mentor's session would be a fact about nothing; a board
+	 * device is already a per-device identity with its own address and PIN and
+	 * has no use for a second one.
+	 */
+	if (event.locals.principal?.kind === 'student') {
+		rememberDeviceTeam(
+			event.cookies,
+			event.locals.principal.joinCode,
+			event.url.protocol === 'https:'
+		);
+	}
 
 	const { pathname } = event.url;
 	const needsAuth = authedPrefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
