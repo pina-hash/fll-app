@@ -34,6 +34,9 @@ afterAll(async () => {
 const TABLES = [
 	'attendance',
 	'blockers',
+	// 0024's two: the robot the emitter bakes into a .llsp3, and what that
+	// robot's colour sensors read in one room.
+	'calibrations',
 	'evidence',
 	'launch_missions',
 	'launches',
@@ -49,6 +52,7 @@ const TABLES = [
 	'missions',
 	'notebook_entries',
 	'phase_templates',
+	'robot_configs',
 	'role_assignments',
 	'strategies',
 	'student_claim_codes',
@@ -389,6 +393,13 @@ describe.skipIf(!linkedAvailable)(`grants on the linked project (${linkedRef ?? 
 		expect(applied).toContain('0021');
 		expect(applied).toContain('0022');
 		expect(applied).toContain('0023');
+		// 0024 was pushed after the bundle that wrote it. This line is the one
+		// thing that would catch it having been applied by hand instead: the SQL
+		// would be present and the ledger row absent, which is how 0019, 0020 and
+		// 0021 each went out three sessions running. The repair is
+		// `supabase migration repair --status applied 0024`, ledger only, after
+		// confirming from the schema itself that the objects match the file.
+		expect(applied).toContain('0024');
 	});
 });
 

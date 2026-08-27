@@ -8,7 +8,14 @@
 
 import { Builder, resetIds } from './blocks.js';
 import { layout, measure } from './layout.js';
-import { pack, validate, type Finding, type PackOpts } from './package.js';
+import {
+	pack,
+	validate,
+	verifyContainer,
+	type EmitSource,
+	type Finding,
+	type PackOpts
+} from './package.js';
 import { buildSelfTest } from './selftest.js';
 import { buildToolkit, type Calibration, type RobotConfig } from './toolkit.js';
 
@@ -31,12 +38,23 @@ export interface GeneratedProject {
 	variables: string[];
 	extensions: string[];
 	stacks: { x: number; y: number; w: number; h: number }[];
+	/**
+	 * Manifest fields V8's round trip found in the packed file that the
+	 * verified-shapes registry says nothing about. NOT a defect and not a
+	 * reason to withhold the bytes: it is the evidence gap named out loud, so
+	 * a field cannot enter the manifest with nothing in the world vouching for
+	 * it. See ContainerReport.unpinned. It is deliberately not on the student's
+	 * screen: that surface reads at fourth grade and this is a note to whoever
+	 * next observes the SPIKE App writing a manifest.
+	 */
+	containerUnpinned: string[];
 }
 
 function emit(
 	name: string,
 	slotIndex: number,
 	filename: string,
+	src: EmitSource,
 	build: (b: Builder) => void
 ): GeneratedProject {
 	resetIds();
@@ -52,13 +70,30 @@ function emit(
 		variables: b.variables,
 		extensions
 	};
-	const findings = validate(o);
+	const findings = validate(o, src);
 	const roots = Object.keys(b.blocks).filter((k) => b.blocks[k].topLevel);
+
+	/**
+	 * V8 runs on the BYTES, so it can only run after packing, which is why
+	 * packing now happens before the bytes are known to be handed over. The
+	 * order that matters is unchanged: nothing is returned to a caller until
+	 * every check has answered, and a container that fails the round trip
+	 * leaves `bytes` null exactly as a bad block graph does.
+	 */
+	let bytes: Uint8Array | null = null;
+	let containerUnpinned: string[] = [];
+	if (!findings.length) {
+		const packed = pack(o);
+		const container = verifyContainer(packed);
+		findings.push(...container.findings);
+		containerUnpinned = container.unpinned;
+		bytes = container.findings.length ? null : packed;
+	}
 
 	return {
 		name,
 		filename,
-		bytes: findings.length ? null : pack(o),
+		bytes,
 		findings,
 		blockCount: Object.keys(b.blocks).length,
 		variables: Object.values(b.variables).map((v) => v[0]),
@@ -67,7 +102,8 @@ function emit(
 			x: b.blocks[k].x ?? 0,
 			y: b.blocks[k].y ?? 0,
 			...measure(b.blocks, k)
-		}))
+		})),
+		containerUnpinned
 	};
 }
 
@@ -80,11 +116,12 @@ function emit(
  * works if the other one is loaded. Slot indices are the container's: 19 and 18.
  */
 export function generateProjects(c: RobotConfig, cal: Calibration): GeneratedProject[] {
+	const src: EmitSource = { config: c, calibration: cal };
 	return [
-		emit('FLL Toolkit v1', 19, 'FLL_Toolkit_v1.llsp3', (b) => {
+		emit('FLL Toolkit v1', 19, 'FLL_Toolkit_v1.llsp3', src, (b) => {
 			buildToolkit(b, c, cal);
 		}),
-		emit('FLL Toolkit Self Test', 18, 'FLL_Toolkit_SelfTest.llsp3', (b) => {
+		emit('FLL Toolkit Self Test', 18, 'FLL_Toolkit_SelfTest.llsp3', src, (b) => {
 			buildSelfTest(b, c, cal);
 		})
 	];

@@ -11,10 +11,14 @@
 
 import { expect, test } from 'vitest';
 import registry from '../../../../docs/FLL_VERIFIED_SHAPES.json';
-import { RegistryFault, assertRegistryUsable } from '../package.js';
+import { RegistryFault, assertContainerUsable, assertRegistryUsable } from '../package.js';
 
 const shipped = registry as unknown as {
-	_meta: { placeholder?: boolean; namespaces: { NOT_IN_THIS_APP: { namespaces: string[] } } };
+	_meta: {
+		placeholder?: boolean;
+		namespaces: { NOT_IN_THIS_APP: { namespaces: string[] } };
+		container: { manifest_version: number; outer: { entries: string[] } };
+	};
 	shapes: Record<string, unknown>;
 };
 
@@ -74,10 +78,39 @@ test('a placeholder that somehow carries shapes is still refused as a placeholde
 	expect(fault.code).toBe('placeholder');
 });
 
+/**
+ * V8 compares a packed .llsp3 against `_meta.container`, and nothing else can
+ * answer for it. A registry full of shapes with no container block is therefore
+ * a THIRD fault rather than a finding: V9 would go on answering confidently
+ * while the round trip has no reference at all.
+ */
+test('a registry with shapes but no container block is refused, and not called empty', () => {
+	const fault = catchFault(() =>
+		assertContainerUsable({
+			_meta: { namespaces: { NOT_IN_THIS_APP: { namespaces: ['flipperdisplay'] } } },
+			shapes: { flippermove_stopMove: {} }
+		})
+	);
+	expect(fault.code).toBe('no-container');
+	expect(fault.message).toMatch(/_meta\.container/);
+});
+
+test('a container block missing half of itself is refused too', () => {
+	const fault = catchFault(() =>
+		assertContainerUsable({ _meta: { container: { outer: { entries: [] } } }, shapes: { x: {} } })
+	);
+	expect(fault.code).toBe('no-container');
+});
+
 // --- the positive control: the real thing must pass silently -------------
 
 test('the shipped registry passes the guard without complaint', () => {
 	expect(() => assertRegistryUsable(shipped)).not.toThrow();
+	expect(() => assertContainerUsable(shipped)).not.toThrow();
+	// The two container fields V8 asserts most often, held here so a change to
+	// either is a deliberate edit to this file rather than a quiet one.
+	expect(shipped._meta.container.manifest_version).toBe(38);
+	expect(shipped._meta.container.outer.entries).toEqual(['manifest.json', 'scratch.sb3', 'icon.svg']);
 });
 
 function catchFault(fn: () => void): RegistryFault {
