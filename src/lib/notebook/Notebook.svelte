@@ -716,7 +716,7 @@
 		background: var(--warning);
 	}
 	.nb__status[data-state='syncing'] .nb__dot {
-		background: var(--link);
+		background: var(--warning);
 	}
 	.nb__failed {
 		display: flex;
@@ -772,9 +772,12 @@
 		   (measured 1.09) and, once there were two grounds, black text on a
 		   dark wash (1.28). team-accents.css derives every accent to clear
 		   4.5 against its own wash on both grounds, which is this pairing. */
-		color: var(--team-accent, var(--success-text));
-		background: var(--team-accent-wash, transparent);
-		border-color: var(--team-accent, var(--success));
+		/* The FALLBACK is the ink, not a status colour: a team with no accent
+		   yet gets the picked treatment rather than a green that says nothing
+		   about the tab being selected. */
+		color: var(--team-accent, var(--text-1));
+		background: var(--team-accent-wash, var(--plate));
+		border-color: var(--team-accent, var(--text-1));
 	}
 	.nb__badge {
 		display: inline-flex;
@@ -864,7 +867,7 @@
 		border-left: 4px solid var(--success);
 	}
 	.nb__entry[data-outcome='mixed'] {
-		border-left: 4px solid var(--link);
+		border-left: 4px solid var(--warning);
 	}
 	.nb__entryhead {
 		display: flex;
@@ -882,7 +885,7 @@
 		color: var(--success-text);
 	}
 	.nb__outcome[data-outcome='mixed'] {
-		color: var(--link);
+		color: var(--warning);
 	}
 	.nb__byline {
 		color: var(--text-3);
@@ -1045,8 +1048,8 @@
 		color: var(--warning);
 	}
 	.nb__outcomebtn--on[data-outcome='mixed'] {
-		border-color: var(--link);
-		color: var(--link);
+		border-color: var(--warning);
+		color: var(--warning);
 	}
 
 	.nb__photorow {

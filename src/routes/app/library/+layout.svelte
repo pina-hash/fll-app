@@ -56,7 +56,7 @@
 		font-weight: var(--fw-bold);
 		font-size: var(--fs-h3);
 		letter-spacing: var(--track-wide);
-		color: var(--success-text);
+		color: var(--text-1);
 	}
 	.lib__main {
 		flex: 1;

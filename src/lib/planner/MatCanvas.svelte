@@ -546,7 +546,7 @@
 	}
 	.mat__board:focus-visible {
 		outline: none;
-		stroke: var(--link);
+		stroke: var(--text-1);
 		stroke-width: 8;
 	}
 	.mat__frame {
@@ -559,15 +559,18 @@
 		stroke-width: 2;
 		opacity: 0.6;
 	}
+	/* Structure, not a status. The mat's real launch areas are red and blue
+	   (which is why no team accent may be either); drawing them in the SUCCESS
+	   colour said nothing true and put green over a quarter of the mat. */
 	.mat__launch-area {
-		fill: var(--success-text);
+		fill: var(--text-2);
 		opacity: 0.08;
-		stroke: var(--success);
+		stroke: var(--boundary);
 		stroke-width: 4;
 		stroke-dasharray: 24 18;
 	}
 	.mat__launch-label {
-		fill: var(--success-text);
+		fill: var(--text-2);
 		font-size: 52px;
 		font-weight: 700;
 		text-anchor: middle;
@@ -596,14 +599,14 @@
 	}
 	.mat__corridor {
 		fill: none;
-		stroke: var(--team-accent, var(--link));
+		stroke: var(--team-accent, var(--text-1));
 		opacity: 0.16;
 		stroke-linejoin: round;
 		stroke-linecap: round;
 	}
 	.mat__route {
 		fill: none;
-		stroke: var(--team-accent, var(--link));
+		stroke: var(--team-accent, var(--text-1));
 		stroke-width: 12;
 		stroke-linejoin: round;
 	}
@@ -626,7 +629,7 @@
 		outline: none;
 	}
 	.mat__mission:focus-visible .mat__mission-dot {
-		stroke: var(--link);
+		stroke: var(--text-1);
 		stroke-width: 10;
 	}
 	.mat__mission-hit {
@@ -639,7 +642,7 @@
 	}
 	.mat__mission--active .mat__mission-dot {
 		fill: var(--team-accent-wash, var(--surface-2));
-		stroke: var(--team-accent, var(--link));
+		stroke: var(--team-accent, var(--text-1));
 		stroke-width: 9;
 	}
 	.mat__mission-code {
@@ -657,14 +660,14 @@
 		outline: none;
 	}
 	.mat__wp:focus-visible .mat__wp-dot {
-		stroke: var(--link);
+		stroke: var(--text-1);
 		stroke-width: 12;
 	}
 	.mat__wp-hit {
 		fill: transparent;
 	}
 	.mat__wp-dot {
-		fill: var(--team-accent, var(--link));
+		fill: var(--team-accent, var(--text-1));
 		stroke: var(--surface-0);
 		stroke-width: 6;
 	}
@@ -673,7 +676,7 @@
 		stroke-width: 12;
 	}
 	.mat__wp-num {
-		fill: var(--team-accent-ink, var(--accent-ink));
+		fill: var(--team-accent-ink, var(--surface-0));
 		font-size: 38px;
 		font-weight: 800;
 		text-anchor: middle;

@@ -210,7 +210,7 @@
 		font-size: var(--fs-h1);
 		font-weight: var(--fw-bold);
 		font-variant-numeric: tabular-nums;
-		color: var(--success-text);
+		color: var(--text-1);
 	}
 	.board__clock--over {
 		color: var(--warning);

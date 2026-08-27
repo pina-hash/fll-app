@@ -1743,11 +1743,12 @@
 		display: flex;
 		gap: var(--space-1);
 	}
+	/* Picked, not green. A chosen unit is not a success. */
 	.rp__units--on,
 	.rp__zoom--on {
-		color: var(--success-text);
-		border-color: var(--boundary);
-		background: var(--surface-2);
+		color: var(--text-1);
+		border-color: var(--text-1);
+		background: var(--plate);
 	}
 	.rp__selbar {
 		display: flex;
@@ -1835,8 +1836,8 @@
 		opacity: 0.8;
 	}
 	.rp__mission-chip--on .rp__mission-btn {
-		border-color: var(--team-accent, var(--link));
-		background: var(--team-accent-wash, var(--surface-2));
+		border-color: var(--team-accent, var(--text-1));
+		background: var(--team-accent-wash, var(--plate));
 	}
 	.rp__mission-name {
 		font-size: var(--fs-small);
@@ -1866,7 +1867,7 @@
 		overflow: hidden;
 	}
 	.rp__time-seg {
-		background: var(--team-accent, var(--link));
+		background: var(--team-accent, var(--text-1));
 		min-width: 2px;
 	}
 	.rp__time-gap {
@@ -1925,7 +1926,7 @@
 		overflow: hidden;
 	}
 	.rp__launch--on {
-		border-color: var(--team-accent, var(--link));
+		border-color: var(--team-accent, var(--text-1));
 	}
 	.rp__launch-head {
 		display: flex;
@@ -1949,8 +1950,8 @@
 		align-items: center;
 		justify-content: center;
 		border-radius: 50%;
-		background: var(--team-accent, var(--link));
-		color: var(--team-accent-ink, var(--accent-ink));
+		background: var(--team-accent, var(--text-1));
+		color: var(--team-accent-ink, var(--surface-0));
 		font-weight: var(--fw-black);
 	}
 	.rp__launch-name {

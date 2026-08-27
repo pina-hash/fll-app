@@ -58,14 +58,21 @@ afterAll(async () => {
 	await closeDb();
 });
 
-describe('the seeded teams are numbered and colourless', () => {
-	test('Team 1 to Team 4 exist, none of them named after a colour', async () => {
+describe('the seeded teams are numbered and each starts with a colour', () => {
+	test('Team 1 to Team 4 exist, none of them NAMED after a colour', async () => {
 		const rows = await sql<{ name: string; accent: string | null; join_code: string }[]>`
 			select name, accent::text, join_code from public.teams
 			where name in ('Team 1', 'Team 2', 'Team 3', 'Team 4') order by name`;
 		expect(rows.map((r) => r.name)).toEqual(['Team 1', 'Team 2', 'Team 3', 'Team 4']);
-		// A team CHOOSES its colour; nothing hands one out.
-		expect(rows.every((r) => r.accent === null)).toBe(true);
+		// A team still CHOOSES its colour and the propose/confirm/override flow
+		// below is untouched. What 0025 changed is the state a team STARTS in:
+		// every accent was null, so every screen fell back to the same neutral
+		// and four teams rendered as four identical grey cards.
+		expect(rows.map((r) => r.accent)).toEqual(['lime', 'purple', 'teal', 'orange']);
+		// The name is still the identity and it is still a NUMBER. A team named
+		// after its colour is the thing 0018 renamed away from, and handing out
+		// colours must not walk that back.
+		expect(rows.every((r) => /^Team [1-4]$/.test(r.name))).toBe(true);
 		// The rename touched the name and nothing else: every join code is
 		// still a real six-character code.
 		expect(rows.every((r) => /^[A-Z0-9]{6}$/.test(r.join_code))).toBe(true);
@@ -281,13 +288,30 @@ describe('THE RACE: two teams pick the same colour at the same moment', () => {
 	test('THE POSITIVE CONTROL: the same two transactions on different colours both commit', async () => {
 		await service.from('teams').update({ accent: null }).in('id', [teamA.teamId, teamB.teamId]);
 
-		const results = await concurrentPick('teal', 'lime');
+		// THE TWO COLOURS ARE LOOKED UP, NOT TYPED. This case used to name teal
+		// and lime, and 0025 broke it by giving the seeded teams a starting
+		// colour: four of the eleven are now held before any test runs, so a
+		// hard-coded pair is a coin toss against the seed. Asking which are free
+		// is what the RPC itself does, and it cannot go stale.
+		const free = await sql<{ accent: string }[]>`
+			select a.accent::text as accent
+			from unnest(enum_range(null::public.team_accent)) as a(accent)
+			where not exists (
+				select 1 from public.teams t
+				where t.accent = a.accent and t.archived_at is null
+			)
+			order by a.accent
+			limit 2`;
+		expect(free, 'the palette has no two free colours left; this case needs two').toHaveLength(2);
+		const [first, second] = free.map((f) => f.accent);
+
+		const results = await concurrentPick(first, second);
 		expect(results.filter((r) => r.ok)).toHaveLength(2);
 
 		const held = await sql<{ accent: string }[]>`
 			select accent::text from public.teams
 			where id = any(array[${teamA.teamId}, ${teamB.teamId}]::uuid[]) order by accent`;
-		expect(held.map((h) => h.accent)).toEqual(['lime', 'teal']);
+		expect(held.map((h) => h.accent)).toEqual([first, second].sort());
 	});
 
 	test('the RPC turns that 23505 into a sentence naming the winner', async () => {

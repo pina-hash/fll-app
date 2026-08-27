@@ -129,10 +129,13 @@
 		background: var(--surface-1);
 		color: var(--text-2);
 	}
+	/* Picked, not green: --success is a STATUS token and a chosen filter is
+	   not a success. The pathway green has one active state and the nav pill
+	   owns it. */
 	.chip--on {
-		color: var(--success-text);
-		border-color: var(--success);
-		background: var(--surface-2);
+		color: var(--text-1);
+		border-color: var(--text-1);
+		background: var(--plate);
 	}
 	.series {
 		margin-bottom: var(--space-4);
@@ -151,7 +154,7 @@
 	.marker {
 		display: inline-block;
 		margin-right: var(--space-2);
-		color: var(--success-text);
+		color: var(--text-2);
 		font-weight: var(--fw-bold);
 	}
 	.topic-band {

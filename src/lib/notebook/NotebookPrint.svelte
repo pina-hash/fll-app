@@ -381,7 +381,7 @@
 		border-left-color: var(--success-text);
 	}
 	.np__try[data-outcome='mixed'] {
-		border-left-color: var(--link);
+		border-left-color: var(--warning);
 	}
 	.np__tryhead {
 		margin: 0 0 0.2rem;
@@ -402,7 +402,7 @@
 		color: var(--success-text);
 	}
 	.np__outcome[data-outcome='mixed'] {
-		color: var(--link);
+		color: var(--warning);
 	}
 	.np__body {
 		margin: 0.25rem 0;

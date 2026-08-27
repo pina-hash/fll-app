@@ -101,7 +101,7 @@
 		<div class="tl__filter" role="group" aria-label="Which teams to show">
 			<button
 				class="btn btn--small"
-				class:btn--primary={!showArchived}
+				class:btn--picked={!showArchived}
 				class:btn--ghost={showArchived}
 				aria-pressed={!showArchived}
 				onclick={() => (showArchived = false)}
@@ -110,7 +110,7 @@
 			</button>
 			<button
 				class="btn btn--small"
-				class:btn--primary={showArchived}
+				class:btn--picked={showArchived}
 				class:btn--ghost={!showArchived}
 				aria-pressed={showArchived}
 				onclick={() => (showArchived = true)}
@@ -213,6 +213,12 @@
 		display: grid;
 		gap: var(--space-2);
 	}
+	/* THE TEAM'S OWN COLOUR CARRIES THE VARIETY, which is the whole reason
+	   `teams.accent` exists. Six rows on this screen were six identical grey
+	   rows because every accent was null; the rail is 4px of the team's colour
+	   and the wash is the same one the live board's cards use, so a mentor
+	   scanning the list finds a team by colour before they read a name. Both
+	   fall back to the neutral for a team that has genuinely not chosen. */
 	.tl__row {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
@@ -220,17 +226,23 @@
 		align-items: center;
 		padding: var(--space-3);
 		border: 1px solid var(--hairline);
+		border-left: 4px solid var(--team-accent);
 		border-radius: var(--radius-control);
-		background: var(--surface-2);
+		background: linear-gradient(90deg, var(--team-accent-wash), transparent 40%), var(--surface-2);
 		min-width: 0;
 	}
+	/* The team's name in its own colour, so the list reads as four teams and
+	   not as four rows. --team-accent, NOT the ink token: the ink is what sits
+	   ON a filled accent chip, and --team-accent is the one derived to clear
+	   4.5 against all three surfaces of its ground AND against its own wash,
+	   which is the pairing this row makes. */
 	.tl__open {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
 		min-height: 2.75rem;
 		min-width: 0;
-		color: var(--text-1);
+		color: var(--team-accent, var(--text-1));
 		text-decoration: none;
 		font-size: var(--fs-h3);
 	}

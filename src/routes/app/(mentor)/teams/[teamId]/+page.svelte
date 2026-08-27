@@ -1061,7 +1061,7 @@
 		font-size: var(--fs-h3);
 		font-weight: var(--fw-bold);
 		letter-spacing: var(--track-wide);
-		color: var(--success-text);
+		color: var(--text-1);
 	}
 
 	.tablewrap {

@@ -547,7 +547,7 @@
 		font-weight: var(--fw-black);
 		line-height: 0.9;
 		letter-spacing: -0.02em;
-		color: var(--success-text);
+		color: var(--text-1);
 		font-variant-numeric: tabular-nums;
 	}
 	.clock--warn {
@@ -770,7 +770,7 @@
 		vector-effect: non-scaling-stroke;
 	}
 	.chart__dot {
-		fill: var(--link);
+		fill: var(--text-1);
 	}
 
 	.run {

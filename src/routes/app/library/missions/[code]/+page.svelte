@@ -139,9 +139,15 @@
 		padding-left: var(--space-4);
 		color: var(--warning);
 	}
+	/* BRASS, THE CALLOUT ACCENT, WHICH WAS SITTING UNUSED. A strategy prompt is
+	   content, and the content accents are brass, patina and copper; --accent is
+	   the pathway green and its jobs are identity, the one active state and the
+	   primary action. This is the pattern the whole bundle is about: a semantic
+	   token existed and the green got used because it was the green that was
+	   handy. */
 	.prompt {
 		margin-top: var(--space-4);
-		border-color: var(--accent);
+		border-color: var(--brass);
 	}
 	.notes {
 		margin-top: var(--space-6);

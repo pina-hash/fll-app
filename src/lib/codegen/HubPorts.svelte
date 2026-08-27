@@ -179,15 +179,18 @@
 		text-align: center;
 		cursor: pointer;
 	}
+	/* A port with something in it, and the port whose chooser is open. Neither
+	   is the app's one active state, so neither is green: filled and ringed
+	   says "this one" perfectly well. */
 	.hp__port--used {
-		border-color: var(--accent-text);
-		background: var(--accent-soft);
+		border-color: var(--text-2);
+		background: var(--surface-2);
 		color: var(--text-body);
 	}
 	.hp__port--on {
-		border-color: var(--accent-text);
-		background: var(--accent);
-		color: var(--accent-ink);
+		border-color: var(--text-1);
+		background: var(--plate);
+		color: var(--text-1);
 	}
 	.hp__letter {
 		font-family: var(--font-mono);
@@ -252,9 +255,9 @@
 		cursor: pointer;
 	}
 	.hp__role-btn--on {
-		border-color: var(--accent-text);
-		background: var(--accent);
-		color: var(--accent-ink);
+		border-color: var(--text-1);
+		background: var(--plate);
+		color: var(--text-1);
 	}
 	.hp__role-btn:disabled {
 		opacity: 0.5;

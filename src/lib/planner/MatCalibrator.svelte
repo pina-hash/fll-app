@@ -466,23 +466,23 @@
 
 	.cal__outline {
 		fill: none;
-		stroke: var(--success);
+		stroke: var(--text-1);
 		stroke-width: 4;
 		vector-effect: non-scaling-stroke;
 	}
 	.cal__grid {
-		stroke: var(--link);
+		stroke: var(--text-1);
 		stroke-width: 1;
 		opacity: 0.65;
 		vector-effect: non-scaling-stroke;
 	}
 	.cal__tick {
-		stroke: var(--success);
+		stroke: var(--text-2);
 		stroke-width: 3;
 		vector-effect: non-scaling-stroke;
 	}
 	.cal__ruler {
-		fill: var(--success-text);
+		fill: var(--text-1);
 		font-weight: var(--fw-bold);
 		paint-order: stroke fill;
 		stroke: var(--surface-0);
@@ -507,19 +507,24 @@
 		stroke-linejoin: round;
 		dominant-baseline: middle;
 	}
+	/* THE TWO PINS WERE THE SAME COLOUR. --success and --accent are both mint
+	   on the dark grounds and both deep green on paper, so "tap this corner,
+	   now tap the other one" drew two identical markers on the one screen
+	   whose whole job is telling them apart. Ink and copper: plainly two
+	   different things, and neither of them is the pathway green. */
 	.cal__pin--origin circle,
 	.cal__pin--origin line {
-		stroke: var(--success);
+		stroke: var(--text-1);
 	}
 	.cal__pin--origin text {
-		fill: var(--success-text);
+		fill: var(--text-1);
 	}
 	.cal__pin--far circle,
 	.cal__pin--far line {
-		stroke: var(--accent);
+		stroke: var(--warning);
 	}
 	.cal__pin--far text {
-		fill: var(--accent);
+		fill: var(--warning);
 	}
 
 	.cal__zoom {
@@ -527,8 +532,9 @@
 		gap: var(--space-2);
 	}
 	.cal__zoom--on {
-		border-color: var(--link);
-		color: var(--link);
+		border-color: var(--text-1);
+		color: var(--text-1);
+		background: var(--plate);
 	}
 
 	.cal__fields {

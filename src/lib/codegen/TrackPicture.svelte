@@ -66,25 +66,27 @@
 		stroke: var(--boundary);
 		stroke-width: 2;
 	}
+	/* Line art, not chrome: the driving wheels and the measurement are the
+	   INK, the idle wheels are structure. Green here was decoration. */
 	.tp__wheel {
 		fill: var(--plate);
-		stroke: var(--accent-text);
+		stroke: var(--text-1);
 		stroke-width: 2;
 	}
 	.tp__wheel--idle {
 		stroke: var(--fg-structure);
 	}
 	.tp__centre {
-		stroke: var(--accent-text);
+		stroke: var(--text-2);
 		stroke-width: 1.5;
 		stroke-dasharray: 4 3;
 	}
 	.tp__arrow {
-		stroke: var(--accent-text);
+		stroke: var(--text-1);
 		stroke-width: 2.5;
 	}
 	.tp__head {
-		fill: var(--accent-text);
+		fill: var(--text-1);
 	}
 	.tp__label {
 		fill: var(--fg);

@@ -80,8 +80,8 @@
 		padding: 0 var(--space-3);
 		min-height: 2rem;
 		border-radius: var(--radius-control);
-		background: var(--accent);
-		color: var(--accent-ink);
+		background: var(--plate);
+		color: var(--text-1);
 		font-weight: var(--fw-black);
 		letter-spacing: var(--track-label);
 		text-transform: uppercase;

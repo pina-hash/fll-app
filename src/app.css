@@ -188,12 +188,11 @@ code {
 }
 .btn--secondary {
 	background: var(--surface-2);
-	/* --accent-text, not --accent: on the dark ground the fill and the
-	   foreground happen to be the same mint, but on paper the fill is deep
-	   green with a bone ink and the foreground is that same deep green on the
-	   sheet. Two roles, two tokens, so the ground can move one without the
-	   other. */
-	color: var(--accent-text);
+	/* THE INK, NOT THE GREEN. A secondary button is the alternative to the
+	   primary one, not a second call to action, and green here made a third
+	   green button treatment on screens that already had --primary and the
+	   nav pill. */
+	color: var(--text-1);
 	border-color: var(--boundary);
 }
 .btn--danger {
@@ -209,6 +208,23 @@ code {
 	background: transparent;
 	color: var(--text-muted);
 	border-color: var(--boundary);
+}
+/* PICKED. THE SEGMENT OF A SEGMENTED CONTROL THAT IS CURRENTLY APPLIED, AND
+   IT IS NOT AN ACTION, WHICH IS WHY IT IS NOT --primary.
+
+   "Live (6) / Archived (0)" was two .btn--small buttons with .btn--primary
+   toggled onto whichever was showing, and the task filters did the same. That
+   is the ACTION colour used as a STATE marker: a filter that is already on is
+   nothing to press. It also made a second green active state on a screen that
+   already had the nav pill, and green in this app has exactly one of those.
+
+   NO COLOUR AT ALL, DELIBERATELY. Picked is a lighter fill, a full-strength
+   ink ring and the ink, which reads as pressed on both grounds and leaves the
+   pathway green to the one active state that owns it. */
+.btn--picked {
+	background: var(--plate);
+	color: var(--text-1);
+	border-color: var(--text-1);
 }
 .btn--small {
 	min-height: 2.25rem;

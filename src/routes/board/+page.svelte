@@ -250,7 +250,7 @@
 	.open__title {
 		margin: 0;
 		font-size: var(--fs-hero);
-		color: var(--success-text);
+		color: var(--text-1);
 	}
 	.open__sub {
 		margin: 0;
@@ -333,7 +333,7 @@
 		font-weight: var(--fw-bold);
 		font-variant-numeric: tabular-nums;
 		line-height: 1;
-		color: var(--success-text);
+		color: var(--text-1);
 	}
 	.bd__clock--over {
 		color: var(--warning);

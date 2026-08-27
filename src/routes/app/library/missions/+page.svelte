@@ -83,6 +83,6 @@
 		color: var(--text-1);
 	}
 	.item__points {
-		color: var(--success-text);
+		color: var(--text-1);
 	}
 </style>

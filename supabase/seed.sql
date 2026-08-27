@@ -9,7 +9,7 @@
 --      Google sign-in, so 0002's trigger is what makes the mentors row (and
 --      what makes it the admin, as the first one). It also gets a local-only
 --      password so tests and dev tooling can sign in without Google;
---   2. four numbered teams with generated join codes and no colour yet;
+--   2. four numbered teams with generated join codes and a starting colour;
 --   3. the standard phase template for both meeting kinds:
 --        Friday,   90 min: Huddle 10, Role Blocks 60, Mat Run 15, Close 5
 --        Saturday, 120 min: Huddle 10, Role Blocks 75, Mat Time 25, Close 10
@@ -63,29 +63,36 @@ end
 $$;
 
 -- ---------------------------------------------------------------------------
--- 2. Four teams, NUMBERED AND COLOURLESS. Direct insert (the seed runs as
---    postgres, not as a mentor); join codes come from the same generator
---    team_create uses.
+-- 2. Four teams, NUMBERED AND EACH WITH A STARTING COLOUR. Direct insert (the
+--    seed runs as postgres, not as a mentor); join codes come from the same
+--    generator team_create uses.
 --
---    No accent is set, on purpose. From 0018 a team CHOOSES its colour and a
---    colour is taken once; seeding an assignment here would hand three of the
---    eleven swatches out before anybody had picked, and would contradict the
---    migration that just cleared them. A team with no accent renders in the
---    design system's neutral, which is the real first-Friday state.
+--    THE FOUR COLOURS ARE 0025's, AND THEY ARE HERE BECAUSE THE SEED RUNS
+--    AFTER THE MIGRATION CHAIN. `supabase db reset` applies 0025 to an empty
+--    teams table, which is a no-op, and then this file creates the teams; a
+--    seed that left them null would put a local stack back in exactly the state
+--    0025 exists to end, with four identical grey cards on the console.
+--
+--    A team still CHOOSES its colour: propose, confirm, override, all unchanged
+--    from 0018. What changed is the state a team starts in.
 -- ---------------------------------------------------------------------------
 do $$
 declare
-	v_name text;
+	v_seed constant text[][] := array[
+		array['Team 1', 'lime'], array['Team 2', 'purple'],
+		array['Team 3', 'teal'], array['Team 4', 'orange']
+	];
+	v_i int;
 	v_n int := 0;
 begin
-	foreach v_name in array array['Team 1', 'Team 2', 'Team 3', 'Team 4'] loop
-		if not exists (select 1 from public.teams t where t.name = v_name) then
-			insert into public.teams (name, join_code)
-			values (v_name, public._generate_join_code());
+	for v_i in 1 .. array_length(v_seed, 1) loop
+		if not exists (select 1 from public.teams t where t.name = v_seed[v_i][1]) then
+			insert into public.teams (name, join_code, accent)
+			values (v_seed[v_i][1], public._generate_join_code(), v_seed[v_i][2]::public.team_accent);
 			v_n := v_n + 1;
 		end if;
 	end loop;
-	raise notice 'seed: % of 4 teams created; none has chosen a colour yet.', v_n;
+	raise notice 'seed: % of 4 teams created, each with a starting colour.', v_n;
 end
 $$;
 

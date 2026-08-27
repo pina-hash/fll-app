@@ -288,9 +288,19 @@ describe('the official colours are never altered', () => {
 		// text. One that landed next door to the colour it replaced would be a
 		// tint of a brand colour wearing another name, which is the thing the
 		// guidelines forbid. 10 dE is roughly "plainly a different colour".
+		//
+		// --link IS NOT ON THIS LIST ANY MORE, and the reason is the rule's own
+		// premise. It was here while it was a green: a functional stand-in for a
+		// pathway colour that could not carry text on both grounds. It is the
+		// INK now (bone on the dark grounds, #181818 on paper), so it stands in
+		// for nothing and there is no brand colour it could be read as a tint
+		// of. An ink that is a near-black is not brand expression: the paper
+		// ground's ink has been within dE 10 of FIRST black since it shipped
+		// (#131A13 measured 8.9), on --fg and --text-1, which this case has
+		// never covered and should not.
 		const brand = ['#ed1c24', '#00a651', '#662d91', '#231f20'];
 		for (const g of BOTH) {
-			for (const token of ['--accent-text', '--link', '--success-text', '--danger-text', '--warning']) {
+			for (const token of ['--accent-text', '--success-text', '--danger-text', '--warning']) {
 				const value = GROUNDS[g](token);
 				// A functional value that IS a program colour, unaltered, would be
 				// allowed; none is, so nothing is skipped here today.

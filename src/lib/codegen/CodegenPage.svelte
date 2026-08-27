@@ -984,20 +984,18 @@
 	}
 	.cg__step--done {
 		color: var(--text-body);
-		border-color: var(--accent-text);
+		border-color: var(--text-2);
 	}
-	/* THE CURRENT STEP IS A FILLED CHIP, NOT GREEN TEXT ON A GREEN WASH.
-	   `--accent-text` on `--accent-soft` measures 4.31 on the paper ground: the
-	   wash darkens the surface under ink that was derived to clear 4.5 against
-	   the bare surface, and the pairing lands under the floor. `--accent` with
-	   `--accent-ink` is the fill-plus-declared-ink pairing the palette already
-	   measures on both grounds, and it is what the Next button and a chosen
-	   port already use, so "the one you are on" says the same thing three
-	   times on this page instead of two. */
+	/* THE CURRENT STEP IS A FILLED CHIP, AND IT IS NEUTRAL.
+	   It was a green pill, which put a second green active state on the page
+	   beside the nav pill; the app has exactly one, and the nav owns it. The
+	   fill-plus-ink shape is kept, because that is what made it legible on
+	   both grounds (green text on the green wash measured 4.31 on paper); only
+	   the colour left. */
 	.cg__step--on {
-		color: var(--accent-ink);
-		border-color: var(--accent);
-		background: var(--accent);
+		color: var(--text-1);
+		border-color: var(--text-1);
+		background: var(--plate);
 	}
 	.cg__stepnum {
 		display: inline-flex;
@@ -1052,8 +1050,8 @@
 		cursor: pointer;
 	}
 	.cg__wheel--on {
-		border-color: var(--accent-text);
-		background: var(--accent-soft);
+		border-color: var(--text-1);
+		background: var(--plate);
 	}
 	.cg__wheelmm {
 		font-family: var(--font-mono);
@@ -1068,7 +1066,7 @@
 
 	/* The one number on the page that is meant to be watched moving. */
 	.cg__degrees {
-		color: var(--accent-text);
+		color: var(--text-1);
 	}
 	.cg__math {
 		margin: var(--space-5) 0;
@@ -1088,13 +1086,13 @@
 		gap: 0.2rem;
 		padding: var(--space-4);
 		border-radius: var(--radius-card);
-		border: 2px solid var(--accent-text);
+		border: 2px solid var(--success);
 		background: var(--surface-2);
 	}
 	.cg__fileicon {
 		font-size: var(--fs-h2);
 		line-height: 1;
-		color: var(--accent-text);
+		color: var(--success-text);
 	}
 	.cg__filefor {
 		font-size: var(--fs-body);

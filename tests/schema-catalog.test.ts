@@ -428,15 +428,25 @@ describe('realtime', () => {
 });
 
 describe('seed', () => {
-	test('the four seeded teams are NUMBERED and have chosen no colour', async () => {
-		// From 0018 a team chooses its own colour, so the seed hands none out:
-		// an assigned colour is not a chosen one. Null is the real state on
-		// the first Friday, not a broken row.
+	test('the four seeded teams are NUMBERED and each starts with a colour', async () => {
+		// THE OPPOSITE OF WHAT THIS CASE USED TO ASSERT, and the reason is in
+		// 0025's header. "A team chooses its own colour" is still true, and the
+		// propose/confirm/override flow from 0018 is untouched; what changed is
+		// the state a team STARTS in. Every accent was null, so the live board's
+		// rail, the team card's wash and the teams list all fell back to the
+		// same neutral and four teams rendered as four identical grey cards. The
+		// four colours are 0025's first four, which are a farthest-point walk
+		// over the eleven rather than the enum's own order: closest pair dE 54.8
+		// against 18.9.
 		const rows = await sql<{ name: string; accent: string | null }[]>`
 			select name, accent::text from public.teams
 			where name in ('Team 1', 'Team 2', 'Team 3', 'Team 4') order by name`;
 		expect(rows.map((r) => r.name)).toEqual(['Team 1', 'Team 2', 'Team 3', 'Team 4']);
-		expect(rows.every((r) => r.accent === null)).toBe(true);
+		expect(rows.map((r) => r.accent)).toEqual(['lime', 'purple', 'teal', 'orange']);
+		// And they are DISTINCT, which the unique partial index over live teams
+		// enforces anyway; asserted here because "four teams, four colours" is
+		// the property the screens depend on.
+		expect(new Set(rows.map((r) => r.accent)).size).toBe(4);
 	});
 
 	test('the accent enum is the eleven-colour palette, with red and blue absent', async () => {

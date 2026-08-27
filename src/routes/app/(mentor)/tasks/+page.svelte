@@ -583,7 +583,7 @@
 						{#each TASK_STATUSES as s (s)}
 							<button
 								class="btn btn--small"
-								class:btn--primary={s === selected?.status}
+								class:btn--picked={s === selected?.status}
 								class:btn--ghost={s !== selected?.status}
 								type="button"
 								disabled={busy === `status:${selectedId}` || s === selected?.status}

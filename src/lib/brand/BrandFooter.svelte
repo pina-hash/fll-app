@@ -88,7 +88,14 @@
 		gap: var(--space-4) var(--space-5);
 		padding: var(--space-5) var(--space-4);
 		margin-top: var(--space-6);
-		border-top: 1px solid var(--hairline);
+		/* THE PROGRAM RAIL. The footer is where the FIRST and FIRST LEGO League
+		   lockups live, so the line that separates it from the app is the
+		   PROGRAM's own gray rather than the app's decorative hairline. That is
+		   the program layer at the weight the guidelines and CLAUDE.md allow:
+		   chrome, a rule and the lockups, never content and never identity.
+		   --rule-gray is the published FIRST gray, used unmodified, and it is
+		   already what the thin rule BETWEEN the two lockups uses. */
+		border-top: 1px solid var(--rule-gray);
 		/* CHROME, like the header bar it bookends. --chrome-bg is the ground's
 		   own edge tone on both grounds; the marks sit on a FLAT plate with no
 		   texture and no glow behind them, which is what the FIRST guidelines

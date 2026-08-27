@@ -170,7 +170,7 @@
 		padding: 0.15rem var(--space-2);
 		border-radius: var(--radius-pill, 999px);
 		background: var(--surface-2);
-		color: var(--success-text);
+		color: var(--text-2);
 	}
 	.course__badge--optional {
 		color: var(--warning);

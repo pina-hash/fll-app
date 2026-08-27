@@ -1149,7 +1149,7 @@
 		font-size: var(--fs-hero);
 		font-weight: var(--fw-bold);
 		font-variant-numeric: tabular-nums;
-		color: var(--success-text);
+		color: var(--text-1);
 		margin: var(--space-2) 0;
 		line-height: 1;
 	}

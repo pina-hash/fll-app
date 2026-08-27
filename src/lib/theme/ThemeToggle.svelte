@@ -74,20 +74,26 @@
 
 	/* The selected option, decided by the attribute the boot script wrote.
 	   Colour is not the only signal: the option is also the only one set in
-	   bold and the only one carrying aria-checked. */
+	   bold and the only one carrying aria-checked.
+
+	   IT IS THE PICKED TREATMENT, NOT THE PATHWAY GREEN. A chosen ground is a
+	   state, and the app has exactly one green active state: the console's nav
+	   pill. This control sits in the footer of EVERY surface, so a green here
+	   was a second one on every screen in the app at once. */
 	:global(:root[data-theme-pref='system']) .tt__opt[data-pref='system'],
 	:global(:root[data-theme-pref='light']) .tt__opt[data-pref='light'],
 	:global(:root[data-theme-pref='dark']) .tt__opt[data-pref='dark'] {
-		background: var(--surface-2);
-		color: var(--accent-text);
+		background: var(--plate);
+		color: var(--text-1);
 		font-weight: var(--fw-bold);
 	}
 
 	/* No JavaScript, no attribute, no app -- but the control should still not
-	   look like nothing is selected, and light is what the page will be. */
+	   look like nothing is selected, and the app's own ground is what the page
+	   will be. */
 	:global(:root:not([data-theme-pref])) .tt__opt[data-pref='system'] {
-		background: var(--surface-2);
-		color: var(--accent-text);
+		background: var(--plate);
+		color: var(--text-1);
 		font-weight: var(--fw-bold);
 	}
 

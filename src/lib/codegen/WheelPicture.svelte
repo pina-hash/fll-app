@@ -85,16 +85,18 @@
 		stroke: var(--fg-structure);
 		stroke-width: 1.5;
 	}
-	/* The chosen wheel takes the pathway green, which is the same "this is the
-	   one you are on" signal the console's active nav tab uses. */
+	/* The chosen wheel is drawn in the INK, not the pathway green. The nav
+	   pill is the app's one green active state; a picked wheel says so with
+	   weight and a full-strength stroke, and the card around it is already
+	   carrying the picked treatment. */
 	.wp--on .wp__tyre {
-		stroke: var(--accent-text);
+		stroke: var(--text-1);
 	}
 	.wp--on .wp__rim {
-		fill: var(--accent-soft);
-		stroke: var(--accent-text);
+		fill: var(--surface-2);
+		stroke: var(--text-1);
 	}
 	.wp--on .wp__hub {
-		stroke: var(--accent-text);
+		stroke: var(--text-1);
 	}
 </style>

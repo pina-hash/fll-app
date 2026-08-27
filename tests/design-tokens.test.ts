@@ -69,6 +69,7 @@ const SCOPES: Record<string, string> = {
 	// block at the top of the file and this check would then compare that block
 	// against itself and pass with 63 aliases missing.
 	paper: "\n[data-ground='paper'],\n[data-ground='light'],\n:root[data-theme='light'] {",
+	deck: "\n[data-ground='deck'] {",
 	print: '\n@media print {'
 };
 
@@ -183,30 +184,58 @@ function colourSites(): Map<string, Site[]> {
 	return colourSitesIn(sheets);
 }
 
-const DARK_SELECTOR = /\[data-ground='dark'\]|\[data-theme='dark'\]/;
-const PAPER_SELECTOR = /\[data-ground='paper'\]|\[data-ground='light'\]|\[data-theme='light'\]/;
+/**
+ * THE GROUNDS, AND THERE ARE THREE OF THEM NOW.
+ *
+ * `deck` is the green ramp the app used to default to. It joined the file the
+ * same bundle the default went neutral, and it is in this list rather than
+ * exempt because a ground that only re-declares its six surfaces inherits every
+ * other alias from wherever it is nested -- which is the alias bug wearing a
+ * sixth hat. A new ground is complete or it is not a ground.
+ */
+const GROUND_SELECTOR: Record<string, RegExp> = {
+	dark: /\[data-ground='dark'\]|\[data-theme='dark'\]/,
+	paper: /\[data-ground='paper'\]|\[data-ground='light'\]|\[data-theme='light'\]/,
+	deck: /\[data-ground='deck'\]/
+};
+const GROUNDS = Object.keys(GROUND_SELECTOR);
 
 /**
- * Which ground a rule can speak to EXCLUSIVELY. A selector naming no ground at
- * all (`:root`, `[data-accent='teal']`) speaks to both and therefore
- * distinguishes neither, which is the property that makes this check work.
+ * Which grounds a rule can speak to EXCLUSIVELY. A selector naming no ground at
+ * all (`:root`, `[data-accent='teal']`) speaks to all of them and therefore
+ * distinguishes none, which is the property that makes this check work.
  */
-function reaches(sel: string): { dark: boolean; paper: boolean } {
+function reaches(sel: string): Record<string, boolean> {
 	const parts = sel.split(',').map((s) => s.trim());
-	return {
-		dark: parts.some((p) => DARK_SELECTOR.test(p) && !PAPER_SELECTOR.test(p)),
-		paper: parts.some((p) => PAPER_SELECTOR.test(p) && !DARK_SELECTOR.test(p))
-	};
+	const out: Record<string, boolean> = {};
+	for (const g of GROUNDS) {
+		out[g] = parts.some(
+			(p) =>
+				GROUND_SELECTOR[g].test(p) &&
+				GROUNDS.every((other) => other === g || !GROUND_SELECTOR[other].test(p))
+		);
+	}
+	return out;
 }
 
 /** Sites outside @media print. Print is asserted separately, as its own scope. */
 const screenSites = (sites: Site[]) => sites.filter((s) => !/print/.test(s.at));
 
+/**
+ * A colour is declared per ground when each ground has a site of its own AND no
+ * two grounds are leaning on the SAME site. One declaration cannot hold three
+ * values, so a distinct site per ground is the requirement; a system of
+ * distinct representatives over three sets is small enough to check by hand.
+ */
 function declaredPerGround(sites: Site[]): boolean {
 	const screen = screenSites(sites);
-	const dark = screen.filter((s) => reaches(s.sel).dark);
-	const paper = screen.filter((s) => reaches(s.sel).paper);
-	return dark.some((d) => paper.some((p) => p !== d));
+	const per = GROUNDS.map((g) => screen.filter((s) => reaches(s.sel)[g]));
+	if (per.some((list) => list.length === 0)) return false;
+	// Every assignment of one site per ground, all distinct.
+	const walk = (i: number, used: Site[]): boolean =>
+		i === per.length ||
+		per[i].some((site) => !used.includes(site) && walk(i + 1, [...used, site]));
+	return walk(0, []);
 }
 
 /**
@@ -354,6 +383,7 @@ describe('every colour in the token layer is declared once per ground', () => {
 describe('the three named ground scopes agree with each other', () => {
 	const dark = declarations(scopeBody(css, SCOPES.dark));
 	const paper = declarations(scopeBody(css, SCOPES.paper));
+	const deck = declarations(scopeBody(css, SCOPES.deck));
 	const print = declarations(scopeBody(scopeBody(css, SCOPES.print), ':root {'));
 	const names = Object.keys(dark);
 
@@ -366,6 +396,7 @@ describe('the three named ground scopes agree with each other', () => {
 
 	for (const [label, scope] of [
 		['paper', paper],
+		['deck', deck],
 		['print', print]
 	] as const) {
 		test(`the ${label} scope declares every alias the dark scope does`, () => {
@@ -392,6 +423,7 @@ describe('the three named ground scopes agree with each other', () => {
 		for (const [label, scope] of [
 			['dark', dark],
 			['paper', paper],
+			['deck', deck],
 			['print', print]
 		] as const) {
 			for (const [name, value] of Object.entries(scope)) {

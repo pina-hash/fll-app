@@ -625,7 +625,7 @@
 	   it is set in the mono face at hero size in the pathway green: the thing on
 	   this screen that is being acted on. */
 	.input--code {
-		color: var(--accent-text);
+		color: var(--text-1);
 		font-family: var(--font-mono);
 		font-size: var(--fs-h2);
 		letter-spacing: 0.25em;
