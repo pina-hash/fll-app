@@ -180,6 +180,64 @@ export async function saveConfig(
 }
 
 /**
+ * WHAT A SURFACE HANDS THE PAGE SO IT CAN SAVE, AND THE ONLY THING THAT MAKES
+ * THE SAVE CONTROL EXIST.
+ *
+ * PRESENCE OF A TRANSPORT IS PRESENCE OF A CONTROL. `CodegenPage` renders its
+ * Save section if and only if it was given one of these, so a surface that
+ * forgot to supply one has no button at all rather than a button that quietly
+ * does nothing. That is also why this is a transport and not an `isMentor`
+ * flag: a role flag has to be trusted, and a page that trusts a flag it was
+ * handed is a page that can be lied to. A transport either exists or it does
+ * not, and what it is allowed to write is the database's answer, discovered by
+ * asking for the row back.
+ */
+export interface CodegenSaveInput {
+	existingConfigId: string | null;
+	name: string;
+	config: RobotConfig;
+	calibration: Calibration;
+	calibrationPorts: string[];
+	venueLabel: string;
+	existingCalibrations: StoredCalibration[];
+}
+
+export type CodegenSave = (input: CodegenSaveInput) => Promise<SaveResult>;
+
+/**
+ * The real transport: both writes, in order, against one team.
+ *
+ * The team id is closed over rather than passed in, because a surface picks its
+ * team ONCE, at its load, and a page that could be asked to write to a
+ * different team than it was rendered for is a page with a second gate in it.
+ * A mentor's surface closes over the team in the URL; a student's closes over
+ * their own. The database re-checks both regardless.
+ */
+export function supabaseCodegenSave(
+	supabase: SupabaseClient<Database>,
+	teamId: string
+): CodegenSave {
+	return async (input) => {
+		const cfgRes = await saveConfig(
+			supabase,
+			teamId,
+			input.existingConfigId,
+			input.name,
+			input.config
+		);
+		if (!cfgRes.ok) return cfgRes;
+		return saveCalibration(
+			supabase,
+			teamId,
+			input.calibrationPorts,
+			input.venueLabel,
+			input.calibration,
+			input.existingCalibrations
+		);
+	};
+}
+
+/**
  * One reading pair, saved against every colour sensor the robot uses.
  *
  * The emitter takes a SINGLE Calibration and bakes one normalisation for both

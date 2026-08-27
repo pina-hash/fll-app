@@ -27,6 +27,7 @@
 		{ href: '/app/teams', label: 'Teams' },
 		{ href: '/app/tasks', label: 'Tasks' },
 		{ href: '/app/plan', label: 'Plan' },
+		{ href: '/app/codegen', label: 'Robot code' },
 		{ href: '/app/notebook', label: 'Notebook' },
 		{ href: '/app/library', label: 'Library' }
 	];

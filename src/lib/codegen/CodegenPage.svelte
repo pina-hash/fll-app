@@ -8,23 +8,49 @@
 	} from '$lib/codegen/defaults';
 	import { canShareFiles, deliver, type DeliveryMethod } from '$lib/codegen/deliver';
 	import { generateProjects, type GeneratedProject } from '$lib/codegen/generate';
-	import { saveCalibration, saveConfig } from '$lib/codegen/storage';
+	import {
+		CUSTOM_WHEEL,
+		LENGTH_UNITS,
+		LENGTH_UNIT_STORAGE_KEY,
+		UNIT_LABEL,
+		UNIT_SHORT,
+		UNIT_STEP,
+		WHEEL_PRESETS,
+		boundsIn,
+		commit,
+		display,
+		isLengthUnit,
+		wheelPresetFor,
+		type LengthUnit
+	} from '$lib/codegen/units';
 	import { mmToDegrees, type Calibration, type RobotConfig } from '$lib/codegen/toolkit';
-	import type { CodegenData } from '$lib/codegen/storage';
+	import type { CodegenData, CodegenSave } from '$lib/codegen/storage';
 	import type { TeamAccent } from '$lib/console/types';
-	import type { Database } from '$lib/supabase/database.types';
-	import type { SupabaseClient } from '@supabase/supabase-js';
 	import { untrack } from 'svelte';
 
 	interface Props {
-		/** Null in the dev harness: nothing there can save, and nothing there should. */
-		supabase: SupabaseClient<Database> | null;
+		/**
+		 * THE TEAM IS A PROP, NOT A DERIVATION, and that is the only real
+		 * difference between the two surfaces that render this. A student's team
+		 * is implicit in current_student_team_id(); a mentor has no current team
+		 * and picks one. Both hand it in here, so there is one render path.
+		 */
 		team: { id: string; name: string; accent: TeamAccent | null };
+		/**
+		 * How this surface saves, or null when it cannot.
+		 *
+		 * PRESENCE OF A TRANSPORT IS PRESENCE OF A CONTROL: the Save section below
+		 * renders if and only if this is supplied. A surface that forgot to pass
+		 * one gets no button, which is a visible mistake, rather than a button
+		 * that silently does nothing, which is not. Null in the dev harness, where
+		 * nothing may write.
+		 */
+		save: CodegenSave | null;
 		data: CodegenData;
 		backHref?: string;
 	}
 
-	let { supabase, team, data, backHref = '/app/me' }: Props = $props();
+	let { team, save, data, backHref = '/app/me' }: Props = $props();
 
 	const stored = $derived(data.configs[0] ?? null);
 
@@ -59,6 +85,86 @@
 			: [...cfg.attachmentMotors, port].sort();
 	}
 
+	// --- how the two geometry fields are read ---------------------------------
+	//
+	// THE ROW IS MILLIMETRES AND THE FIELD IS TEXT, AND THEY ARE SYNCED IN ONE
+	// DIRECTION AT A TIME. `cfg.wheelDiameterMm` is the exact value; `wheelText`
+	// is what the box shows, which is ROUNDED. Text goes to millimetres through
+	// commit(), which refuses to write back a number the field itself printed;
+	// millimetres go to text only when the unit changes or a preset is picked,
+	// never while somebody is mid-word in the box.
+	let unit = $state<LengthUnit>('mm');
+	let wheelText = $state(display(cfg.wheelDiameterMm, 'mm'));
+	let trackText = $state(display(cfg.trackWidthMm, 'mm'));
+
+	const wheelBounds = $derived(boundsIn(unit, 200));
+	const trackBounds = $derived(boundsIn(unit, 500));
+
+	/** Repaint both boxes from the exact values. The only downward sync there is. */
+	function showStored() {
+		wheelText = display(cfg.wheelDiameterMm, unit);
+		trackText = display(cfg.trackWidthMm, unit);
+	}
+
+	/**
+	 * The remembered unit is read ONCE, after mount, and never during SSR.
+	 * Seeding the initialiser from localStorage would make the hydrated client
+	 * disagree with the HTML the server sent, and localStorage THROWS rather than
+	 * returning null in a private window, which is why this is wrapped.
+	 */
+	$effect(() => {
+		try {
+			const saved = localStorage.getItem(LENGTH_UNIT_STORAGE_KEY);
+			if (isLengthUnit(saved) && saved !== untrack(() => unit)) {
+				unit = saved;
+				showStored();
+			}
+		} catch {
+			// No storage: mm, which is what the row holds anyway.
+		}
+	});
+
+	function pickUnit(next: LengthUnit) {
+		unit = next;
+		// Repaint, do NOT convert: the stored millimetres are untouched by a
+		// change of mind about how to read them.
+		showStored();
+		try {
+			localStorage.setItem(LENGTH_UNIT_STORAGE_KEY, next);
+		} catch {
+			// A device that cannot remember still works; it just asks again.
+		}
+	}
+
+	function typeWheel(text: string) {
+		wheelText = text;
+		if (text.trim() === '') return;
+		cfg.wheelDiameterMm = commit(Number(text), cfg.wheelDiameterMm, unit);
+	}
+
+	function typeTrack(text: string) {
+		trackText = text;
+		if (text.trim() === '') return;
+		cfg.trackWidthMm = commit(Number(text), cfg.trackWidthMm, unit);
+	}
+
+	// A half-typed "2." leaves the box on blur; the exact value comes back.
+	const settle = () => showStored();
+
+	// --- the wheel, picked off the part rather than measured -------------------
+	const wheelPreset = $derived(wheelPresetFor(cfg.wheelDiameterMm));
+	let customWheel: HTMLInputElement | null = $state(null);
+
+	function pickWheel(value: string) {
+		if (value === CUSTOM_WHEEL) {
+			customWheel?.focus();
+			customWheel?.select();
+			return;
+		}
+		cfg.wheelDiameterMm = Number(value);
+		showStored();
+	}
+
 	// --- the arithmetic, shown rather than hidden ----------------------------
 	// THE WHOLE POINT IS THAT A STUDENT CAN SEE IT MOVE. The emitter bakes
 	// 360 * gear_ratio / (pi * wheel) into the generated blocks as a literal;
@@ -68,6 +174,9 @@
 	let checkMm = $state(300);
 	const degrees = $derived(mmToDegrees(checkMm, cfg));
 	const perMm = $derived((360 * cfg.gearRatio) / (Math.PI * cfg.wheelDiameterMm));
+	// The same distance in the unit on screen, ALONGSIDE the millimetres rather
+	// than instead of them: millimetres are what goes into the file.
+	const checkInUnit = $derived(display(checkMm, unit));
 
 	// --- generation ----------------------------------------------------------
 	let projects = $state<GeneratedProject[] | null>(null);
@@ -128,34 +237,28 @@
 	let saveNote = $state('');
 	let saveFailed = $state(false);
 
-	async function save() {
-		if (!supabase) return;
+	/**
+	 * WHAT GOES TO THE TRANSPORT IS `cfg`, WHICH IS EXACT MILLIMETRES. Nothing
+	 * rounded ever reaches it: commit() is the only writer, and it refuses a
+	 * number the field printed. A config opened in inches and saved untouched
+	 * sends back the millimetres it arrived as.
+	 */
+	async function handleSave() {
+		if (!save) return;
 		saving = true;
 		saveNote = '';
 		saveFailed = false;
-		const cfgRes = await saveConfig(
-			supabase,
-			team.id,
-			stored?.id ?? null,
-			name.trim() || 'Driving base',
-			$state.snapshot(cfg)
-		);
-		if (!cfgRes.ok) {
-			saveNote = cfgRes.error ?? 'That did not save.';
-			saveFailed = true;
-			saving = false;
-			return;
-		}
-		const calRes = await saveCalibration(
-			supabase,
-			team.id,
-			[cfg.leftColorPort, cfg.rightColorPort],
-			venueLabel.trim(),
-			$state.snapshot(cal),
-			data.calibrations
-		);
-		saveNote = calRes.ok ? 'Saved for your team.' : (calRes.error ?? 'That did not save.');
-		saveFailed = !calRes.ok;
+		const res = await save({
+			existingConfigId: stored?.id ?? null,
+			name: name.trim() || 'Driving base',
+			config: $state.snapshot(cfg),
+			calibration: $state.snapshot(cal),
+			calibrationPorts: [cfg.leftColorPort, cfg.rightColorPort],
+			venueLabel: venueLabel.trim(),
+			existingCalibrations: data.calibrations
+		});
+		saveNote = res.ok ? 'Saved for your team.' : (res.error ?? 'That did not save.');
+		saveFailed = !res.ok;
 		saving = false;
 	}
 </script>
@@ -184,18 +287,62 @@
 			<input class="input" bind:value={name} maxlength="120" />
 		</label>
 
+		<fieldset class="cg__fs">
+			<legend>How we measure</legend>
+			<p class="cg__help">
+				Pick what your ruler says. We always keep the numbers in millimetres, so switching
+				this changes nothing about the robot.
+			</p>
+			<div class="cg__ports">
+				{#each LENGTH_UNITS as u (u)}
+					<label class="cg__port" class:cg__port--on={unit === u}>
+						<input type="radio" name="cg-unit" value={u} checked={unit === u}
+							onchange={() => pickUnit(u)} />
+						<span>{UNIT_LABEL[u]}</span>
+					</label>
+				{/each}
+			</div>
+		</fieldset>
+
+		<label class="field">
+			<span>Which wheel</span>
+			<select class="input" value={wheelPreset} onchange={(e) => pickWheel(e.currentTarget.value)}>
+				{#each WHEEL_PRESETS as w (w.mm)}
+					<option value={String(w.mm)}>{w.label}</option>
+				{/each}
+				<option value={CUSTOM_WHEEL}>Something else (type it below)</option>
+			</select>
+		</label>
+		<p class="cg__help">
+			Read the size off the side of the tyre. It is moulded into the rubber. This one number
+			divides every distance in every run, so a wheel picked wrong makes every drive wrong.
+		</p>
+
 		<div class="cg__pair">
 			<label class="field">
-				<span>Wheel across (mm)</span>
-				<input class="input" type="number" min="1" max="200" step="0.1"
-					bind:value={cfg.wheelDiameterMm} />
+				<span>Wheel across ({UNIT_LABEL[unit]})</span>
+				<input class="input" type="number" inputmode="decimal"
+					min={wheelBounds.min} max={wheelBounds.max} step={UNIT_STEP[unit]}
+					bind:this={customWheel}
+					value={wheelText}
+					oninput={(e) => typeWheel(e.currentTarget.value)}
+					onblur={settle} />
 			</label>
 			<label class="field">
-				<span>Wheel to wheel (mm)</span>
-				<input class="input" type="number" min="1" max="500" step="0.1"
-					bind:value={cfg.trackWidthMm} />
+				<span>Wheel to wheel ({UNIT_LABEL[unit]})</span>
+				<input class="input" type="number" inputmode="decimal"
+					min={trackBounds.min} max={trackBounds.max} step={UNIT_STEP[unit]}
+					value={trackText}
+					oninput={(e) => typeTrack(e.currentTarget.value)}
+					onblur={settle} />
 			</label>
 		</div>
+		{#if unit !== 'mm'}
+			<p class="cg__help">
+				Saved as {display(cfg.wheelDiameterMm, 'mm')} mm across and
+				{display(cfg.trackWidthMm, 'mm')} mm apart. Those are the numbers that go into the file.
+			</p>
+		{/if}
 
 		<label class="field">
 			<span>Gears: motor turns per wheel turn</span>
@@ -308,7 +455,11 @@
 				<input class="input" type="number" min="0" step="1" bind:value={checkMm} />
 			</label>
 			<p class="cg__answer" aria-live="polite">
-				<strong>{checkMm} mm</strong> = <strong>{degrees}</strong> motor degrees
+				<strong>{checkMm} mm</strong>
+				{#if unit !== 'mm'}<span class="cg__also"
+						>(<strong>{checkInUnit} {UNIT_SHORT[unit]}</strong>)</span
+					>{/if}
+				= <strong>{degrees}</strong> motor degrees
 			</p>
 		</div>
 		<p class="cg__work">
@@ -393,20 +544,29 @@
 	</section>
 
 	<!-- ------------------------------------------------------- save ------- -->
-	<section class="card cg__card">
-		<h2 class="cg__h">Keep these numbers</h2>
-		<p class="cg__help">
-			Saving means nobody has to type them again. A mentor or the Run Captain can save.
-		</p>
-		<button class="btn btn--secondary cg__slab" onclick={save} disabled={saving}>
-			{saving ? 'Saving...' : 'Save for our team'}
-		</button>
-		{#if saveNote}
-			<p class="cg__note" class:cg__note--bad={saveFailed} class:cg__note--ok={!saveFailed}>
-				{saveNote}
+	<!--
+		PRESENCE OF A TRANSPORT IS PRESENCE OF A CONTROL. No transport, no
+		section: a surface that cannot write shows nothing to press, rather than
+		a button that answers a tap with silence. Whether this particular caller
+		may write is still the database's answer, and it comes back from the
+		write itself as a refusal naming who can.
+	-->
+	{#if save}
+		<section class="card cg__card">
+			<h2 class="cg__h">Keep these numbers</h2>
+			<p class="cg__help">
+				Saving means nobody has to type them again. A mentor or the Run Captain can save.
 			</p>
-		{/if}
-	</section>
+			<button class="btn btn--secondary cg__slab" onclick={handleSave} disabled={saving}>
+				{saving ? 'Saving...' : `Save for ${team.name}`}
+			</button>
+			{#if saveNote}
+				<p class="cg__note" class:cg__note--bad={saveFailed} class:cg__note--ok={!saveFailed}>
+					{saveNote}
+				</p>
+			{/if}
+		</section>
+	{/if}
 </div>
 
 <style>
@@ -549,6 +709,11 @@
 		font-family: var(--font-mono);
 		font-size: var(--fs-h3);
 		color: var(--text-body);
+	}
+	/* The same distance in the unit on screen, beside the millimetres and never
+	   instead of them: millimetres are what goes into the file. */
+	.cg__also {
+		color: var(--text-muted);
 	}
 	.cg__work {
 		margin: var(--space-3) 0;
