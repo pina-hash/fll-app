@@ -156,12 +156,41 @@
 		</section>
 	{/if}
 
+	<!--
+		THE SIX PLACES A STUDENT CAN GO, WRITTEN DOWN ONCE.
+
+		They used to live only in the final branch, which needs a meeting to be
+		RUNNING and the student to be CHECKED IN. None of the five pages behind
+		them gates on a meeting in its server load, so all five worked perfectly
+		well outside a session and were reachable only by typing the URL. A
+		nine-year-old on a Wednesday got a screen that said "come back later" and
+		offered nothing.
+
+		A SNIPPET RATHER THAN TWO COPIES, because two lists of six links drift:
+		the sixth one here was already indented one tab further than its five
+		siblings, which is what a hand-maintained duplicate looks like just
+		before it starts disagreeing.
+	-->
+	{#snippet destinations()}
+		<div class="sr__links">
+			<a class="sr__teamlink" href={teamHref}>See what my team is doing</a>
+			<a class="sr__teamlink" href={planHref}>Plan our robot runs</a>
+			<a class="sr__teamlink" href={matchHref}>Time a practice run</a>
+			<a class="sr__teamlink" href={notebookHref}>Write in our notebook</a>
+			<a class="sr__teamlink" href={codegenHref}>Make our robot code</a>
+			<a class="sr__teamlink" href={libraryHref}>Look something up</a>
+		</div>
+	{/snippet}
+
 	{#if !meeting || !running}
-		<!-- No meeting: say so and show nothing else. -->
+		<!-- No meeting: say so, then say what they can still do. The I'M STUCK
+		     bar stays OUT of this branch on purpose: a blocker has no meeting to
+		     attach to here, and the mentor console does not surface one. -->
 		<section class="sr__empty">
 			<p class="sr__bighello">Hi, {me.firstName}!</p>
 			<p class="sr__emptymsg">No meeting is running right now.</p>
-			<p class="sr__emptysub">Come back when your mentor starts the session.</p>
+			<p class="sr__emptysub">You can still do any of these.</p>
+			{@render destinations()}
 		</section>
 	{:else if !checkedIn}
 		<!-- Check in: one question, one button, nothing else on the screen. -->
@@ -256,12 +285,7 @@
 					{/each}
 				</ul>
 			{/if}
-			<a class="sr__teamlink" href={teamHref}>See what my team is doing</a>
-			<a class="sr__teamlink" href={planHref}>Plan our robot runs</a>
-			<a class="sr__teamlink" href={matchHref}>Time a practice run</a>
-			<a class="sr__teamlink" href={notebookHref}>Write in our notebook</a>
-			<a class="sr__teamlink" href={codegenHref}>Make our robot code</a>
-				<a class="sr__teamlink" href={libraryHref}>Look something up</a>
+			{@render destinations()}
 		</section>
 
 		<div class="sr__stuckbar">
@@ -627,6 +651,17 @@
 		   grounds. Green's ink is the brand black, at 5.10. This button was
 		   white-on-green at 3.19 before the second ground existed. */
 		color: var(--success-ink);
+	}
+
+	/* THE WRAPPER EXISTS SO ONE LIST CAN SIT IN TWO DIFFERENT PARENTS WITHOUT
+	   EITHER OF THEM MOVING. .sr__queue is a plain block, so a block wrapper
+	   changes nothing there and the running screen renders exactly as it did.
+	   .sr__empty is a centred flex column, where an unstretched child shrinks to
+	   its own text and six links would come out as six different widths.
+	   width: 100% makes the two identical, and the spacing stays where it
+	   already was: on .sr__teamlink's own margin-top, not on a gap here. */
+	.sr__links {
+		width: 100%;
 	}
 
 	/* A link a nine-year-old taps is a button, not a line of text. */
