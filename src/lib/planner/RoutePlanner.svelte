@@ -31,6 +31,8 @@
 	import { onMount } from 'svelte';
 	import {
 		MATCH_SECONDS,
+		TABLE_HEIGHT_MM,
+		TABLE_WIDTH_MM,
 		formatSeconds,
 		inLaunchArea,
 		launchSeconds,
@@ -548,8 +550,8 @@
 			launchId: launch.id,
 			id,
 			to: {
-				x: Math.min(2362, Math.max(0, w.xMm + dx)),
-				y: Math.min(1143, Math.max(0, w.yMm + dy))
+				x: Math.min(TABLE_WIDTH_MM, Math.max(0, w.xMm + dx)),
+				y: Math.min(TABLE_HEIGHT_MM, Math.max(0, w.yMm + dy))
 			},
 			from
 		});
@@ -712,8 +714,8 @@
 
 	function persistRobot() {
 		const r = model.robot;
-		r.widthMm = Math.round(clampNum(r.widthMm, 1, 1143));
-		r.lengthMm = Math.round(clampNum(r.lengthMm, 1, 1143));
+		r.widthMm = Math.round(clampNum(r.widthMm, 1, TABLE_HEIGHT_MM));
+		r.lengthMm = Math.round(clampNum(r.lengthMm, 1, TABLE_HEIGHT_MM));
 		r.speedCmS = clampNum(r.speedCmS, 1, 200);
 		r.dwellS = clampNum(r.dwellS, 0, 60);
 		r.betweenLaunchesS = clampNum(r.betweenLaunchesS, 0, 60);
@@ -747,8 +749,8 @@
 	function persistMatSetup() {
 		const w = model.matSetup.launchWmm;
 		const h = model.matSetup.launchHmm;
-		const wv = w ? Math.round(clampNum(w, 1, 2362)) : null;
-		const hv = h ? Math.round(clampNum(h, 1, 1143)) : null;
+		const wv = w ? Math.round(clampNum(w, 1, TABLE_WIDTH_MM)) : null;
+		const hv = h ? Math.round(clampNum(h, 1, TABLE_HEIGHT_MM)) : null;
 		model.matSetup.launchWmm = wv;
 		model.matSetup.launchHmm = hv;
 		persist({ kind: 'mat_setup', patch: { launch_area_w_mm: wv, launch_area_h_mm: hv } });
@@ -1411,7 +1413,7 @@
 				<div class="rp__settings-grid">
 					<label class="field">
 						<span>Width ({unit})</span>
-						<input class="input" type="number" min="0" max={lengthDisplay(1143)}
+						<input class="input" type="number" min="0" max={lengthDisplay(TABLE_HEIGHT_MM)}
 							step={unit === 'mm' ? 1 : 0.1} disabled={!editable}
 							value={lengthDisplay(model.robot.widthMm)}
 							onchange={(e) => {
@@ -1422,7 +1424,7 @@
 					</label>
 					<label class="field">
 						<span>Length ({unit})</span>
-						<input class="input" type="number" min="0" max={lengthDisplay(1143)}
+						<input class="input" type="number" min="0" max={lengthDisplay(TABLE_HEIGHT_MM)}
 							step={unit === 'mm' ? 1 : 0.1} disabled={!editable}
 							value={lengthDisplay(model.robot.lengthMm)}
 							onchange={(e) => {
@@ -1461,14 +1463,14 @@
 					<div class="rp__settings-grid">
 						<label class="field">
 							<span>Base width ({unit})</span>
-							<input class="input" type="number" min="0" max={lengthDisplay(2362)}
+							<input class="input" type="number" min="0" max={lengthDisplay(TABLE_WIDTH_MM)}
 								step={unit === 'mm' ? 1 : 0.1}
 								value={model.matSetup.launchWmm === null ? '' : lengthDisplay(model.matSetup.launchWmm)}
 								onchange={(e) => setBaseSide('launchWmm', e)} />
 						</label>
 						<label class="field">
 							<span>Base height ({unit})</span>
-							<input class="input" type="number" min="0" max={lengthDisplay(1143)}
+							<input class="input" type="number" min="0" max={lengthDisplay(TABLE_HEIGHT_MM)}
 								step={unit === 'mm' ? 1 : 0.1}
 								value={model.matSetup.launchHmm === null ? '' : lengthDisplay(model.matSetup.launchHmm)}
 								onchange={(e) => setBaseSide('launchHmm', e)} />
@@ -1477,7 +1479,7 @@
 					{#if onUploadPicture}
 						<div class="rp__picture">
 							<label class="field">
-								<span>Field picture (the whole layout, walls and all)</span>
+								<span>Field picture (a picture of the mat)</span>
 								<input
 									class="input rp__file"
 									type="file"
@@ -1487,15 +1489,18 @@
 								/>
 							</label>
 							<p class="small muted">
-								It is not cropped and it is not stretched: you tap two corners and the
-								planner works out the rest. The picture stays private to this team.
+								Nothing is ever stretched to fit. The planner already knows the mat's
+								size; all it needs is where the mat is in your picture. If the picture is
+								already cropped to the mat that is one tap, and if it has the table
+								around it you tap the mat's two corners. The picture stays private to
+								this team.
 							</p>
 
 							{#if picture}
 								{#if calibrating}
 									<p class="small muted">
-										The calibrator is open above. Tap two corners there, check the grid sits
-										on the mat, then save it.
+										The calibrator is open above. Confirm the crop, or tap the mat's two
+										corners; either way, check the grid sits on the mat before you save.
 									</p>
 								{:else if picture.calibration}
 									<p class="small muted">

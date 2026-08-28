@@ -1,47 +1,68 @@
 <script lang="ts">
 	/**
-	 * TWO TAPS, THEN LOOK AT IT BEFORE YOU TRUST IT.
+	 * WHERE THE MAT IS IN THIS PICTURE. NEVER HOW BIG IT IS.
 	 *
-	 * A mentor taps the corner of the PLAYING SURFACE nearest the launch area,
-	 * then the corner diagonally opposite. Those two points are the whole
-	 * calibration (src/lib/planner/calibration.ts). The moment both exist this
-	 * screen draws the mat back onto the picture through the derived
-	 * transform: the surface outline, a 250 mm grid, and a ruler in whole feet
-	 * along both edges. If that grid does not sit on the mat's own printed
-	 * features, the calibration is wrong and it is wrong VISIBLY, here, rather
-	 * than invisibly on the planner three weeks later.
+	 * THE FRICTION THIS SCREEN USED TO CAUSE, AND WHY IT WAS A FAIR
+	 * COMPLAINT. Asked to "calibrate the field picture", a mentor reasonably
+	 * hears "tell the app how big the mat is" -- and objects, because the mat
+	 * is a manufactured object with one published size and nobody at a club
+	 * gets to have an opinion about it. They were right. The app has always
+	 * known the mat's size (geometry.ts); the only thing it cannot know is
+	 * WHERE in a particular JPEG the mat happens to sit. So this screen now
+	 * says the size out loud, as a fact it is telling the mentor rather than
+	 * a question it is asking them, and everything else follows from that.
 	 *
-	 * WHY THE CONFIRMATION IS THE POINT. A wrong transform still fills the
-	 * rectangle and still looks like a mat. Nothing downstream can catch it.
-	 * So the only defence is showing a mentor a drawing whose correctness they
-	 * can judge against the thing in front of them, before it is saved.
+	 * THE COMMON CASE IS ONE TAP, NOT TWO. Most pictures of a mat are already
+	 * cropped to the mat. `fullFrameFit` asks whether this picture is even the
+	 * right SHAPE to be such a crop, and when it is, the primary action is a
+	 * single confirmation: yes, this picture is the mat. Corner tapping stays
+	 * one control away and is never taken off the screen, because the shape
+	 * test cannot prove a crop, only rule one out. When the shape test fails
+	 * the screen leads with corner tapping and says in one sentence why: the
+	 * picture looks like it has the table around the mat in it.
+	 *
+	 * THEN LOOK AT IT BEFORE YOU TRUST IT, ON EITHER PATH. The moment a
+	 * calibration exists -- tapped or confirmed -- this screen draws the mat
+	 * back onto the picture through the derived transform: the mat outline, a
+	 * 250 mm grid, and a ruler in whole feet along both edges. If that grid
+	 * does not sit on the mat's own printed features, the calibration is
+	 * wrong and it is wrong VISIBLY, here, rather than invisibly on the
+	 * planner three weeks later. A wrong transform still fills the rectangle
+	 * and still looks like a mat, and nothing downstream can catch it.
+	 *
+	 * IT IS THE MAT'S CORNERS THAT ARE TAPPED, NOT THE TABLE'S. The mat is a
+	 * printed sheet with a printed edge that a mentor can see and hit; the
+	 * table's inside corner is a wall meeting a floor. Until this bundle the
+	 * screen asked for "the playing surface" and the transform behind it laid
+	 * the answer across the whole table, which is 18.1% wider than the mat.
 	 *
 	 * THE ASPECT NOTE IS NOT AN ERROR MESSAGE, EVEN THOUGH IT USED TO READ AS
 	 * ONE. Calibration scales each axis independently (calibration.ts), so a
-	 * picture that is not drawn to true 2.07:1 -- the official FLL
-	 * path-planning diagram measures nearer 1.75:1 -- calibrates correctly
-	 * anyway. The arithmetic cannot tell that apart from the one mistake it
-	 * CAN catch, two corners tapped on the same side, which also produces an
-	 * off-ratio rectangle. So a wide gap from 2.07:1 gets a note naming both
-	 * numbers, but the note states the likely benign cause first and points at
-	 * the actual check: does the drawn grid sit on the mat. It never blocks
-	 * the save button, which is gated on `usable` alone, and it does not use
-	 * the bold warning treatment below, because "your picture is not to
-	 * scale" is not a problem to fix.
+	 * picture that is not drawn to the mat's true 1.76:1 calibrates correctly
+	 * anyway once two corners are tapped. The arithmetic cannot tell that
+	 * apart from the one mistake it CAN catch, two corners tapped on the same
+	 * side, which also produces an off-ratio rectangle. So a wide gap gets a
+	 * note naming both numbers, but the note states the likely benign cause
+	 * first and points at the actual check: does the drawn grid sit on the
+	 * mat. It never blocks the save button, which is gated on `usable` alone.
 	 *
 	 * TAPS AND NUMBERS ARE THE SAME STATE. The four percentage fields below
 	 * the picture drive and are driven by the taps: they are the keyboard path
 	 * to every point, and they let a mentor nudge a corner by a tenth of a
 	 * percent instead of trying to hit it again with a thumb.
 	 */
-	import { MAT_HEIGHT_MM, MAT_WIDTH_MM } from './geometry';
+	import { MAT_HEIGHT_MM, MAT_WIDTH_MM, matToTable } from './geometry';
 	import {
+		FULL_FRAME_CALIBRATION,
+		MAT_ASPECT,
 		calibrationFromCorners,
+		fullFrameFit,
 		isUsableCalibration,
 		matToImage,
 		type ImagePoint,
 		type MatCalibration
 	} from './calibration';
+	import { formatLength } from './units';
 
 	interface Props {
 		/** A short-lived signed URL. The picture is copyrighted; see CLAUDE.md. */
@@ -69,8 +90,39 @@
 	let svgEl: SVGSVGElement | undefined = $state();
 	let containerEl: HTMLDivElement | undefined = $state();
 
-	let candidate = $derived(origin && far ? calibrationFromCorners(origin, far) : null);
+	/** Is this picture even the right shape to be a crop of the mat? */
+	let fit = $derived(fullFrameFit(imageW, imageH));
+
+	/**
+	 * TWO PATHS, AND THE SCREEN OPENS ON THE ONE THAT IS PROBABLY RIGHT.
+	 * 'offer' is the one-tap confirmation and needs a picture that has never
+	 * been calibrated AND is the right shape. Everything else -- a mentor
+	 * recalibrating, or a picture whose proportions say it has the table in
+	 * it -- opens on 'corners'. Switching to 'corners' is always available and
+	 * costs no re-upload, which is the whole reason the offer is safe to make.
+	 */
+	// svelte-ignore state_referenced_locally
+	let mode = $state<'offer' | 'corners'>(
+		existing === null && fullFrameFit(imageW, imageH).fits ? 'offer' : 'corners'
+	);
+
+	/**
+	 * In 'offer' mode the candidate IS the full-frame calibration, so the
+	 * confirmation overlay below draws the mat onto the picture exactly as it
+	 * would after saving. The mentor is judging the real thing, not a promise.
+	 */
+	let candidate = $derived(
+		mode === 'offer' ? FULL_FRAME_CALIBRATION : origin && far ? calibrationFromCorners(origin, far) : null
+	);
 	let usable = $derived(isUsableCalibration(candidate));
+
+	/** The mat's published size, in the words this screen states it in. */
+	const MAT_SIZE = `${formatLength(MAT_WIDTH_MM, 'mm')} by ${formatLength(MAT_HEIGHT_MM, 'mm')}`;
+	const MAT_SIZE_IN = `${formatLength(MAT_WIDTH_MM, 'in')} by ${formatLength(MAT_HEIGHT_MM, 'in')}`;
+
+	function useCorners() {
+		mode = 'corners';
+	}
 
 	/** The picture-space size of one mat millimetre, for the tick weights. */
 	let pxPerMm = $derived(
@@ -79,8 +131,7 @@
 			: imageW / MAT_WIDTH_MM
 	);
 
-	/** The shape the two taps describe, against the mat's own 2.07:1. */
-	const MAT_ASPECT = MAT_WIDTH_MM / MAT_HEIGHT_MM;
+	/** The shape the two taps describe, against the mat's own 1.76:1. */
 	let tappedAspect = $derived(
 		candidate
 			? Math.abs((candidate.far.u - candidate.origin.u) * imageW) /
@@ -92,6 +143,7 @@
 	);
 
 	let step = $derived(!origin ? 1 : !far ? 2 : 3);
+	let aspect1 = (n: number) => n.toFixed(2);
 
 	/**
 	 * THE INSTRUCTION AREA IS AS TALL AS ITS LONGEST LINE, AT EVERY WIDTH.
@@ -104,8 +156,8 @@
 	 * depends on the width.
 	 */
 	const INSTRUCTIONS = [
-		'Tap the corner of the playing surface on the LAUNCH AREA side. That corner is 0, 0.',
-		'Now tap the corner diagonally opposite it.',
+		'Tap the corner of the MAT on the LAUNCH AREA side. The printed sheet, not the table.',
+		'Now tap the corner of the mat diagonally opposite it.',
 		'Check the grid sits on the mat. Move a corner with the fields below, or start over.'
 	];
 
@@ -121,6 +173,9 @@
 	}
 
 	function tap(e: PointerEvent) {
+		// In 'offer' mode there is nothing to tap: a stray touch must not drop
+		// a mentor into corner tapping with one corner already placed.
+		if (mode !== 'corners') return;
 		const p = pointFromEvent(e);
 		if (!p) return;
 		if (!origin) origin = p;
@@ -155,8 +210,17 @@
 	const GRID_MM = 250;
 	const FOOT_MM = 304.8;
 
+	/**
+	 * THE OVERLAY IS DRAWN IN THE MAT'S OWN MILLIMETRES, 0 to 2000 by 0 to
+	 * 1134, because this screen is entirely about the printed sheet. The
+	 * transform speaks TABLE millimetres (calibration.ts), so the conversion
+	 * happens here, once, at the boundary. Passing mat-local numbers straight
+	 * to matToImage put the whole outline one 181 mm strip to the left, which
+	 * is precisely the class of mistake this bundle exists to remove; it was
+	 * caught by reading the rendered outline out of the live DOM.
+	 */
 	function onPicture(xMm: number, yMm: number): { x: number; y: number } {
-		const p = matToImage(candidate as MatCalibration, { x: xMm, y: yMm });
+		const p = matToImage(candidate as MatCalibration, matToTable({ x: xMm, y: yMm }));
 		return { x: p.u * imageW, y: p.v * imageH };
 	}
 
@@ -210,14 +274,39 @@
 -->
 <div class="cal" data-ground="light">
 	<div class="cal__head">
-		<h2 class="cal__title">Calibrate the field picture</h2>
-		<p class="cal__step">
-			{#each INSTRUCTIONS as text, i (i)}
-				<span class="cal__step-line" aria-hidden={step !== i + 1} class:cal__step-line--on={step === i + 1}>
-					Step {i + 1} of 3. {text}
-				</span>
-			{/each}
+		<h2 class="cal__title">Where is the mat in this picture?</h2>
+
+		<!--
+			THE SIZE IS STATED, ON BOTH PATHS, EVERY TIME. It is the sentence
+			that stops this screen reading as a question about the mat's
+			dimensions, which is what a mentor objected to and was right to.
+		-->
+		<p class="cal__known">
+			The mat is always {MAT_SIZE} ({MAT_SIZE_IN}). The planner already knows that and is
+			not asking. All it needs is which part of your picture the mat is.
 		</p>
+
+		{#if mode === 'corners'}
+			<p class="cal__step">
+				{#each INSTRUCTIONS as text, i (i)}
+					<span class="cal__step-line" aria-hidden={step !== i + 1} class:cal__step-line--on={step === i + 1}>
+						Step {i + 1} of 3. {text}
+					</span>
+				{/each}
+			</p>
+			{#if !fit.fits && existing === null}
+				<p class="small muted cal__why">
+					This picture is {aspect1(fit.aspect)}:1 and the mat is {aspect1(fit.matAspect)}:1, so it
+					looks like it includes the table around the mat. Tapping the two corners is the way
+					to place it.
+				</p>
+			{/if}
+		{:else}
+			<p class="cal__step cal__step--offer">
+				This picture is {aspect1(fit.aspect)}:1, and the mat is {aspect1(fit.matAspect)}:1. It looks
+				like it is already cropped to the mat. Check the grid below sits on the mat, then say so.
+			</p>
+		{/if}
 	</div>
 
 	<div class="cal__stage" bind:this={containerEl}>
@@ -252,8 +341,10 @@
 						<line class="cal__grid" x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} />
 					{/each}
 
-					<!-- Ruler: a tick every foot along both edges, labelled in
-					     inches, because the mat is specified as 93 by 45 inches. -->
+					<!-- Ruler: a tick every foot along both edges of the mat. Feet
+					     because a mentor has a tape measure, not because the mat is
+					     specified in them; it is 2000 by 1134 mm and neither edge is
+					     a whole number of feet. -->
 					{#each feetX as fx, i (fx)}
 						{@const l = line(fx, 0, fx, Math.min(MAT_HEIGHT_MM, 90))}
 						<line class="cal__tick" x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} />
@@ -293,7 +384,7 @@
 						y2={origin.v * imageH + r * 1.6}
 					/>
 					<text x={origin.u * imageW + r * 2} y={origin.v * imageH} font-size={Math.max(10, pxPerMm * 110)}>
-						0, 0
+						mat 0, 0
 					</text>
 				</g>
 			{/if}
@@ -314,7 +405,7 @@
 						y2={far.v * imageH + r * 1.6}
 					/>
 					<text x={far.u * imageW - r * 2} y={far.v * imageH} text-anchor="end" font-size={Math.max(10, pxPerMm * 110)}>
-						{MAT_WIDTH_MM}, {MAT_HEIGHT_MM}
+						mat {MAT_WIDTH_MM}, {MAT_HEIGHT_MM}
 					</text>
 				</g>
 			{/if}
@@ -389,21 +480,21 @@
 		</div>
 	</fieldset>
 
-	{#if candidate && !usable}
+	{#if mode === 'corners' && candidate && !usable}
 		<p class="notice cal__warn">
 			Those two corners are almost on top of each other. Tap corners that are diagonally opposite.
 		</p>
-	{:else if candidate && aspectOff > 0.08}
+	{:else if mode === 'corners' && candidate && aspectOff > 0.08}
 		<p class="small muted cal__note">
-			Those corners make a {tappedAspect?.toFixed(2)}:1 rectangle; the playing surface itself is
-			{MAT_ASPECT.toFixed(2)}:1. That is often fine: this picture may simply not be drawn to true
+			Those corners make a {tappedAspect?.toFixed(2)}:1 rectangle; the mat itself is
+			{aspect1(MAT_ASPECT)}:1. That is often fine: this picture may simply not be drawn to true
 			scale, and each axis above is calibrated on its own. The real check is the grid drawn on the
 			picture: if it sits on the mat, save it. If it does not, you likely tapped two corners on the
 			same side instead of diagonally opposite ones -- start over and tap the opposite corner.
 		</p>
 	{:else if usable}
 		<p class="small muted cal__ok">
-			The playing surface is {Math.round(Math.abs((candidate?.far.u ?? 0) - (candidate?.origin.u ?? 0)) * imageW)}
+			The mat is {Math.round(Math.abs((candidate?.far.u ?? 0) - (candidate?.origin.u ?? 0)) * imageW)}
 			by {Math.round(Math.abs((candidate?.far.v ?? 0) - (candidate?.origin.v ?? 0)) * imageH)} pixels
 			of this picture. One tick is one foot; one small square is 250 mm.
 		</p>
@@ -412,15 +503,31 @@
 	{#if message}<p class="small muted">{message}</p>{/if}
 
 	<div class="cal__actions">
-		<button
-			class="btn btn--primary"
-			type="button"
-			disabled={!usable || busy}
-			onclick={() => usable && onSave(candidate as MatCalibration)}
-		>
-			{busy ? 'Saving...' : 'This looks right, save it'}
-		</button>
-		<button class="btn btn--ghost" type="button" onclick={startOver} disabled={busy}>Start over</button>
+		{#if mode === 'offer'}
+			<button
+				class="btn btn--primary"
+				type="button"
+				disabled={busy}
+				onclick={() => onSave(FULL_FRAME_CALIBRATION)}
+			>
+				{busy ? 'Saving...' : 'This picture is already cropped to the mat'}
+			</button>
+			<!-- Never off the screen, and never behind a re-upload: the shape
+			     test can rule a crop out, it cannot prove one. -->
+			<button class="btn btn--ghost" type="button" onclick={useCorners} disabled={busy}>
+				No, let me tap the mat's corners
+			</button>
+		{:else}
+			<button
+				class="btn btn--primary"
+				type="button"
+				disabled={!usable || busy}
+				onclick={() => usable && onSave(candidate as MatCalibration)}
+			>
+				{busy ? 'Saving...' : 'This looks right, save it'}
+			</button>
+			<button class="btn btn--ghost" type="button" onclick={startOver} disabled={busy}>Start over</button>
+		{/if}
 		<button class="btn btn--ghost" type="button" onclick={onCancel} disabled={busy}>Cancel</button>
 	</div>
 </div>
@@ -448,6 +555,17 @@
 	}
 	.cal__step-line--on {
 		visibility: visible;
+	}
+	/* The size statement and the one-line reason. Both are ordinary body copy
+	   in the muted ink: neither is a warning and neither may read as one. */
+	.cal__known {
+		margin: var(--space-1) 0 0;
+		color: var(--text-2);
+	}
+	.cal__step--offer,
+	.cal__why {
+		margin: var(--space-1) 0 0;
+		color: var(--text-2);
 	}
 	.cal__stage {
 		overflow: auto;

@@ -6,19 +6,37 @@
 
 <script lang="ts">
 	/**
-	 * THE MAT, AS A SCHEMATIC. A plain rectangle at the real 45 by 93 inch
-	 * proportions with a millimeter coordinate system, origin at the launch
-	 * area corner, y up. No mat artwork is drawn, fetched or traced here:
+	 * THE FIELD, AS A SCHEMATIC: TWO RECTANGLES, NOT ONE.
+	 *
+	 * The OUTER one is the TABLE inside its border walls, 2362 by 1143 mm.
+	 * It is the coordinate system (origin at the launch area corner, y up)
+	 * and it is the DRIVABLE region, so it is the tap target: a robot may
+	 * stand on bare table beside the mat and a waypoint may go there too.
+	 *
+	 * The INNER one is the printed MAT, 2000 by 1134 mm, sitting 181 mm in
+	 * from each side and flush with the bottom wall. It is drawn as a
+	 * distinct sheet, so the two 181 mm strips and the 9 mm top gap READ as
+	 * bare table rather than as mat. Everything that belongs to the printed
+	 * sheet -- the background picture, the grid, the mission markers -- is
+	 * on the mat; everything that belongs to the driving -- the route, the
+	 * robot, the axes -- is on the table.
+	 *
+	 * WHY THAT DISTINCTION IS THE POINT OF THIS COMPONENT. Until this bundle
+	 * there was one rectangle and it was the table wearing the mat's name, so
+	 * an uploaded picture of the mat was stretched 18.1% along x and 0.8%
+	 * along y to fill it. Drawing them as one rectangle is what made that
+	 * impossible to see. No mat artwork is drawn, fetched or traced here:
 	 * mission models are labeled markers at mentor-recorded positions.
 	 *
 	 * THE BACKGROUND PICTURE IS PLACED BY ITS CALIBRATION, NEVER STRETCHED.
 	 * `photo` carries a short-lived signed URL and the two corners a mentor
-	 * tapped; calibrationTransform() lays the picture down so its playing
-	 * surface lands exactly on this rectangle, and the clip path cuts off
-	 * whatever border walls hang outside. A picture with no calibration is
-	 * NOT DRAWN -- there is no fallback transform, because a wrong one is
-	 * invisible. The picture is copyrighted (see CLAUDE.md); it reaches this
-	 * component as a signed URL and nothing here caches or re-publishes it.
+	 * tapped on the MAT; calibrationTransform() lays the picture down so
+	 * those corners land exactly on the mat rectangle, and the clip path --
+	 * the mat, not the table -- cuts off whatever hangs outside. A picture
+	 * with no calibration is NOT DRAWN: there is no fallback transform,
+	 * because a wrong one is invisible. The picture is copyrighted (see
+	 * CLAUDE.md); it reaches this component as a signed URL and nothing here
+	 * caches or re-publishes it.
 	 *
 	 * LEGIBILITY OVER A BUSY DRAWING. A field layout is dense line art, so
 	 * with a picture underneath the overlay switches on a contrast layer: a
@@ -68,9 +86,25 @@
 	 * is tiny. Long-press deletes; a short tap selects; a moved pointer
 	 * drags; a drag on open mat pans.
 	 */
-	import { MAT_HEIGHT_MM, MAT_WIDTH_MM, type PointMm } from './geometry';
+	import {
+		MAT_HEIGHT_MM,
+		MAT_ORIGIN_X_MM,
+		MAT_ORIGIN_Y_MM,
+		MAT_WIDTH_MM,
+		TABLE_HEIGHT_MM,
+		TABLE_WIDTH_MM,
+		matToTable,
+		type PointMm
+	} from './geometry';
 	import { calibrationTransform } from './calibration';
-	import { unitWord, xAxisTicks, yAxisTicks, type LengthUnit } from './units';
+	import {
+		unitWord,
+		xAxisTicks,
+		xMatTicks,
+		yAxisTicks,
+		yMatTicks,
+		type LengthUnit
+	} from './units';
 	import type { MatPhoto, MissionMarker, WaypointModel } from './types';
 
 	interface Props {
@@ -139,20 +173,32 @@
 	/** True when the overlay has a detailed drawing to stay legible against. */
 	let overPhoto = $derived(photo !== null && showPhoto);
 
-	// viewBox margins hold the axis ticks and labels.
+	/**
+	 * viewBox margins hold the axis ticks and labels. The TABLE series sits
+	 * below and to the left; the MAT series is led out into the top and right
+	 * margins, which is why those two are wider than a tick needs. Two series
+	 * on opposite sides of the drawing cannot collide at any screen width.
+	 */
 	const M_LEFT = 170;
-	const M_TOP = 60;
-	const M_RIGHT = 60;
+	const M_TOP = 120;
+	const M_RIGHT = 250;
 	const M_BOTTOM = 150;
-	const VIEW_W = MAT_WIDTH_MM + M_LEFT + M_RIGHT;
-	const VIEW_H = MAT_HEIGHT_MM + M_TOP + M_BOTTOM;
+	const VIEW_W = TABLE_WIDTH_MM + M_LEFT + M_RIGHT;
+	const VIEW_H = TABLE_HEIGHT_MM + M_TOP + M_BOTTOM;
+
+	/** Where the mat's own rectangle sits in the drawing (svg y is DOWN). */
+	const MAT_X = MAT_ORIGIN_X_MM;
+	const MAT_RIGHT = MAT_ORIGIN_X_MM + MAT_WIDTH_MM;
+	const MAT_TOP_Y = TABLE_HEIGHT_MM - (MAT_ORIGIN_Y_MM + MAT_HEIGHT_MM);
 
 	let xTicks = $derived(xAxisTicks(unit));
 	let yTicks = $derived(yAxisTicks(unit));
+	let xMat = $derived(xMatTicks(unit));
+	let yMat = $derived(yMatTicks(unit));
 	const GRID = 250;
 
-	/** Model y is up; svg y is down. */
-	const sy = (y: number) => MAT_HEIGHT_MM - y;
+	/** Model y is up; svg y is down. The whole TABLE is the drawing. */
+	const sy = (y: number) => TABLE_HEIGHT_MM - y;
 
 	let svgEl: SVGSVGElement | undefined = $state();
 	let containerEl: HTMLDivElement | undefined = $state();
@@ -168,10 +214,15 @@
 	let routePts = $derived(waypoints.map((w) => ({ x: w.xMm, y: sy(w.yMm) })));
 	let routePoints = $derived(routePts.map((p) => `${p.x},${p.y}`).join(' '));
 
+	/**
+	 * A gesture is clamped to the TABLE, not to the mat. Unchanged by this
+	 * bundle and correct as it stands: the drivable region is the whole table,
+	 * and a waypoint on the bare strip beside the mat is a real plan.
+	 */
 	function clamp(p: PointMm): PointMm {
 		return {
-			x: Math.round(Math.min(MAT_WIDTH_MM, Math.max(0, p.x))),
-			y: Math.round(Math.min(MAT_HEIGHT_MM, Math.max(0, p.y)))
+			x: Math.round(Math.min(TABLE_WIDTH_MM, Math.max(0, p.x))),
+			y: Math.round(Math.min(TABLE_HEIGHT_MM, Math.max(0, p.y)))
 		};
 	}
 
@@ -180,7 +231,7 @@
 		const ctm = svgEl.getScreenCTM();
 		if (!ctm) return { x: 0, y: 0 };
 		const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
-		return clamp({ x: pt.x, y: MAT_HEIGHT_MM - pt.y });
+		return clamp({ x: pt.x, y: TABLE_HEIGHT_MM - pt.y });
 	}
 
 	const LONG_PRESS_MS = 550;
@@ -339,7 +390,8 @@
 	function matKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
-			onTapMat?.({ x: Math.round(MAT_WIDTH_MM / 2), y: Math.round(MAT_HEIGHT_MM / 2) });
+			const c = matToTable({ x: MAT_WIDTH_MM / 2, y: MAT_HEIGHT_MM / 2 });
+			onTapMat?.({ x: Math.round(c.x), y: Math.round(c.y) });
 		}
 	}
 </script>
@@ -351,12 +403,12 @@
 		viewBox="{-M_LEFT} {-M_TOP} {VIEW_W} {VIEW_H}"
 		style:width="{zoom * 100}%"
 		role="application"
-		aria-label="Schematic of the robot game mat"
+		aria-label="Schematic of the robot game table, with the printed mat inside it"
 		onpointermove={handleMove}
 		onpointerup={handleUp}
 		onpointercancel={handleCancel}
 	>
-		<!-- The mat rectangle. It is also the tap target for adding waypoints. -->
+		<!-- The TABLE: the drivable region, and the tap target for waypoints. -->
 		<rect
 			class="mat__board"
 			role="button"
@@ -364,26 +416,39 @@
 			aria-label={placingMissionCode
 				? `Tap where mission ${placingMissionCode} sits on the mat`
 				: editable
-					? 'The mat. Tap to add a point to the route.'
-					: 'The mat'}
+					? 'The table. Tap to add a point to the route.'
+					: 'The table'}
 			x="0"
 			y="0"
-			width={MAT_WIDTH_MM}
-			height={MAT_HEIGHT_MM}
+			width={TABLE_WIDTH_MM}
+			height={TABLE_HEIGHT_MM}
 			onpointerdown={startPan}
 			onkeydown={matKeydown}
+		/>
+
+		<!-- The MAT: the printed sheet, 181 mm in from each side and flush with
+		     the bottom wall. Drawn as its own surface so the strips and the top
+		     gap read as bare table. It takes no pointer events: the table
+		     underneath is the one tap target. -->
+		<rect
+			class="mat__sheet"
+			x={MAT_X}
+			y={MAT_TOP_Y}
+			width={MAT_WIDTH_MM}
+			height={MAT_HEIGHT_MM}
+			pointer-events="none"
 		/>
 
 		{#if photo && showPhoto}
 			<defs>
 				<clipPath id={clipId}>
-					<rect x="0" y="0" width={MAT_WIDTH_MM} height={MAT_HEIGHT_MM} />
+					<rect x={MAT_X} y={MAT_TOP_Y} width={MAT_WIDTH_MM} height={MAT_HEIGHT_MM} />
 				</clipPath>
 			</defs>
 			<g clip-path="url(#{clipId})" pointer-events="none">
 				<!-- A unit square laid down by the calibration matrix: the two
-				     tapped corners land on the two corners of this rectangle,
-				     and the border walls are clipped away. -->
+				     tapped corners land on the two corners of the MAT, and
+				     anything outside the sheet is clipped away. -->
 				<image
 					href={photo.url}
 					x="0"
@@ -397,8 +462,8 @@
 				<!-- The dimming layer: what keeps the plan readable on top. -->
 				<rect
 					class="mat__scrim"
-					x="0"
-					y="0"
+					x={MAT_X}
+					y={MAT_TOP_Y}
 					width={MAT_WIDTH_MM}
 					height={MAT_HEIGHT_MM}
 					opacity={Math.min(90, Math.max(0, photo.dimPct)) / 100}
@@ -406,13 +471,14 @@
 			</g>
 		{/if}
 
-		<!-- Grid, every 250 mm. -->
+		<!-- Grid, every 250 mm, measured from the MAT's own corner: it is a
+		     reading of the printed sheet, not of the table. -->
 		<g class="mat__grid" pointer-events="none">
-			{#each Array.from({ length: Math.floor(MAT_WIDTH_MM / GRID) }, (_, i) => (i + 1) * GRID) as gx (gx)}
-				<line x1={gx} y1="0" x2={gx} y2={MAT_HEIGHT_MM} />
+			{#each Array.from({ length: Math.ceil(MAT_WIDTH_MM / GRID) - 1 }, (_, i) => (i + 1) * GRID) as gx (gx)}
+				<line x1={MAT_X + gx} y1={MAT_TOP_Y} x2={MAT_X + gx} y2={sy(MAT_ORIGIN_Y_MM)} />
 			{/each}
-			{#each Array.from({ length: Math.floor(MAT_HEIGHT_MM / GRID) }, (_, i) => (i + 1) * GRID) as gy (gy)}
-				<line x1="0" y1={sy(gy)} x2={MAT_WIDTH_MM} y2={sy(gy)} />
+			{#each Array.from({ length: Math.ceil(MAT_HEIGHT_MM / GRID) - 1 }, (_, i) => (i + 1) * GRID) as gy (gy)}
+				<line x1={MAT_X} y1={sy(MAT_ORIGIN_Y_MM + gy)} x2={MAT_RIGHT} y2={sy(MAT_ORIGIN_Y_MM + gy)} />
 			{/each}
 		</g>
 
@@ -431,21 +497,48 @@
 			</g>
 		{/if}
 
-		<!-- Axes: millimeters from the launch area corner (bottom left). -->
+		<!--
+			TWO SERIES, ON OPPOSITE SIDES, EACH NAMING ITS OWN RECTANGLE.
+			Bottom and left: the TABLE, which is the coordinate space every
+			stored number is in. Top and right: the MAT, led out of the drawing
+			so a student can read where the printed sheet starts and how big it
+			is without either series ever overlapping the other.
+		-->
 		<g class="mat__axes" pointer-events="none">
-			<rect class="mat__frame" x="0" y="0" width={MAT_WIDTH_MM} height={MAT_HEIGHT_MM} />
+			<rect class="mat__frame" x="0" y="0" width={TABLE_WIDTH_MM} height={TABLE_HEIGHT_MM} />
+			<rect
+				class="mat__sheet-frame"
+				x={MAT_X}
+				y={MAT_TOP_Y}
+				width={MAT_WIDTH_MM}
+				height={MAT_HEIGHT_MM}
+			/>
 			{#each xTicks as t (t.mm)}
-				<line x1={t.mm} y1={MAT_HEIGHT_MM} x2={t.mm} y2={MAT_HEIGHT_MM + 26} />
-				<text class="mat__tick" x={t.mm} y={MAT_HEIGHT_MM + 88} text-anchor="middle">{t.label}</text>
+				<line x1={t.mm} y1={TABLE_HEIGHT_MM} x2={t.mm} y2={TABLE_HEIGHT_MM + 26} />
+				<text class="mat__tick" x={t.mm} y={TABLE_HEIGHT_MM + 88} text-anchor="middle">{t.label}</text>
 			{/each}
 			{#each yTicks as t (t.mm)}
 				<line x1="-26" y1={sy(t.mm)} x2="0" y2={sy(t.mm)} />
 				<text class="mat__tick" x="-40" y={sy(t.mm) + 16} text-anchor="end">{t.label}</text>
 			{/each}
-			<text class="mat__axis-name" x={MAT_WIDTH_MM - 10} y={MAT_HEIGHT_MM + 142} text-anchor="end">
-				x in {unitWord(unit)} from the launch corner
+			<text class="mat__axis-name" x={TABLE_WIDTH_MM - 10} y={TABLE_HEIGHT_MM + 142} text-anchor="end">
+				x in {unitWord(unit)} across the table
 			</text>
-			<text class="mat__axis-name" x="-40" y="-20" text-anchor="start">y in {unitWord(unit)}</text>
+			<text class="mat__axis-name" x="-40" y={sy(TABLE_HEIGHT_MM) - 20} text-anchor="start">
+				y in {unitWord(unit)}
+			</text>
+		</g>
+
+		<g class="mat__axes mat__axes--sheet" pointer-events="none">
+			{#each xMat as t (t.mm)}
+				<line x1={t.mm} y1={MAT_TOP_Y} x2={t.mm} y2={-30} />
+				<text class="mat__tick" x={t.mm} y={-46} text-anchor="middle">{t.label}</text>
+			{/each}
+			{#each yMat as t (t.mm)}
+				<line x1={MAT_RIGHT} y1={sy(t.mm)} x2={TABLE_WIDTH_MM + 30} y2={sy(t.mm)} />
+				<text class="mat__tick" x={TABLE_WIDTH_MM + 46} y={sy(t.mm) + 16} text-anchor="start">{t.label}</text>
+			{/each}
+			<text class="mat__axis-name" x={MAT_X - 60} y={-46} text-anchor="end">the mat</text>
 		</g>
 
 		<!-- Other launches' routes, ghosted for context. -->
@@ -540,8 +633,15 @@
 		-webkit-user-select: none;
 	}
 
+	/* THE TABLE IS THE DARKER SURFACE AND THE MAT IS THE LIGHTER SHEET ON IT.
+	   On this light plate --surface-0 and --surface-1 are the SAME colour, so
+	   the old board fill (--surface-1) was invisible against the container it
+	   sat in and one rectangle was all anybody could have seen even if there
+	   had been two. --surface-2 for the table gives the sheet something to be
+	   lighter than, and the two 181 mm strips and the 9 mm top gap become the
+	   bare table they are. */
 	.mat__board {
-		fill: var(--surface-1);
+		fill: var(--surface-2);
 		cursor: crosshair;
 	}
 	.mat__board:focus-visible {
@@ -549,10 +649,21 @@
 		stroke: var(--text-1);
 		stroke-width: 8;
 	}
+	.mat__sheet {
+		fill: var(--surface-1);
+	}
 	.mat__frame {
 		fill: none;
 		stroke: var(--boundary);
 		stroke-width: 6;
+	}
+	/* The printed edge of the sheet. A real edge, so it is --boundary, which
+	   clears the 3:1 a boundary is held to against the table and the sheet
+	   alike. Lighter than the table frame: the outer wall is the harder line. */
+	.mat__sheet-frame {
+		fill: none;
+		stroke: var(--boundary);
+		stroke-width: 4;
 	}
 	.mat__grid line {
 		stroke: var(--hairline);
@@ -704,6 +815,9 @@
 	.mat--over-photo .mat__frame {
 		stroke-width: 10;
 	}
+	.mat--over-photo .mat__sheet-frame {
+		stroke-width: 8;
+	}
 	.mat--over-photo text {
 		paint-order: stroke fill;
 		stroke: var(--surface-0);
@@ -729,6 +843,22 @@
 	}
 	.mat--over-photo .mat__wp-dot {
 		stroke-width: 10;
+	}
+	/* FOUND BY THE CONTRAST SWEEP, AND OLDER THAN THIS BUNDLE. The blanket
+	   `.mat--over-photo text` rule above puts a --surface-0 halo BEHIND every
+	   label so it reads over a busy drawing. That is right for a label sitting
+	   on the picture, and wrong for the one label that already sits on an
+	   opaque shape of its own: the waypoint number is --team-accent-ink, which
+	   is LIGHT on most accents, so a light halo drawn behind a light glyph
+	   erased it. Measured on the harness's teal team: 234,230,216 ink on a
+	   234,230,216 halo, a ratio of 1.00, at 375 and 1440 on both grounds.
+	   The dot is what carries this label's contrast, and over a picture the
+	   dot's own casing is already widened above; the number needs no halo and
+	   must not have one. The mission code is unaffected and keeps its halo:
+	   it is dark ink, so a light halo behind it only helps. */
+	.mat--over-photo .mat__wp-num {
+		paint-order: normal;
+		stroke: none;
 	}
 	.mat--over-photo .mat__robot rect,
 	.mat--over-photo .mat__robot line {
