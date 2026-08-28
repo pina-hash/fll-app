@@ -244,15 +244,14 @@
 	];
 
 	const ALL = { robot_design: true, innovation_project: true, core_values: true, season_summary: true };
-	const NONE = { robot_design: false, innovation_project: false, core_values: false, season_summary: false };
 
-	let canEdit = $derived(
-		scenario === 'lead' || scenario === 'mentor'
-			? ALL
-			: scenario === 'builder'
-				? { ...NONE, robot_design: true }
-				: NONE
-	);
+	// SINCE 0026 THE SCENARIOS DIFFER IN ONE THING ONLY. notebook_can_edit
+	// answers true for any mentor and for any student on the team, in every
+	// section, so a teammate with no role writes exactly what the Notebook
+	// Lead writes. What still separates them is notebook_can_confirm: saying
+	// a session recap is FINISHED stays with that lead and with mentors.
+	let canEdit = $derived(ALL);
+	let canConfirm = $derived(scenario === 'lead' || scenario === 'mentor');
 	let myStudentId = $derived(scenario === 'mentor' ? null : scenario === 'lead' ? LEAD_ID : scenario === 'builder' ? BUILDER_ID : VIEWER_ID);
 </script>
 
@@ -266,7 +265,7 @@
 			<select bind:value={scenario}>
 				<option value="lead">Notebook Lead</option>
 				<option value="builder">Lead Builder</option>
-				<option value="viewer">No role</option>
+				<option value="viewer">Teammate, no role</option>
 				<option value="mentor">Mentor</option>
 			</select>
 		</label>
@@ -307,6 +306,7 @@
 					isMentor={scenario === 'mentor'}
 					{myStudentId}
 					{canEdit}
+					{canConfirm}
 					entries={ENTRIES}
 					recaps={RECAPS}
 					stats={STATS}

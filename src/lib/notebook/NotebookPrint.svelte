@@ -47,8 +47,9 @@
 	function freeNotes(section: NotebookSectionId): NotebookEntryModel[] {
 		return entries.filter((e) => e.section === section && e.promptKey === '' && e.outcome === null);
 	}
+	/** Same byline the app shows, so the printed page names the same author. */
 	function authorName(e: NotebookEntryModel): string {
-		return e.authoredByStudentId ? (studentNames[e.authoredByStudentId] ?? 'A teammate') : 'Mentor';
+		return e.authoredByStudentId ? (studentNames[e.authoredByStudentId] ?? 'a teammate') : 'a mentor';
 	}
 	function photoUrlForEntry(e: NotebookEntryModel): string | null {
 		if (!e.evidenceId) return null;
@@ -127,7 +128,7 @@
 						<div class="np__entry np__try" data-outcome={e.outcome}>
 							<p class="np__tryhead">
 								<span class="np__outcome" data-outcome={e.outcome}>{e.outcome ? OUTCOME_LABEL[e.outcome] : ''}</span>
-								<span class="np__byline">{authorName(e)}</span>
+								<span class="np__byline">by {authorName(e)}</span>
 							</p>
 							<h4 class="np__h4">We tried: {e.title}</h4>
 							{#if e.body}<p class="np__body">{e.body}</p>{/if}
@@ -149,7 +150,7 @@
 								{#if photoUrlForEntry(e)}
 									<img class="np__photo" src={photoUrlForEntry(e)} alt={e.title || 'Team photo'} />
 								{/if}
-								<p class="np__byline">{authorName(e)}</p>
+								<p class="np__byline">by {authorName(e)}</p>
 							</div>
 						{/each}
 					{/if}
@@ -164,7 +165,7 @@
 							{#if photoUrlForEntry(e)}
 								<img class="np__photo" src={photoUrlForEntry(e)} alt={e.title || 'Team photo'} />
 							{/if}
-							<p class="np__byline">{authorName(e)}</p>
+							<p class="np__byline">by {authorName(e)}</p>
 						</div>
 					{/each}
 				{/if}

@@ -6,7 +6,16 @@
  *
  * `canEdit` is answered by the DATABASE (notebook_can_edit, the same function
  * every notebook policy calls), once per section, so the UI affordance and
- * the enforcement can never drift apart.
+ * the enforcement can never drift apart. Since 0026 that answer is the same
+ * for all four sections for a given caller (any mentor, any student on the
+ * team), and it is still asked per section because the section parameter is
+ * the seam a future section-level rule would come back through.
+ *
+ * `canConfirm` is the second, narrower answer, from notebook_can_confirm
+ * (0026): finishing a session recap or reopening one stays with the Notebook
+ * and Values Lead and mentors, because a confirmed recap stops regenerating
+ * and the word has to keep meaning something. Everyone writes the summary;
+ * one person says it is finished.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/supabase/database.types';
@@ -30,6 +39,8 @@ export interface NotebookData {
 	entries: NotebookEntryModel[];
 	recaps: MeetingRecapModel[];
 	canEdit: Record<NotebookSectionId, boolean>;
+	/** May this caller mark a session recap finished, or reopen one? */
+	canConfirm: boolean;
 	stats: SeasonStats | null;
 	roles: ResolvedRole[];
 	/** id -> "First L." for bylines. */
@@ -44,37 +55,46 @@ export interface NotebookData {
 const SIGNED_URL_SECONDS = 60 * 60 * 8;
 
 export async function loadNotebookData(supabase: Client, teamId: string): Promise<NotebookData> {
-	const [entriesRes, recapsRes, statsRes, rolesRes, studentsRes, evidenceRes, ...canEditRes] =
-		await Promise.all([
-			supabase
-				.from('notebook_entries')
-				.select(
-					'id, team_id, section, prompt_key, title, body, outcome, change_note, evidence_id, authored_by_student_id, sort_order, created_at'
-				)
-				.eq('team_id', teamId),
-			supabase
-				.from('meeting_recaps')
-				.select(
-					'id, meeting_id, team_id, draft, summary, confirmed, confirmed_at, confirmed_by_student_id, meetings (meeting_date, kind, started_at)'
-				)
-				.eq('team_id', teamId),
-			supabase.rpc('notebook_season_stats', { p_team_id: teamId }),
-			supabase.rpc('team_resolve_roles', { p_team_id: teamId }),
-			supabase
-				.from('students')
-				.select('id, first_name, last_initial')
-				.eq('team_id', teamId)
-				.is('deactivated_at', null),
-			supabase
-				.from('evidence')
-				.select('id, storage_path, caption, upload_timestamp')
-				.eq('team_id', teamId)
-				.order('upload_timestamp', { ascending: false })
-				.limit(200),
-			...NOTEBOOK_SECTION_IDS.map((section) =>
-				supabase.rpc('notebook_can_edit', { p_team_id: teamId, p_section: section })
+	const [
+		entriesRes,
+		recapsRes,
+		statsRes,
+		rolesRes,
+		studentsRes,
+		evidenceRes,
+		canConfirmRes,
+		...canEditRes
+	] = await Promise.all([
+		supabase
+			.from('notebook_entries')
+			.select(
+				'id, team_id, section, prompt_key, title, body, outcome, change_note, evidence_id, authored_by_student_id, sort_order, created_at'
 			)
-		]);
+			.eq('team_id', teamId),
+		supabase
+			.from('meeting_recaps')
+			.select(
+				'id, meeting_id, team_id, draft, summary, confirmed, confirmed_at, confirmed_by_student_id, meetings (meeting_date, kind, started_at)'
+			)
+			.eq('team_id', teamId),
+		supabase.rpc('notebook_season_stats', { p_team_id: teamId }),
+		supabase.rpc('team_resolve_roles', { p_team_id: teamId }),
+		supabase
+			.from('students')
+			.select('id, first_name, last_initial')
+			.eq('team_id', teamId)
+			.is('deactivated_at', null),
+		supabase
+			.from('evidence')
+			.select('id, storage_path, caption, upload_timestamp')
+			.eq('team_id', teamId)
+			.order('upload_timestamp', { ascending: false })
+			.limit(200),
+		supabase.rpc('notebook_can_confirm', { p_team_id: teamId }),
+		...NOTEBOOK_SECTION_IDS.map((section) =>
+			supabase.rpc('notebook_can_edit', { p_team_id: teamId, p_section: section })
+		)
+	]);
 
 	const entries: NotebookEntryModel[] = (entriesRes.data ?? [])
 		.map((e) => ({
@@ -141,6 +161,7 @@ export async function loadNotebookData(supabase: Client, teamId: string): Promis
 		entries,
 		recaps,
 		canEdit,
+		canConfirm: canConfirmRes.data === true,
 		stats: parseSeasonStats(statsRes.data),
 		roles: parseResolvedRoles(rolesRes.data),
 		studentNames,

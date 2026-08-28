@@ -52,6 +52,7 @@
 	{isMentor}
 	{myStudentId}
 	canEdit={data.canEdit}
+	canConfirm={data.canConfirm}
 	entries={data.entries}
 	recaps={data.recaps}
 	stats={data.stats}

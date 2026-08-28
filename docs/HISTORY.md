@@ -4695,3 +4695,125 @@ dark, because the choice is per device and not per account.
   FIRST palettes and the Roboto family, neither of which has been true since the
   IDEA bundle). Reported last bundle, still a comment, still not this bundle's
   remit.
+
+---
+
+## 2026-08-28 -- The notebook stops belonging to a role: schema 0026
+
+Mr. Pina's words were "only the team lead can write in the notebook, and I do
+not like it." What the code did was narrower than the complaint and worse than
+it sounds: 0016's `notebook_can_edit(team_id, section)` answered true for any
+mentor, for the Notebook and Values Lead on every section, for the Lead
+Builder, Lead Programmer and Run Captain on Robot Design, and for the
+Innovation Lead on the Innovation Project, all under `team_resolve_roles`'
+covering rule. Five roles, four teams of six. A child holding none of them
+could read every word of the judged document their own season produced and
+write none of it.
+
+### What shipped
+
+- **Schema 0026** (`supabase/migrations/0026_notebook_whole_team_writes.sql`):
+  `notebook_can_edit` re-bodied at the SAME SIGNATURE to "any mentor, or any
+  student on that team", expressed with `current_student_team_id()` (the
+  helper 0016 itself already used at the `notebook_season_stats` guard) rather
+  than a second predicate; a new `notebook_can_confirm(team_id)` carrying
+  0016's OLD rule for the one act that stayed narrow; and
+  `_meeting_recaps_confirm_gate`, a BEFORE UPDATE trigger on `meeting_recaps`
+  that refuses a change to `confirmed` from a caller `notebook_can_confirm`
+  says no to. No table, no column, no type, no policy and no grant moved.
+- **The app**: `canConfirm` added to `NotebookData` and threaded through
+  `NotebookPage` to `Notebook.svelte`; the recap's confirm button gated on it
+  while its summary box widened with everything else; the copy that told a
+  child the notebook belonged to their leads replaced by copy that says the
+  opposite; entry bylines promoted from `--text-3` at `--fs-small` to
+  `--text-2` at `--fs-body` and reworded to "by Noa V." / "by a mentor" in
+  both the app and the print sheet.
+
+### The load-bearing decisions
+
+- **THE SIGNATURE DID NOT MOVE, SO NOTHING THAT CALLS IT HAD TO.** All four
+  policies that call `notebook_can_edit` (insert, update and delete on
+  `notebook_entries`, update on `meeting_recaps`) and both 0020 RPCs that call
+  it (`notebook_entry_delete`, `notebook_entry_restore`) were read and are
+  correct as written. Rewriting a policy to change who may write would have
+  put the rule in a second place.
+- **`p_section` IS KEPT AND UNUSED ON PURPOSE.** Dropping it changes the
+  signature, which forces every policy, every grant and both RPCs to be
+  rewritten and walks into the signature trap on the way. Section-level rules
+  are exactly the kind of thing that comes back; the parameter is the seam
+  that keeps that cheap, and the comment on the function says so.
+- **CONFIRMING A RECAP IS NOT WRITING ONE, AND THE SPLIT IS A TRIGGER BECAUSE
+  IT CANNOT BE ANYTHING ELSE.** `meeting_recaps.confirmed` is a "stop
+  regenerating the draft" statement: the whole team flipping it destroys what
+  it means. RLS is row level, so one UPDATE policy cannot speak about a single
+  column; a column grant is per ROLE, and every signed-in human here is the
+  same role, `authenticated`. That is precisely why `tasks.evidence_required`
+  is a `_mentor_only_columns` trigger rather than a grant, and this is the
+  same shape one step more specific. The grants on `meeting_recaps` therefore
+  did not move: `(summary, confirmed)` stands, `summary` widens with the
+  policy, `confirmed` is held by the trigger beneath it. The gate takes
+  `_mentor_only_columns`' escape hatch verbatim, so a caller with no
+  `auth.uid()` (the generator, the seed, a migration) is let through.
+- **THE DELETE WIDENED TOO, AND IT IS WRITTEN DOWN RATHER THAN DISCOVERED.**
+  The delete policy and both 0020 RPCs call the same function, so any teammate
+  can now delete any teammate's page. Accepted: a notebook delete is SOFT
+  (0020), the child gets a ten second undo, and a mentor gets the bin.
+- **THE REFUSAL SENTENCE IS THE TRIGGER'S OWN.** `classifyPostgrest` passes a
+  permanent error's message through untouched, and this schema raises
+  sentences rather than codes, so what a nine year old reads is "Only the
+  Notebook and Values Lead or a mentor can finish a session recap or reopen
+  one. Your words are saved; ask one of them to press the button."
+
+### What was measured
+
+- **Both directions of the new rule, on a scratch Postgres 16 driven through
+  GUC-backed stubs of exactly the helpers 0026 references** (signatures copied
+  from 0001, 0004, 0009, 0010 and 0016, not invented): `notebook_can_edit`
+  answers true for a mentor and for a student on the team across all four
+  sections, false for a student on another team across all four, and false
+  (never NULL) for a caller who is neither. The confirm gate passes a caller
+  with no `auth.uid()`, lets a plain teammate write the summary, refuses that
+  same teammate's change to `confirmed` with the sentence above, and lets a
+  mentor through. The file applies twice in a row with no error.
+- `npx svelte-kit sync && npx svelte-check`: **0 errors, 0 warnings** (723
+  files), which is the documented baseline unchanged.
+- The repo's dash check (`git ls-files -z | xargs -0 grep -l ...`) is clean.
+
+### What is explicitly NOT verified
+
+- **THE MIGRATION HAS NOT BEEN APPLIED ANYWHERE REAL.** Not to a local
+  Supabase stack (this session had none and was told not to start one) and not
+  to the linked project. `supabase db push` is the delivery and it has not
+  happened; the SQL was handed back to be pasted into the editor.
+- **THE VITEST SUITE DID NOT RUN.** `tests/notebook-isolation.test.ts`,
+  `tests/notebook-offline-replay.test.ts`, `tests/notebook-recap.test.ts`,
+  `tests/entity-operations.test.ts` and `tests/schema-catalog.test.ts` were
+  edited for the new rule and every one of them needs GoTrue, PostgREST and
+  Postgres on 54321/54322, which this container does not have (the run fails
+  at `connect ECONNREFUSED 127.0.0.1:54322`). They are written, they are not
+  green.
+- **No screen was rendered.** The copy, the byline sizes and the confirm
+  button's new gate are asserted from the source, not from a browser, and not
+  at 375 or 1440 on either ground.
+
+### Found, not fixed
+
+- **`judgeWrite`'s REFUSED branch is now unreachable on these two tables.** It
+  fires when a write is filtered to zero rows AND the row is still readable,
+  and after 0026 reading the notebook and writing it are the same permission,
+  so no caller is in that position. A cross-team op is filtered AND invisible,
+  which reports `done` (correct: there is no row at that id for that caller),
+  and the app cannot produce one anyway. The constant is kept, its sentence
+  now names what to do next, and `ops.ts` says why it stays.
+- **`src/lib/content/notebook.ts`'s `contributorRoles` comment is stale**: it
+  reads "Roles that write here besides the Notebook and Values Lead", which is
+  no longer what the field means. That file belongs to another lane this
+  round; the chips it feeds are relabelled "Ask if you get stuck" in
+  `Notebook.svelte`, which is the surface a child reads.
+- **Three files outside this bundle's stated scope were edited**, each named
+  in the session report: `src/lib/supabase/database.types.ts` (one additive
+  Functions entry for `notebook_can_confirm`, without which nothing
+  typechecks), `src/routes/dev/notebook/+page.svelte` (the harness's own
+  `canEdit` derivation mirrored the old rule and its scenarios would otherwise
+  have tested nothing), and `tests/schema-catalog.test.ts` plus
+  `tests/entity-operations.test.ts` (one RPC name and two stale comments).

@@ -1499,6 +1499,7 @@ export type Database = {
       meeting_restore: { Args: { p_meeting_id: string }; Returns: Json }
       meeting_start: { Args: { p_meeting_id: string }; Returns: Json }
       notebook_bin: { Args: { p_team_id: string }; Returns: Json }
+      notebook_can_confirm: { Args: { p_team_id: string }; Returns: boolean }
       notebook_can_edit: {
         Args: {
           p_section: Database["public"]["Enums"]["notebook_section"]

@@ -323,18 +323,12 @@ describe('archiving a team refuses rather than stranding a roster', () => {
 
 describe('a notebook page a child can take back', () => {
 	test('delete hides it from every read, restore brings it back, and the row never left', async () => {
-		// notebook_can_edit is a ROLE gate resolved against the running meeting
-		// (0016), so a child with no role cannot write the innovation section
-		// at all. Giving them the role is what makes this the student's path
-		// and not the mentor's.
+		// Since 0026 notebook_can_edit is not a role gate: any student on the
+		// team writes any section. This child holds NO role on purpose, which
+		// is what makes this the student's path and not the mentor's. A
+		// meeting is still started because the rest of the child's runtime
+		// expects one.
 		await liveMeeting();
-		const assigned = await mentor.client.rpc('role_assign', {
-			p_team_id: team.teamId,
-			p_student_id: student.studentId,
-			p_role: 'innovation_lead',
-			p_tier: 'primary'
-		});
-		expect(assigned.error).toBeNull();
 
 		const asStudent = await signIn(student.email, student.pin);
 		const { data: rows, error: insErr } = await asStudent
@@ -428,9 +422,10 @@ describe('redrafting a recap leaves a confirmed one alone', () => {
 		expect((drafted ?? []).length).toBeGreaterThan(0);
 
 		// Confirm one of them the way the app does: through the UPDATE grant on
-		// (confirmed, summary) and the notebook_can_edit gate, which a mentor
-		// passes. Ask for the row back, because a refused update is 204 with
-		// zero rows and no error.
+		// (confirmed, summary), the notebook_can_edit policy and the
+		// notebook_can_confirm trigger beneath it (0026), both of which a
+		// mentor passes. Ask for the row back, because a refused update is 204
+		// with zero rows and no error.
 		const target = (drafted ?? [])[0] as unknown as { id: string };
 		const { data: confirmedRows, error: confirmErr } = await mentor.client
 			.from('meeting_recaps')

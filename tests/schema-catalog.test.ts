@@ -77,6 +77,7 @@ const RPCS = [
 	'meeting_current',
 	'meeting_advance_phase',
 	'notebook_can_edit',
+	'notebook_can_confirm',
 	'notebook_season_stats',
 	'notebook_bin',
 	'notebook_entry_delete',

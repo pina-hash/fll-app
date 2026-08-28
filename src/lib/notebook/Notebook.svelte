@@ -10,9 +10,19 @@
 	 * there is no realtime on these tables, so nothing can clobber a child's
 	 * sentence mid-word.
 	 *
-	 * THE AFFORDANCE NEVER LIES: `canEdit` comes from notebook_can_edit, the
-	 * same function every policy calls, so a button shown here is a write the
+	 * THE AFFORDANCE NEVER LIES: `canEdit` comes from notebook_can_edit and
+	 * `canConfirm` from notebook_can_confirm, the same two functions the
+	 * policies and the trigger call, so a button shown here is a write the
 	 * database will accept.
+	 *
+	 * WHO WRITES, SINCE 0026: everyone on the team, in every section, plus
+	 * any mentor. The notebook is the team's judged document, so a child with
+	 * no role holds the same pen as the Notebook and Values Lead. The ONE
+	 * narrower act is marking a session recap finished (or reopening one),
+	 * which stays with that lead and with mentors: a confirmed recap stops
+	 * regenerating its draft, so it is a statement about the record rather
+	 * than a contribution to it. That is `canConfirm`, and where it is false
+	 * this screen SAYS SO in a sentence rather than showing a dead button.
 	 */
 	import {
 		FAILED_ENCOURAGEMENT,
@@ -47,6 +57,8 @@
 		isMentor: boolean;
 		myStudentId: string | null;
 		canEdit: Record<NotebookSectionId, boolean>;
+		/** Marking a recap finished, or reopening one: the lead and mentors. */
+		canConfirm: boolean;
 		entries: NotebookEntryModel[];
 		recaps: MeetingRecapModel[];
 		stats: SeasonStats | null;
@@ -68,6 +80,7 @@
 		isMentor,
 		myStudentId,
 		canEdit,
+		canConfirm,
 		entries: initialEntries,
 		recaps: initialRecaps,
 		stats,
@@ -142,11 +155,25 @@
 		offline: 'Saved on this device'
 	};
 
+	/**
+	 * WHOSE WORDS THESE ARE. Every teammate writes in the notebook now (0026),
+	 * so the byline stopped being decoration the moment the pen was handed
+	 * round: a page with no name on it is a page nobody is proud of and
+	 * nobody can be asked about. `studentNames` covers the ACTIVE roster, so
+	 * a child who has left the club leaves their page behind under the
+	 * gentler "a teammate" rather than a blank.
+	 */
 	function authorName(entry: NotebookEntryModel): string {
-		if (entry.authoredByStudentId) return studentNames[entry.authoredByStudentId] ?? 'A teammate';
-		return 'Mentor';
+		if (entry.authoredByStudentId) return studentNames[entry.authoredByStudentId] ?? 'a teammate';
+		return 'a mentor';
 	}
 
+	/**
+	 * WHO LEADS THIS PART, WHICH IS NOT WHO MAY WRITE IN IT. Since 0026 every
+	 * teammate writes in every section; these chips say who to ask when you
+	 * are stuck, and they are labelled that way in the markup so a child does
+	 * not read a name here as a locked door.
+	 */
 	function holdersFor(section: NotebookSectionId): string[] {
 		const def = NOTEBOOK_SECTIONS.find((s) => s.id === section);
 		const wanted = new Set(['notebook_values_lead', ...(def?.contributorRoles ?? [])]);
@@ -374,12 +401,17 @@
 					<p class="nb__lede">{def.lede}</p>
 					<p class="nb__judge">{def.judgeNote}</p>
 					<div class="nb__holders">
+						<span class="nb__holderslabel">Ask if you get stuck:</span>
 						{#each holdersFor(def.id) as h (h)}
 							<span class="nb__chip">{h}</span>
 						{/each}
 					</div>
-					{#if !canEdit[def.id] && !isMentor}
-						<p class="nb__readonly">You can read this part. Your team's leads write here.</p>
+					{#if canEdit[def.id]}
+						<p class="nb__open">Everyone on the team writes here. Add a page whenever you have something to say.</p>
+					{:else if !isMentor}
+						<p class="nb__readonly">
+							Writing is turned off right now. Try again in a minute, or ask a mentor.
+						</p>
 					{/if}
 				</div>
 
@@ -391,7 +423,7 @@
 							<article class="card nb__entry" data-outcome={e.outcome}>
 								<div class="nb__entryhead">
 									<span class="nb__outcome" data-outcome={e.outcome}>{e.outcome ? OUTCOME_LABEL[e.outcome] : ''}</span>
-									<span class="nb__byline">{authorName(e)}</span>
+									<span class="nb__byline">by {authorName(e)}</span>
 								</div>
 								<h4 class="nb__entrytitle">{e.title}</h4>
 								{#if e.body}<p class="nb__body">{e.body}</p>{/if}
@@ -429,7 +461,7 @@
 						{#each answers(def.id, prompt.key) as e (e.id)}
 							<article class="card nb__entry">
 								<div class="nb__entryhead">
-									<span class="nb__byline">{authorName(e)}</span>
+									<span class="nb__byline">by {authorName(e)}</span>
 								</div>
 								{#if e.title}<h4 class="nb__entrytitle">{e.title}</h4>{/if}
 								<p class="nb__body">{e.body}</p>
@@ -459,7 +491,7 @@
 					{#each freeNotes(def.id) as e (e.id)}
 						<article class="card nb__entry">
 							<div class="nb__entryhead">
-								<span class="nb__byline">{authorName(e)}</span>
+								<span class="nb__byline">by {authorName(e)}</span>
 							</div>
 							{#if e.title}<h4 class="nb__entrytitle">{e.title}</h4>{/if}
 							<p class="nb__body">{e.body}</p>
@@ -578,15 +610,24 @@
 							{#if recapDrafts[r.id] !== undefined && recapDrafts[r.id] !== r.summary}
 								<button class="btn btn--secondary" type="button" onclick={() => saveRecapSummary(r)}>Save words</button>
 							{/if}
-							<button class="btn {r.confirmed ? 'btn--ghost' : 'btn--primary'}" type="button" onclick={() => toggleRecapConfirmed(r)}>
-								{r.confirmed ? 'Reopen' : 'Finish this recap'}
-							</button>
+							{#if canConfirm}
+								<button class="btn {r.confirmed ? 'btn--ghost' : 'btn--primary'}" type="button" onclick={() => toggleRecapConfirmed(r)}>
+									{r.confirmed ? 'Reopen' : 'Finish this recap'}
+								</button>
+							{/if}
 						</div>
+						{#if !canConfirm}
+							<p class="nb__hint">
+								{r.confirmed
+									? 'This one is finished. Ask the Notebook Lead or a mentor if it needs opening again.'
+									: 'Anyone can add words here. The Notebook Lead or a mentor says when a recap is finished.'}
+							</p>
+						{/if}
 					{:else if r.summary}
 						<p class="nb__body nb__summary">{r.summary}</p>
 					{/if}
 					{#if !canEdit.season_summary && !r.summary}
-						<p class="nb__hint">The Notebook Lead adds the team's words here.</p>
+						<p class="nb__hint">Writing is turned off right now. Try again in a minute, or ask a mentor.</p>
 					{/if}
 				</article>
 			{/each}
@@ -827,7 +868,13 @@
 	.nb__holders {
 		display: flex;
 		flex-wrap: wrap;
+		align-items: center;
 		gap: var(--space-2);
+	}
+	.nb__holderslabel {
+		color: var(--text-2);
+		font-size: var(--fs-small);
+		font-weight: var(--fw-bold);
 	}
 	.nb__chip {
 		padding: 0.2rem var(--space-2);
@@ -839,6 +886,14 @@
 	.nb__readonly {
 		margin: 0;
 		color: var(--text-2);
+	}
+	/* The notebook is the team's, and this line is the one that says so on
+	   every section. Ink ladder, not the accent: it is a sentence, not a
+	   state. */
+	.nb__open {
+		margin: 0;
+		color: var(--text-1);
+		font-weight: var(--fw-bold);
 	}
 
 	.nb__block {
@@ -887,9 +942,11 @@
 	.nb__outcome[data-outcome='mixed'] {
 		color: var(--warning);
 	}
+	/* The byline is read, not skimmed past: full body size and the middle ink
+	   step, because "who wrote this" is now a real question on every page. */
 	.nb__byline {
-		color: var(--text-3);
-		font-size: var(--fs-small);
+		color: var(--text-2);
+		font-size: var(--fs-body);
 	}
 	.nb__entrytitle {
 		margin: 0;

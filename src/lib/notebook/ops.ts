@@ -11,6 +11,15 @@
  * so every update asks for its rows back and probes when it gets none: still
  * visible means refused (SHOW it), gone means already done.
  *
+ * A REFUSAL IS A SENTENCE, NEVER A SQLSTATE. Two shapes reach a child here.
+ * An RLS-filtered write comes back 204 with no rows and no error, which is
+ * why every update below asks for its rows back; the sentence for that case
+ * is REFUSED, and it names what to do next because "42501" does not. A
+ * trigger refusal (the recap confirm gate, 0026) comes back as a real error
+ * whose MESSAGE is already a sentence this schema wrote on purpose, so
+ * classifyPostgrest passes it through untouched rather than replacing it with
+ * something vaguer.
+ *
  * DELETING A PAGE IS A SOFT DELETE (0020), AND IT IS AN RPC, NOT A DELETE.
  * `notebook_entry_delete` stamps `deleted_at`, the read policy stops showing
  * the row, and `notebook_entry_restore` puts it back -- which is what makes
@@ -34,8 +43,11 @@ export type NotebookOp =
 	| { kind: 'notebook_delete'; id: string }
 	/** The undo, and the mentor's bin: notebook_entry_restore (0020). */
 	| { kind: 'notebook_restore'; id: string }
-	/** The Notebook Lead's recap edits: the summary text, or the confirmed
-	 * flag (confirmed_at and the confirmed_by columns are server-stamped). */
+	/** A recap edit: the summary text, which anyone on the team may write, or
+	 * the confirmed flag, which only the Notebook and Values Lead and mentors
+	 * may move (notebook_can_confirm, 0026, enforced by a BEFORE UPDATE
+	 * trigger that raises a sentence). confirmed_at and the confirmed_by
+	 * columns are server-stamped and carry no grant. */
 	| { kind: 'recap_update'; id: string; patch: { summary?: string; confirmed?: boolean } };
 
 const NOTEBOOK_KINDS = new Set([
@@ -67,7 +79,17 @@ export function recapUpdate(id: string, patch: { summary?: string; confirmed?: b
 	return { kind: 'recap_update', id, patch };
 }
 
-const REFUSED = 'The server did not accept this change.';
+/**
+ * The sentence for a write RLS filtered while the row is still readable. 0026
+ * left NO caller in that position on these two tables (reading the notebook
+ * and writing it are now the same permission), so this branch is currently
+ * unreachable in the app and is kept rather than deleted: it is the honest
+ * answer the moment any notebook rule narrows again, and the alternative is
+ * reporting a silent success. It names what to do next, because "42501" does
+ * not.
+ */
+const REFUSED =
+	'The server did not save that. Try again in a minute, and tell a mentor if it keeps happening.';
 
 type WriteBack = {
 	error: { code?: string | null; message?: string } | null;
