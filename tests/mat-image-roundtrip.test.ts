@@ -48,12 +48,21 @@ import {
 } from '../src/lib/planner/field-image';
 import { applyPlannerOp } from '../src/lib/planner/ops';
 import {
+	FULL_FRAME_CALIBRATION,
 	calibrationFromCorners,
 	imageToMat,
+	legacyTableStretch,
 	matToImage,
 	type MatCalibration
 } from '../src/lib/planner/calibration';
-import { MAT_HEIGHT_MM, MAT_WIDTH_MM } from '../src/lib/planner/geometry';
+import {
+	MAT_SIDE_STRIP_MM,
+	TABLE_HEIGHT_MM,
+	TABLE_WIDTH_MM,
+	matToTable,
+	onMat,
+	routeMoves
+} from '../src/lib/planner/geometry';
 
 const service = serviceClient();
 
@@ -63,12 +72,13 @@ let otherTeam: SeededTeam;
 let student: Client;
 let otherStudent: Client;
 
-/** The calibration under test: a playing surface inset inside border walls. */
+/** The calibration under test: the MAT, inset inside a picture that has more in it. */
 const CAL: MatCalibration = { origin: { u: 0.045, v: 0.875 }, far: { u: 0.955, v: 0.13 } };
 
-/** One mission's original global position, restored in afterAll. */
+/** Mission positions are GLOBAL rows; every one touched here is restored in afterAll. */
+type MissionPos = { id: string; position_x_mm: number | null; position_y_mm: number | null };
 let missionId = '';
-let savedMissionPos: { position_x_mm: number | null; position_y_mm: number | null } | null = null;
+let savedMissions: MissionPos[] = [];
 
 function picture(): PreparedImage & { source: string } {
 	try {
@@ -110,17 +120,21 @@ beforeAll(async () => {
 	student = await signIn(s.email, s.pin);
 	otherStudent = await signIn(o.email, o.pin);
 
-	const [row] = await sql<{ id: string; position_x_mm: number | null; position_y_mm: number | null }[]>`
-		select id, position_x_mm, position_y_mm from public.missions order by sort_order limit 1`;
-	missionId = row.id;
-	savedMissionPos = { position_x_mm: row.position_x_mm, position_y_mm: row.position_y_mm };
+	// Three, because the anisotropy case needs two ends of a path and the
+	// round trip needs one of its own.
+	savedMissions = await sql<MissionPos[]>`
+		select id, position_x_mm, position_y_mm from public.missions order by sort_order limit 3`;
+	missionId = savedMissions[0].id;
 
 	console.log(`mat-image-roundtrip: using ${PIC.source}`);
 });
 
 afterAll(async () => {
-	if (savedMissionPos) {
-		await service.from('missions').update(savedMissionPos).eq('id', missionId);
+	for (const m of savedMissions) {
+		await service
+			.from('missions')
+			.update({ position_x_mm: m.position_x_mm, position_y_mm: m.position_y_mm })
+			.eq('id', m.id);
 	}
 	await service.storage.from('mat').remove([matImagePath(team.teamId), matImagePath(otherTeam.teamId)]);
 	await cleanupRun();
@@ -230,11 +244,13 @@ describe('THE ROUND TRIP: a marker placed on the picture comes back on the same 
 		const mat = imageToMat(cal, TAP);
 		const xMm = Math.round(mat.x);
 		const yMm = Math.round(mat.y);
-		// Sanity: a tap inside the calibrated surface is a point on the mat.
+		// Sanity: a tap inside the calibrated rectangle is a point on the MAT,
+		// and therefore also a point on the table, which is what is stored.
+		expect(onMat({ x: xMm, y: yMm })).toBe(true);
 		expect(xMm).toBeGreaterThan(0);
-		expect(xMm).toBeLessThan(MAT_WIDTH_MM);
+		expect(xMm).toBeLessThan(TABLE_WIDTH_MM);
 		expect(yMm).toBeGreaterThan(0);
-		expect(yMm).toBeLessThan(MAT_HEIGHT_MM);
+		expect(yMm).toBeLessThan(TABLE_HEIGHT_MM);
 
 		// The shipping write path, through the same op the queue replays.
 		const applied = await applyPlannerOp(mentor.client, {
@@ -264,9 +280,9 @@ describe('THE ROUND TRIP: a marker placed on the picture comes back on the same 
 	});
 
 	test('NEGATIVE CONTROL: reading the same stored millimetres through the WRONG calibration lands elsewhere', async () => {
-		// The bug this bundle removes: the picture stretched corner to corner.
+		// Treating a picture that is NOT cropped to the mat as though it were.
 		// The stored millimetre is right; the pixel it draws on is not.
-		const stretched: MatCalibration = { origin: { u: 0, v: 1 }, far: { u: 1, v: 0 } };
+		const stretched: MatCalibration = FULL_FRAME_CALIBRATION;
 		const { data } = await service
 			.from('missions')
 			.select('position_x_mm, position_y_mm')
@@ -277,6 +293,100 @@ describe('THE ROUND TRIP: a marker placed on the picture comes back on the same 
 		const wrong = matToImage(stretched, p);
 		const offPixels = Math.hypot((right.u - wrong.u) * PIC.width, (right.v - wrong.v) * PIC.height);
 		expect(offPixels).toBeGreaterThan(50);
+	});
+});
+
+describe('THE MAT SITS INSIDE THE TABLE, and the stored numbers say so', () => {
+	test("a marker at the mat's OWN origin lands 181 mm in and flush with the bottom", async () => {
+		// The mentor taps the corner of the printed sheet. That corner is not
+		// the origin of the coordinate system: the sheet starts one 181 mm
+		// strip in from the left wall and lies flush against the bottom one.
+		// Driven through the real transform, the real op and a real reload.
+		const cal = calibrationFromCorners(CAL.origin, CAL.far) as MatCalibration;
+		const atMatOrigin = imageToMat(cal, cal.origin);
+		expect(Math.round(atMatOrigin.x)).toBe(MAT_SIDE_STRIP_MM);
+		expect(Math.round(atMatOrigin.y)).toBe(0);
+
+		const applied = await applyPlannerOp(mentor.client, {
+			kind: 'mission_position',
+			missionId: savedMissions[1].id,
+			xMm: Math.round(atMatOrigin.x),
+			yMm: Math.round(atMatOrigin.y)
+		});
+		expect(applied).toBe('done');
+
+		const fresh = await signIn(mentor.email, mentor.password);
+		const data = await loadPlannerData(fresh, team.teamId);
+		const marker = data.missions.find((m) => m.id === savedMissions[1].id);
+		expect(marker?.xMm).toBe(181);
+		expect(marker?.yMm).toBe(0);
+
+		// And the far corner of the sheet is one strip short of the far wall.
+		const atMatFar = imageToMat(cal, cal.far);
+		expect(TABLE_WIDTH_MM - Math.round(atMatFar.x)).toBe(MAT_SIDE_STRIP_MM);
+		// The only bare table above the sheet is the 9 mm top gap.
+		expect(TABLE_HEIGHT_MM - Math.round(atMatFar.y)).toBe(9);
+
+		// POSITIVE CONTROL: the mat's origin is a DIFFERENT point from the
+		// table's, and the transform can still reach the table's origin --
+		// it is simply off the sheet, which is a legal place to drive.
+		expect(onMat({ x: 0, y: 0 })).toBe(false);
+		expect(onMat({ x: 181, y: 0 })).toBe(true);
+	});
+
+	test('THE ANISOTROPY: a 45 degree path on the mat comes back as 45 degrees', async () => {
+		// Two points 500 mm apart on each axis of the printed sheet, which is
+		// a physically 45 degree drive. They go onto the picture through
+		// matToImage, come back through imageToMat, are STORED as integers,
+		// are reloaded by a fresh client, and only then become a movement.
+		const cal = calibrationFromCorners(CAL.origin, CAL.far) as MatCalibration;
+		const fromTable = matToTable({ x: 400, y: 300 });
+		const toTable = matToTable({ x: 900, y: 800 });
+		const fromPix = matToImage(cal, fromTable);
+		const toPix = matToImage(cal, toTable);
+
+		const a = imageToMat(cal, fromPix);
+		const b = imageToMat(cal, toPix);
+		for (const [m, id] of [
+			[a, savedMissions[1].id],
+			[b, savedMissions[2].id]
+		] as const) {
+			expect(
+				await applyPlannerOp(mentor.client, {
+					kind: 'mission_position',
+					missionId: id,
+					xMm: Math.round(m.x),
+					yMm: Math.round(m.y)
+				})
+			).toBe('done');
+		}
+
+		const fresh = await signIn(mentor.email, mentor.password);
+		const data = await loadPlannerData(fresh, team.teamId);
+		const pa = data.missions.find((m) => m.id === savedMissions[1].id);
+		const pb = data.missions.find((m) => m.id === savedMissions[2].id);
+		expect([pa?.xMm, pa?.yMm]).toEqual([581, 300]);
+		expect([pb?.xMm, pb?.yMm]).toEqual([1081, 800]);
+
+		const moves = routeMoves([
+			{ x: pa?.xMm as number, y: pa?.yMm as number },
+			{ x: pb?.xMm as number, y: pb?.yMm as number }
+		]);
+		expect(moves).toHaveLength(1);
+		expect(moves[0].headingDeg).toBeCloseTo(45, 9);
+		expect(moves[0].driveCm).toBeCloseTo(Math.hypot(500, 500) / 10, 9);
+
+		// WHAT IT USED TO SAY. The same two taps on the same picture, read
+		// onto the TABLE rectangle the way this module did until now: the
+		// long axis stretched by 2362/2000 and the short one by 1143/1134, so
+		// the drive came back 18.1% long on x and the heading came back bent.
+		const legacyFrom = legacyTableStretch(cal, fromPix);
+		const legacyTo = legacyTableStretch(cal, toPix);
+		const legacyMoves = routeMoves([legacyFrom, legacyTo]);
+		expect(legacyMoves[0].headingDeg).toBeCloseTo(40.48, 1);
+		expect(legacyMoves[0].headingDeg).not.toBeCloseTo(45, 0);
+		// The x component alone, before and after: 590.5 mm against 500 mm.
+		expect((legacyTo.x - legacyFrom.x) / (b.x - a.x)).toBeCloseTo(1.181, 3);
 	});
 });
 

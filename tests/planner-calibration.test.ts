@@ -8,26 +8,50 @@
 // looks like a mat -- which is exactly why it has to be proved by arithmetic
 // rather than by looking at it. This file needs no database and no stack.
 //
-// The negative control at the end is the point of the whole bundle: the old
-// stretch-to-fit calibration is measured against a true one on a picture
-// shaped like the real field layout, and the disagreement is reported in
-// millimetres.
+// THE TWO TAPS ARE THE MAT'S CORNERS AND THE ANSWER IS IN TABLE MILLIMETRES.
+// That is this bundle's correction and it is what most of these cases now
+// pin: the mat is 2000 by 1134 inside a 2362 by 1143 table, so the corner a
+// mentor taps is table (181, 0) and not (0, 0).
+//
+// The negative controls at the end are the point of the whole bundle: the
+// transform this file used to apply (the same two taps read onto the TABLE
+// rectangle) is measured against the corrected one, and the disagreement is
+// reported as a percentage of a drive and as an angle.
 
 import { describe, expect, test } from 'vitest';
-import { MAT_HEIGHT_MM, MAT_WIDTH_MM } from '../src/lib/planner/geometry';
 import {
+	MAT_HEIGHT_MM,
+	MAT_ORIGIN_X_MM,
+	MAT_ORIGIN_Y_MM,
+	MAT_SIDE_STRIP_MM,
+	MAT_WIDTH_MM,
+	TABLE_HEIGHT_MM,
+	TABLE_WIDTH_MM,
+	headingDeg,
+	matToTable,
+	routeMoves
+} from '../src/lib/planner/geometry';
+import {
+	FULL_FRAME_ASPECT_TOLERANCE,
+	FULL_FRAME_CALIBRATION,
+	MAT_ASPECT,
 	MIN_CALIBRATION_SPAN,
-	STRETCH_TO_FIT,
 	calibrationFromCorners,
 	calibrationMatrix,
 	calibrationTransform,
 	disagreementMm,
+	fullFrameFit,
 	imageToMat,
 	isUsableCalibration,
+	legacyTableStretch,
 	matToImage,
 	type ImagePoint,
 	type MatCalibration
 } from '../src/lib/planner/calibration';
+
+/** The two points the two taps mean, in the table coordinates everything is stored in. */
+const MAT_ORIGIN = matToTable({ x: 0, y: 0 });
+const MAT_FAR = matToTable({ x: MAT_WIDTH_MM, y: MAT_HEIGHT_MM });
 
 /**
  * The everyday case: a picture whose playing surface sits inside a border of
@@ -40,7 +64,7 @@ const INSET: MatCalibration = {
 };
 
 /**
- * OFF SQUARE. The calibrated rectangle is nowhere near the mat's own 2.067:1
+ * OFF SQUARE. The calibrated rectangle is nowhere near the mat's own 1.764:1
  * aspect within the picture (it spans 0.72 of the width and 0.60 of the
  * height, a 1.2:1 box on a square picture), it is not centred, and neither
  * corner touches an edge. Nothing in the transform may assume otherwise.
@@ -58,15 +82,25 @@ const nearPoint = (actual: { x: number; y: number }, x: number, y: number, tol =
 	near(actual.y, y, tol);
 };
 
-describe('the two tapped corners are the two ends of the mat', () => {
-	test('the launch-area corner maps to the origin', () => {
-		nearPoint(imageToMat(INSET, INSET.origin), 0, 0);
-		nearPoint(imageToMat(OFF_SQUARE, OFF_SQUARE.origin), 0, 0);
+describe('the two tapped corners are the two ends of the MAT', () => {
+	test('THE MAT ORIGIN: the tapped launch corner is 181 mm in, flush with the bottom', () => {
+		// The claim this whole bundle turns on. The corner a mentor taps is the
+		// corner of the printed sheet, and the sheet starts one 181 mm strip in
+		// from the table's left wall and lies flush against the bottom one.
+		for (const cal of [INSET, OFF_SQUARE]) {
+			const p = imageToMat(cal, cal.origin);
+			nearPoint(p, MAT_SIDE_STRIP_MM, 0);
+			expect(p.x).toBe(181);
+			expect(p.y).toBe(0);
+			// Flush at the bottom, and one strip short of the far wall too.
+			expect(TABLE_WIDTH_MM - imageToMat(cal, cal.far).x).toBeCloseTo(MAT_SIDE_STRIP_MM, 9);
+		}
 	});
 
-	test('the diagonally opposite corner maps to the full mat dimensions', () => {
-		nearPoint(imageToMat(INSET, INSET.far), MAT_WIDTH_MM, MAT_HEIGHT_MM);
-		nearPoint(imageToMat(OFF_SQUARE, OFF_SQUARE.far), MAT_WIDTH_MM, MAT_HEIGHT_MM);
+	test('the diagonally opposite corner maps to the far corner of the mat', () => {
+		nearPoint(imageToMat(INSET, INSET.far), MAT_FAR.x, MAT_FAR.y);
+		nearPoint(imageToMat(OFF_SQUARE, OFF_SQUARE.far), MAT_FAR.x, MAT_FAR.y);
+		expect(MAT_FAR).toEqual({ x: 2181, y: 1134 });
 	});
 
 	test('the midpoint between them maps to the centre of the mat', () => {
@@ -74,15 +108,17 @@ describe('the two tapped corners are the two ends of the mat', () => {
 			u: (c.origin.u + c.far.u) / 2,
 			v: (c.origin.v + c.far.v) / 2
 		});
-		nearPoint(imageToMat(INSET, mid(INSET)), MAT_WIDTH_MM / 2, MAT_HEIGHT_MM / 2);
-		nearPoint(imageToMat(OFF_SQUARE, mid(OFF_SQUARE)), MAT_WIDTH_MM / 2, MAT_HEIGHT_MM / 2);
+		const cx = MAT_ORIGIN_X_MM + MAT_WIDTH_MM / 2;
+		const cy = MAT_ORIGIN_Y_MM + MAT_HEIGHT_MM / 2;
+		nearPoint(imageToMat(INSET, mid(INSET)), cx, cy);
+		nearPoint(imageToMat(OFF_SQUARE, mid(OFF_SQUARE)), cx, cy);
+		// And that is NOT the centre of the table: the mat is short at the top.
+		expect(cy).toBeLessThan(TABLE_HEIGHT_MM / 2);
 	});
 
 	test('the other two corners of the picture rectangle map to the other two mat corners', () => {
-		// The corner sharing the origin's u and the far corner's v is mat
-		// (0, MAT_HEIGHT_MM); the mirror of it is (MAT_WIDTH_MM, 0).
-		nearPoint(imageToMat(INSET, { u: INSET.origin.u, v: INSET.far.v }), 0, MAT_HEIGHT_MM);
-		nearPoint(imageToMat(INSET, { u: INSET.far.u, v: INSET.origin.v }), MAT_WIDTH_MM, 0);
+		nearPoint(imageToMat(INSET, { u: INSET.origin.u, v: INSET.far.v }), MAT_ORIGIN.x, MAT_FAR.y);
+		nearPoint(imageToMat(INSET, { u: INSET.far.u, v: INSET.origin.v }), MAT_FAR.x, MAT_ORIGIN.y);
 	});
 });
 
@@ -91,14 +127,16 @@ describe('known answers on an off-square calibration', () => {
 	// v spans 0.31 - 0.91 = -0.60.
 	test('a quarter of the way along each axis is a quarter of the mat', () => {
 		const p: ImagePoint = { u: 0.07 + 0.72 * 0.25, v: 0.91 - 0.6 * 0.25 };
-		nearPoint(imageToMat(OFF_SQUARE, p), MAT_WIDTH_MM * 0.25, MAT_HEIGHT_MM * 0.25);
+		const q = matToTable({ x: MAT_WIDTH_MM * 0.25, y: MAT_HEIGHT_MM * 0.25 });
+		nearPoint(imageToMat(OFF_SQUARE, p), q.x, q.y);
 	});
 
 	test('a point off both axes lands where the two independent scales put it', () => {
 		// 0.6 across, 0.2 up: the x scale and the y scale are unrelated, which
 		// is the freedom two corners buy and one aspect ratio does not.
 		const p: ImagePoint = { u: 0.07 + 0.72 * 0.6, v: 0.91 - 0.6 * 0.2 };
-		nearPoint(imageToMat(OFF_SQUARE, p), MAT_WIDTH_MM * 0.6, MAT_HEIGHT_MM * 0.2, 1e-8);
+		const q = matToTable({ x: MAT_WIDTH_MM * 0.6, y: MAT_HEIGHT_MM * 0.2 });
+		nearPoint(imageToMat(OFF_SQUARE, p), q.x, q.y, 1e-8);
 	});
 
 	test('a point outside the calibrated rectangle maps outside the mat, not clamped', () => {
@@ -107,8 +145,8 @@ describe('known answers on an off-square calibration', () => {
 		// the edge instead of telling the caller it is off the mat.
 		const p: ImagePoint = { u: 0.0, v: 0.98 };
 		const mat = imageToMat(OFF_SQUARE, p);
-		expect(mat.x).toBeLessThan(0);
-		expect(mat.y).toBeLessThan(0);
+		expect(mat.x).toBeLessThan(MAT_ORIGIN.x);
+		expect(mat.y).toBeLessThan(MAT_ORIGIN.y);
 	});
 });
 
@@ -129,19 +167,20 @@ describe('the inverse', () => {
 	});
 
 	test('the mat corners come back as the tapped corners', () => {
-		const o = matToImage(OFF_SQUARE, { x: 0, y: 0 });
+		const o = matToImage(OFF_SQUARE, MAT_ORIGIN);
 		near(o.u, OFF_SQUARE.origin.u, 1e-12);
 		near(o.v, OFF_SQUARE.origin.v, 1e-12);
-		const f = matToImage(OFF_SQUARE, { x: MAT_WIDTH_MM, y: MAT_HEIGHT_MM });
+		const f = matToImage(OFF_SQUARE, MAT_FAR);
 		near(f.u, OFF_SQUARE.far.u, 1e-12);
 		near(f.v, OFF_SQUARE.far.v, 1e-12);
 	});
 });
 
 describe('orientation is free: all four ways a picture can be turned', () => {
-	// Same playing surface, four ways of tapping it. Every one must map its own
-	// origin tap to (0, 0) and its own far tap to the far mat corner, and must
-	// put the CENTRE of the rectangle at the centre of the mat.
+	// Same mat, four ways of tapping it. Every one must map its own origin tap
+	// to the mat's launch corner -- table (181, 0) -- and its own far tap to
+	// the mat's far corner, and must put the CENTRE of the tapped rectangle at
+	// the centre of the mat.
 	const corners = { left: 0.1, right: 0.9, top: 0.125, bottom: 0.875 };
 	const cases: { name: string; cal: MatCalibration }[] = [
 		{
@@ -165,12 +204,12 @@ describe('orientation is free: all four ways a picture can be turned', () => {
 	for (const { name, cal } of cases) {
 		test(name, () => {
 			expect(isUsableCalibration(cal)).toBe(true);
-			nearPoint(imageToMat(cal, cal.origin), 0, 0);
-			nearPoint(imageToMat(cal, cal.far), MAT_WIDTH_MM, MAT_HEIGHT_MM);
+			nearPoint(imageToMat(cal, cal.origin), MAT_ORIGIN.x, MAT_ORIGIN.y);
+			nearPoint(imageToMat(cal, cal.far), MAT_FAR.x, MAT_FAR.y);
 			nearPoint(
 				imageToMat(cal, { u: (corners.left + corners.right) / 2, v: (corners.top + corners.bottom) / 2 }),
-				MAT_WIDTH_MM / 2,
-				MAT_HEIGHT_MM / 2
+				MAT_ORIGIN_X_MM + MAT_WIDTH_MM / 2,
+				MAT_ORIGIN_Y_MM + MAT_HEIGHT_MM / 2
 			);
 		});
 	}
@@ -183,9 +222,9 @@ describe('orientation is free: all four ways a picture can be turned', () => {
 });
 
 describe('the drawing matrix lands the picture on the mat rectangle', () => {
-	// The mat canvas draws millimetres with y DOWN: mat (0, 0) is svg
-	// (0, MAT_HEIGHT_MM) and mat (MAT_WIDTH_MM, MAT_HEIGHT_MM) is svg
-	// (MAT_WIDTH_MM, 0). The picture is a unit square under this matrix.
+	// The canvas draws TABLE millimetres with y DOWN, so the mat's launch
+	// corner is svg (181, 1143) and its far corner is svg (2181, 9) -- the 9
+	// being the top gap. The picture is a unit square under this matrix.
 	const apply = (m: { a: number; d: number; e: number; f: number }, p: ImagePoint) => ({
 		x: m.a * p.u + m.e,
 		y: m.d * p.v + m.f
@@ -199,11 +238,13 @@ describe('the drawing matrix lands the picture on the mat rectangle', () => {
 		test(`${name} puts the tapped corners on the mat rectangle corners`, () => {
 			const m = calibrationMatrix(cal);
 			const o = apply(m, cal.origin);
-			near(o.x, 0, 1e-9);
-			near(o.y, MAT_HEIGHT_MM, 1e-9);
+			near(o.x, MAT_ORIGIN.x, 1e-9);
+			near(o.y, TABLE_HEIGHT_MM - MAT_ORIGIN.y, 1e-9);
 			const f = apply(m, cal.far);
-			near(f.x, MAT_WIDTH_MM, 1e-9);
-			near(f.y, 0, 1e-9);
+			near(f.x, MAT_FAR.x, 1e-9);
+			near(f.y, TABLE_HEIGHT_MM - MAT_FAR.y, 1e-9);
+			// The top gap is real and visible in the drawing.
+			near(f.y, 9, 1e-9);
 		});
 	}
 
@@ -213,7 +254,7 @@ describe('the drawing matrix lands the picture on the mat rectangle', () => {
 		const onPicture = matToImage(OFF_SQUARE, matPoint);
 		const drawn = apply(m, onPicture);
 		near(drawn.x, matPoint.x, 1e-8);
-		near(drawn.y, MAT_HEIGHT_MM - matPoint.y, 1e-8);
+		near(drawn.y, TABLE_HEIGHT_MM - matPoint.y, 1e-8);
 	});
 });
 
@@ -251,47 +292,153 @@ describe('a calibration that cannot be inverted is refused, not guessed at', () 
 	});
 });
 
-describe('NEGATIVE CONTROL: what stretch-to-fit gets wrong on a real field picture', () => {
-	// The picture this bundle was built against is 2019 by 1153 pixels: a field
-	// layout with the border walls in frame. Its aspect is 1.751:1 while the
-	// playing surface is 2.067:1, so the surface cannot possibly reach both the
-	// left and right edges AND the top and bottom edges of the picture. These
-	// numbers stand in for a plausible calibration of it: the surface spans
-	// most of the width and about three quarters of the height.
-	const REAL_ISH: MatCalibration = {
-		origin: { u: 0.045, v: 0.875 },
-		far: { u: 0.955, v: 0.13 }
-	};
+describe('the FULL FRAME path: a picture already cropped to the mat', () => {
+	test('it is a legitimate calibration, and 0017 would store it', () => {
+		// Read against supabase/migrations/0017_mat_image_calibration.sql:
+		// mat_images_calibration_whole (all four corners or none),
+		// mat_images_calibration_in_frame (each between 0 and 1, inclusive),
+		// mat_images_calibration_span (each axis at least 0.05).
+		const c = FULL_FRAME_CALIBRATION;
+		for (const n of [c.origin.u, c.origin.v, c.far.u, c.far.v]) {
+			expect(n).toBeGreaterThanOrEqual(0);
+			expect(n).toBeLessThanOrEqual(1);
+		}
+		expect(Math.abs(c.far.u - c.origin.u)).toBeGreaterThanOrEqual(0.05);
+		expect(Math.abs(c.far.v - c.origin.v)).toBeGreaterThanOrEqual(0.05);
+		expect(isUsableCalibration(c)).toBe(true);
+	});
 
-	test('the old calibration and a true one disagree by a robot-sized distance', () => {
-		// Measured, not asserted: 183 mm at the far corner of the playing
-		// surface, 153 mm a little inside it, 4 mm dead centre (the two
-		// transforms share a centre, which is exactly why the error hides).
-		// A SPIKE Prime robot is roughly 200 mm long, so a marker off by this
-		// much sends the robot to the wrong model.
+	test('its corners are the mat corners, so the picture IS the sheet', () => {
+		nearPoint(imageToMat(FULL_FRAME_CALIBRATION, { u: 0, v: 1 }), MAT_ORIGIN.x, MAT_ORIGIN.y);
+		nearPoint(imageToMat(FULL_FRAME_CALIBRATION, { u: 1, v: 0 }), MAT_FAR.x, MAT_FAR.y);
+	});
+
+	test('the shape test admits a mat crop and rejects a picture framed on the table', () => {
+		expect(MAT_ASPECT).toBeCloseTo(1.7637, 4);
+
+		// A picture cropped to the mat, at three plausible resolutions.
+		for (const [w, h] of [
+			[2000, 1134],
+			[1600, 907],
+			[1000, 567]
+		]) {
+			expect(fullFrameFit(w, h).fits).toBe(true);
+		}
+
+		// A picture framed on the TABLE inside its walls: 2.07:1. This is the
+		// case the test exists to reject, and it misses by more than eight
+		// times the tolerance.
+		const table = fullFrameFit(TABLE_WIDTH_MM, TABLE_HEIGHT_MM);
+		expect(table.fits).toBe(false);
+		expect(table.off).toBeGreaterThan(8 * FULL_FRAME_ASPECT_TOLERANCE);
+		expect(table.off).toBeCloseTo(0.1717, 3);
+
+		// The tolerance is the named constant and the boundary is the rule.
+		expect(FULL_FRAME_ASPECT_TOLERANCE).toBe(0.02);
+		const justInside = MAT_ASPECT * (1 + FULL_FRAME_ASPECT_TOLERANCE * 0.99);
+		const justOutside = MAT_ASPECT * (1 + FULL_FRAME_ASPECT_TOLERANCE * 1.01);
+		expect(fullFrameFit(justInside * 1000, 1000).fits).toBe(true);
+		expect(fullFrameFit(justOutside * 1000, 1000).fits).toBe(false);
+	});
+
+	test('a degenerate size cannot pass the shape test', () => {
+		expect(fullFrameFit(0, 0).fits).toBe(false);
+		expect(fullFrameFit(Number.NaN, 100).fits).toBe(false);
+	});
+});
+
+describe('NEGATIVE CONTROL: the TABLE stretch this bundle removes', () => {
+	// `legacyTableStretch` is the transform this file used to apply: the same
+	// two taps, read onto the 2362 by 1143 table instead of onto the 2000 by
+	// 1134 mat. Everything below is a measurement of the correction.
+	const CROP = FULL_FRAME_CALIBRATION;
+
+	test('EVERY LONG-AXIS DRIVE WAS 18.1% TOO LONG', () => {
+		// The full width of the mat, tapped as the full width of a picture
+		// cropped to it. The truth is 2000 mm; the old answer was 2362.
+		const a = imageToMat(CROP, { u: 0, v: 1 });
+		const b = imageToMat(CROP, { u: 1, v: 1 });
+		const now = routeMoves([a, b])[0].driveCm;
+		expect(now).toBeCloseTo(200, 9);
+
+		const oldA = legacyTableStretch(CROP, { u: 0, v: 1 });
+		const oldB = legacyTableStretch(CROP, { u: 1, v: 1 });
+		const before = routeMoves([oldA, oldB])[0].driveCm;
+		expect(before).toBeCloseTo(236.2, 9);
+
+		expect(before / now).toBeCloseTo(1.181, 3);
+		expect((before / now - 1) * 100).toBeCloseTo(18.1, 1);
+	});
+
+	test('THE ANISOTROPY: a 45 degree path on the mat came back as 40.5 degrees', () => {
+		// Two points 500 mm apart on each axis of the real mat: a physically
+		// 45 degree drive. In picture fractions on a mat crop that is 0.25 of
+		// the width and 500/1134 of the height.
+		const du = 500 / MAT_WIDTH_MM;
+		const dv = 500 / MAT_HEIGHT_MM;
+		const from: ImagePoint = { u: 0.2, v: 0.8 };
+		const to: ImagePoint = { u: 0.2 + du, v: 0.8 - dv };
+
+		// The movement list, which is what a child actually reads.
+		const moves = routeMoves([imageToMat(CROP, from), imageToMat(CROP, to)]);
+		expect(moves).toHaveLength(1);
+		expect(moves[0].headingDeg).toBeCloseTo(45, 9);
+		expect(moves[0].driveCm).toBeCloseTo(Math.hypot(500, 500) / 10, 9);
+
+		// What it used to say. The two axes were stretched by 2362/2000 and
+		// 1143/1134, and because those DIFFER the angle moved.
+		const legacy = headingDeg(legacyTableStretch(CROP, from), legacyTableStretch(CROP, to));
+		expect(legacy).toBeCloseTo(40.479, 2);
+		expect(Math.abs(legacy - 45)).toBeGreaterThan(4);
+	});
+
+	test('the turn is wrong by an amount that DEPENDS ON DIRECTION, which is the tell', () => {
+		// An isotropic scale error would move every drive by the same factor
+		// and leave every angle alone. This one bends each heading by a
+		// different amount, so no single correction could ever have fixed it.
+		const bend = (deg: number) => {
+			const r = (deg * Math.PI) / 180;
+			const from: ImagePoint = { u: 0.5, v: 0.5 };
+			const to: ImagePoint = {
+				u: 0.5 + (Math.cos(r) * 300) / MAT_WIDTH_MM,
+				v: 0.5 - (Math.sin(r) * 300) / MAT_HEIGHT_MM
+			};
+			return headingDeg(legacyTableStretch(CROP, from), legacyTableStretch(CROP, to)) - deg;
+		};
+		// True at the axes, worst near the diagonal, and never a constant.
+		expect(Math.abs(bend(0))).toBeLessThan(1e-9);
+		expect(Math.abs(bend(90))).toBeLessThan(1e-9);
+		expect(bend(45)).toBeCloseTo(-4.52, 2);
+		expect(bend(20)).not.toBeCloseTo(bend(70), 1);
+	});
+
+	test('and the two transforms agree at the mat centre, which is why nobody saw it', () => {
+		const centre = imageToMat(CROP, { u: 0.5, v: 0.5 });
+		const legacyCentre = legacyTableStretch(CROP, { u: 0.5, v: 0.5 });
+		// The table centre and the mat centre are 4.5 mm apart on y and dead
+		// on in x: a marker in the middle of the mat looked perfect.
+		expect(Math.abs(legacyCentre.x - centre.x)).toBeCloseTo(0, 9);
+		expect(Math.abs(legacyCentre.y - centre.y)).toBeCloseTo(4.5, 9);
+	});
+
+	test('0017 is still right about its own bug: a picture with the table in it', () => {
+		// The picture 0017 was built against is 2019 by 1153 pixels. These
+		// numbers stand in for a plausible calibration of a picture that is
+		// NOT cropped to the mat, and stretching such a picture to any
+		// rectangle at all is still wrong by a robot's length.
+		const REAL_ISH: MatCalibration = {
+			origin: { u: 0.045, v: 0.875 },
+			far: { u: 0.955, v: 0.13 }
+		};
 		const corner: ImagePoint = { u: 0.955, v: 0.13 };
-		expect(disagreementMm(STRETCH_TO_FIT, REAL_ISH, corner)).toBeGreaterThan(150);
-		expect(disagreementMm(STRETCH_TO_FIT, REAL_ISH, { u: 0.9, v: 0.2 })).toBeGreaterThan(140);
-		expect(disagreementMm(STRETCH_TO_FIT, REAL_ISH, { u: 0.5, v: 0.5 })).toBeLessThan(20);
+		expect(disagreementMm(CROP, REAL_ISH, corner)).toBeGreaterThan(100);
+		expect(disagreementMm(CROP, REAL_ISH, { u: 0.5, v: 0.5 })).toBeLessThan(20);
 	});
 
-	test('stretch-to-fit puts the playing surface corner inside the walls, not on them', () => {
-		// Under the old transform the mat origin sat at the very corner of the
-		// PICTURE, which on this image is a point in the border wall.
-		nearPoint(imageToMat(STRETCH_TO_FIT, { u: 0, v: 1 }), 0, 0);
-		// A true calibration reads that same pixel as off the mat on both axes.
-		const mat = imageToMat(REAL_ISH, { u: 0, v: 1 });
-		expect(mat.x).toBeLessThan(0);
-		expect(mat.y).toBeLessThan(0);
-	});
-
-	test('the two agree exactly when the picture really is cropped to the surface', () => {
-		// The positive control for the negative control: stretch-to-fit was not
-		// wrong in principle, it was wrong about this picture. Given a picture
-		// cropped to the mat borders the two transforms are the same transform.
-		expect(disagreementMm(STRETCH_TO_FIT, STRETCH_TO_FIT, { u: 0.3, v: 0.7 })).toBe(0);
-		const cropped = calibrationFromCorners({ u: 0, v: 1 }, { u: 1, v: 0 });
-		expect(cropped).not.toBeNull();
-		expect(disagreementMm(STRETCH_TO_FIT, cropped as MatCalibration, { u: 0.62, v: 0.31 })).toBe(0);
+	test('the positive control: cropped really does mean cropped', () => {
+		expect(disagreementMm(CROP, CROP, { u: 0.3, v: 0.7 })).toBe(0);
+		const tapped = calibrationFromCorners({ u: 0, v: 1 }, { u: 1, v: 0 });
+		expect(tapped).not.toBeNull();
+		expect(disagreementMm(CROP, tapped as MatCalibration, { u: 0.62, v: 0.31 })).toBe(0);
 	});
 });

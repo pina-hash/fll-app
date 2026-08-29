@@ -9,8 +9,17 @@
 import { describe, expect, test } from 'vitest';
 import {
 	MAT_HEIGHT_MM,
+	MAT_ORIGIN_X_MM,
+	MAT_ORIGIN_Y_MM,
+	MAT_SIDE_STRIP_MM,
+	MAT_TOP_GAP_MM,
 	MAT_WIDTH_MM,
 	MATCH_SECONDS,
+	TABLE_HEIGHT_MM,
+	TABLE_WIDTH_MM,
+	matToTable,
+	onMat,
+	tableToMat,
 	formatSeconds,
 	headingDeg,
 	inLaunchArea,
@@ -22,11 +31,50 @@ import {
 	turnDelta
 } from '../src/lib/planner/geometry';
 
-describe('mat constants', () => {
-	test('the mat is 93 by 45 inches in millimeters and a match is 150 seconds', () => {
-		expect(MAT_WIDTH_MM).toBe(2362);
-		expect(MAT_HEIGHT_MM).toBe(1143);
+describe('the two rectangles', () => {
+	test('the TABLE is 93 by 45 inches in millimetres, unchanged and unchangeable', () => {
+		// 0012 CHECKs waypoints at `x_mm between 0 and 2362` and `y_mm between
+		// 0 and 1143`. These two numbers are the coordinate space and no
+		// migration is in this bundle, so they are pinned literally.
+		expect(TABLE_WIDTH_MM).toBe(2362);
+		expect(TABLE_HEIGHT_MM).toBe(1143);
 		expect(MATCH_SECONDS).toBe(150);
+	});
+
+	test('the MAT is 2000 by 1134 mm, and the derivation is the published one', () => {
+		// FIRST publishes the strips and the gap, not the sheet. The 2000 is
+		// confirmed twice: it also falls out of the official wireframe, which
+		// is ten 20 cm columns across the long axis. The 1134 rests on the
+		// 9 mm top gap alone.
+		expect(MAT_SIDE_STRIP_MM).toBe(181);
+		expect(MAT_TOP_GAP_MM).toBe(9);
+		expect(MAT_WIDTH_MM).toBe(2000);
+		expect(MAT_HEIGHT_MM).toBe(1134);
+		expect(MAT_WIDTH_MM).toBe(10 * 200);
+		expect(TABLE_WIDTH_MM - 2 * MAT_SIDE_STRIP_MM).toBe(MAT_WIDTH_MM);
+		expect(TABLE_HEIGHT_MM - MAT_TOP_GAP_MM).toBe(MAT_HEIGHT_MM);
+	});
+
+	test('the mat sits one strip in from the left and FLUSH with the bottom', () => {
+		expect(MAT_ORIGIN_X_MM).toBe(181);
+		expect(MAT_ORIGIN_Y_MM).toBe(0);
+		expect(matToTable({ x: 0, y: 0 })).toEqual({ x: 181, y: 0 });
+		expect(matToTable({ x: MAT_WIDTH_MM, y: MAT_HEIGHT_MM })).toEqual({ x: 2181, y: 1134 });
+		// The right-hand strip is the same width as the left-hand one.
+		expect(TABLE_WIDTH_MM - 2181).toBe(MAT_SIDE_STRIP_MM);
+		// And the only other bare table is the 9 mm at the top.
+		expect(TABLE_HEIGHT_MM - 1134).toBe(MAT_TOP_GAP_MM);
+	});
+
+	test('the two conversions are inverses, and off-mat table points read negative', () => {
+		const p = { x: 1234, y: 567 };
+		expect(matToTable(tableToMat(p))).toEqual(p);
+		expect(tableToMat({ x: 0, y: 0 }).x).toBeLessThan(0);
+		// A waypoint on the bare strip is a legal waypoint and is NOT on the mat.
+		expect(onMat({ x: 90, y: 500 })).toBe(false);
+		expect(onMat({ x: 1181, y: 1140 })).toBe(false);
+		expect(onMat({ x: 181, y: 0 })).toBe(true);
+		expect(onMat({ x: 2181, y: 1134 })).toBe(true);
 	});
 });
 
