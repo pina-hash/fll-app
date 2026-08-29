@@ -65,6 +65,15 @@ supabase db reset               # re-apply the chain + seed from scratch
 supabase migration up           # apply pending files to the running local stack
 supabase db push                # apply pending files to the linked project (never the seed)
 supabase gen types typescript --local > src/lib/supabase/database.types.ts
+
+# Land ONE migration and the branch carrying it, in one command, from Git Bash.
+# Refuses a dirty tree; merges main into the branch; PARSES
+# `migration list --linked` and aborts if any file below the target is missing
+# from the remote ledger (db push would replay it); prints the SQL and waits for
+# a typed "apply NNNN"; pushes; verifies from the CATALOG, not the ledger;
+# merges to main with --no-ff; db reset; vitest. Nothing is rolled back.
+bash scripts/land-migration.sh 0026 claude/notebook-write-permissions-sbwtjq
+bash scripts/land-migration.sh --self-test   # proves the ledger gate itself
 ```
 
 ### Supabase CLI credentials
@@ -146,6 +155,7 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
 
 - SQL lives in `supabase/migrations/`, sequentially numbered `NNNN_<area>_<what>.sql`. **Applied by the Supabase CLI**, never pasted: `supabase migration up` locally, `supabase db push` to the linked project. The CLI records each file in `supabase_migrations.schema_migrations`.
 - **A MIGRATION APPLIED BY HAND LEAVES THE LEDGER DISAGREEING WITH THE DATABASE, AND NOTHING NOTICES UNTIL SOMEBODY GOES LOOKING.** 0019, 0020 and 0021 were each applied outside the chain, by a dashboard SQL editor or a direct execute rather than `supabase db push`, three times in a row across three separate sessions. Each time `supabase_migrations.schema_migrations` stopped short of the real schema while the SQL itself was fully and correctly present, and `migration list --linked` reported the file as unapplied against a database that already had it. The fix each time was `supabase migration repair --status applied <version>`, which writes only the ledger row and no DDL, after confirming from the schema itself (not from the ledger) that the migration's objects, rewrites and grants actually match what the file specifies. **A migration is delivered by running `supabase db push`, or it is not delivered.** Committing the file and reporting it shipped is not the same claim as pushing it; say so if the push has not happened. If `db push` is blocked (a permission classifier, a missing credential, anything), stop and hand back the exact command rather than reaching for the dashboard, the Management API's query endpoint, or any other path that writes SQL without writing the ledger row alongside it -- that path is the one that created this problem in the first place.
+- **`scripts/land-migration.sh` IS THAT PARAGRAPH AS A PROCEDURE, AND IT IS HOW A MIGRATION IS DELIVERED NOW.** One command per migration: it refuses a dirty tree, merges `main` into the branch, parses `migration list --linked` and REFUSES TO REACH `db push` while any file below the target is missing from the remote ledger, prints the SQL and waits for a typed `apply NNNN`, pushes through the wrapper, verifies the objects the file creates against the CATALOG (read only, the same token `.env` pins, the address `tests/db/linked.ts` uses), merges with `--no-ff`, then resets local and runs the suite. It resolves a `docs/HISTORY.md` conflict by keeping both sides in bundle order and STOPS on any other conflicted path. It never rolls back: once the SQL is live, reverting the merge would leave the schema ahead of the code, so a red suite is reported as a finding and left for a human. `--self-test` exercises the ledger gate against captured `migration list` output, including a chain with a hole in it; run it if you touch the parser.
 - **Migrations are an immutable applied record.** Never rewrite an applied file to change behaviour; write a new one.
 - **Idempotent where practical** (`create or replace`, `if not exists`, `drop policy if exists` before `create policy`, a catalog guard around `create type`). A failed first attempt is retried over a half-built schema.
 - **A migration REFUSES rather than destroys.** If a precondition is unmet, raise with the counts and what to do about it. Report counts with `raise notice`.

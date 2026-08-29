@@ -4695,3 +4695,161 @@ dark, because the choice is per device and not per account.
   FIRST palettes and the Roboto family, neither of which has been true since the
   IDEA bundle). Reported last bundle, still a comment, still not this bundle's
   remit.
+
+## 2026-08-29 -- Two branches to main, and the six-step delivery becomes one command
+
+Two reviewed branches carrying no SQL went to `main`, and the hand-run
+procedure for delivering a migration became `scripts/land-migration.sh`.
+
+### What landed on main
+
+Both merged `--no-ff` in order, from `d050814`, and both merged clean; they
+touch disjoint directories, so a conflict would have been a signal rather than
+something to resolve.
+
+- `claude/planner-mat-dimensions-a5nt7m` (a0d5f6a): the mat geometry
+  correction. Ten files, all under `src/lib/planner/` and `tests/`.
+- `claude/robot-build-manual-access-513wpq` (04d8668): the build manual made
+  reachable. Seven files, all under `src/lib/content/`, `src/routes/app/` and
+  `tests/`.
+- `main` is `0f2e3fa`.
+
+**Confirmed by reading the artifact on the remote, not by trusting the push.**
+`src/routes/app/build/+page.svelte` is on `origin/main` (blob
+`8b5dd25`), and it carries the reason it joins no route group: the mentor group
+would 403 a student, the student group would 403 the board.
+`src/lib/planner/geometry.ts` on `origin/main` declares `TABLE_WIDTH_MM = 2362`,
+`TABLE_HEIGHT_MM = 1143`, `MAT_SIDE_STRIP_MM = 181`, `MAT_TOP_GAP_MM = 9`, and
+derives `MAT_WIDTH_MM = 2000` and `MAT_HEIGHT_MM = 1134` from them; its header
+now calls 2362 by 1143 THE TABLE and records that the old comment called those
+numbers the mat for six bundles. `docs/HISTORY.md` was 4697 lines at that
+point.
+
+**Neither branch wrote a HISTORY entry.** Both shipped without one, which the
+documentation rule asks for. Recorded here rather than fixed: their reasoning
+lives in their own file headers, and back-filling two entries from a diff would
+be a worse record than none.
+
+### scripts/land-migration.sh
+
+The delivery of one migration used to be six steps run by hand, and three
+times running (0019, 0020, 0021) the SQL reached production by a path that
+writes no ledger row. The script is that procedure with the failure modes
+written into it.
+
+- **STEP 3 IS THE WHOLE POINT AND EVERYTHING ELSE IS PLUMBING.** `db push`
+  does not push the file you name, it pushes every local migration the remote
+  ledger is missing. So a hole BELOW the target means `db push` replays a file
+  whose objects may already be live. The script parses
+  `migration list --linked`, and a hole below the target ABORTS: nothing after
+  it runs, and the message names each file and tells the reader how to tell
+  "genuinely absent" from "present but unrecorded", with the
+  `migration repair --status applied` command for the second case.
+- **THE PARSER IS PROVED, NOT ASSERTED, AND THE PROOF SHIPS WITH IT.**
+  `--self-test` runs it against four captured shapes of the CLI's own output:
+  a clean chain, a chain with 0024 missing from the remote ledger, an
+  ASCII-pipe rendering with the target applied and a file pending above it,
+  and a target absent from the list entirely. It runs on EVERY invocation
+  before anything is touched, so a broken gate stops the run rather than
+  waving it through.
+- **The gate was mutated in the permissive direction to prove it bites.**
+  Collapsing the below/above branch so every hole classified as `above`
+  (a warning, not an abort) reddened two of the four cases with the exact
+  diff printed. Restored byte-identically, md5 `cde48bb7...` before and
+  after, and green again.
+- **ONE CREDENTIAL PATH.** Every CLI call goes through
+  `scripts/wsl-supabase.sh`. The script never runs a bare `supabase` and never
+  sets `SUPABASE_ACCESS_TOKEN` in its own environment. It also refuses to run
+  if the checkout it is in is not the directory the wrapper cds to inside WSL,
+  because that mismatch would push one tree's migrations while reporting on
+  another's.
+- **STEP 6 READS THE CATALOG, NOT THE LEDGER AND NOT THE PUSH OUTPUT**, since
+  those are the two things that agreed with themselves and disagreed with the
+  database all three times. The objects are read OUT OF THE MIGRATION FILE
+  (functions, triggers with their table, tables, indexes, types, policies),
+  with dollar-quoted bodies skipped so a `create` inside a function body is
+  not mistaken for an object the file creates, so the step is not specific to
+  0026. Against `0026_notebook_whole_team_writes.sql` it extracts exactly
+  `notebook_can_edit`, `notebook_can_confirm`, `_meeting_recaps_confirm_gate`
+  and the trigger `meeting_recaps_confirm_gate` on `meeting_recaps`, which is
+  the list that bundle is meant to deliver. The read is a SELECT against the
+  Management API address `tests/db/linked.ts` already uses, with the token
+  extracted by the wrapper's own expression. **If it cannot reach the remote
+  it says so and prints the SQL to paste**, and asks for a second typed
+  confirmation before merging on an unconfirmed schema. It never reports
+  success it did not measure.
+- **The typed confirmation is `apply NNNN`, not a keypress.** It names what
+  and which, so a stray Enter cannot push and a scrollback paste cannot
+  either.
+- **`docs/HISTORY.md` IS THE ONE FILE A CONFLICT IS RESOLVED IN, AND THE
+  RESOLUTION IS MECHANICAL.** It is append-at-the-end by construction, so two
+  bundles in flight conflict there and nowhere else; `git merge-file --union`
+  over the three stages keeps both, in bundle order. ANY OTHER CONFLICTED PATH
+  aborts the merge and restores the tree. Both paths were exercised in
+  sandbox repositories: the union path produced both entries in order with no
+  markers, no leftovers and a merge commit; the other path aborted with the
+  conflicting path named and `git status` clean at the pre-merge commit.
+- **The union merge drops the blank line between the two headings.** Both
+  entries are present and ordered; only the spacing wants a human eye. Written
+  into the script's own comment rather than worked around.
+- **NOTHING IS ROLLED BACK, DELIBERATELY.** By step 8 the SQL is live and
+  `main` is pushed. A red suite is reported as a finding, loudly, in the
+  closing block, and the script exits 2; reverting the merge would leave the
+  schema ahead of the code, which is worse than a red suite somebody can read.
+- **It holds a WSL session open for its own duration.** `db reset` in step 8
+  is exactly the case CLAUDE.md warns about, where the VM shuts down with no
+  session open and kills the containers mid-run.
+- Every abort prints the same three headings: what stopped, where that leaves
+  the repo AND the linked project, and the next command to run.
+
+### Measured
+
+- `--self-test`: 4 of 4 cases green. Gutted permissively: 2 of 4 red, with the
+  expected and actual classifications printed. Restored, md5 identical, green.
+- Object extraction against `0026`: the four objects above and nothing else.
+  Against `0019`: 12 functions, 1 index, 1 policy, 1 table, 2 triggers with
+  their table resolved. Against `0017`: 1 table, 2 triggers, 5 policies.
+- `shellcheck --shell=bash scripts/land-migration.sh`: clean, no findings.
+  `bash -n`: clean.
+- Argument handling: no arguments prints usage and exits 1; a version with no
+  branch aborts with the usage as its "what to do next"; `-h` exits 0.
+- `npx svelte-kit sync && npx svelte-check`: **0 errors, 0 warnings, 726 files**,
+  which is the documented baseline. It needs a `.env` carrying the two
+  `PUBLIC_SUPABASE_*` names to reach it: without one, `svelte-kit sync`
+  generates no members on `$env/static/public` and the same 5 errors appear in
+  `hooks.server.ts`, `service-client.ts` and the root `+layout.ts`. Measured
+  both ways in this container to be sure the 5 were the missing file and not a
+  defect; the placeholder `.env` was deleted afterwards and is gitignored
+  either way.
+- **The DB-free tests covering the two merged branches: 7 files, 209 tests, all
+  passing** (`planner-geometry`, `planner-units`, `planner-calibration`,
+  `build-manual-entry`, `design-tokens`, `theme-contrast`, `theme-toggle`).
+
+### Not verified
+
+- **THE SCRIPT HAS NEVER BEEN RUN END TO END.** This session had no WSL, no
+  Docker, no `.env` and no reach to the linked project, and was instructed to
+  run no `supabase` command at all. What is proved is the parser, the object
+  extractor, both merge paths, the argument handling and the shell itself.
+  What is NOT proved is any step that talks to Supabase: steps 3, 5, 6 and 8
+  have never executed against a real CLI or a real project. **The first run
+  on Mr. Pina's machine is the real test**, and the safe way to take it is to
+  read the step 3 output and the SQL, then stop at the confirmation prompt the
+  first time by typing anything else: everything before that prompt is
+  read-only apart from a local merge on the branch.
+- **The captured `migration list` output in the self test is written from the
+  format the CLI documents and HISTORY records, not copied from a live run**
+  of this machine's CLI. If 2.115.0 draws that table differently the parser is
+  tolerant of the differences seen so far (box characters or ASCII pipes, with
+  or without bracketing pipes) but has not met the real thing. A first run
+  that reports `target-missing` for a file that is plainly listed is that
+  mismatch, and the fix is a fifth fixture.
+- **0026 is still unpushed and `claude/notebook-write-permissions-sbwtjq` is
+  still unmerged**, which is the correct state: the script is the machinery
+  for landing it and has not been run.
+
+### Deferred
+
+- A `create policy` whose `on <table>` sits on a following line extracts with
+  an empty table in step 6's object list. Cosmetic only: the lookup keys on
+  the policy name and `pg_policies` returns the table anyway.
