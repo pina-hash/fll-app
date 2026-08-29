@@ -43,8 +43,30 @@ export { BABY_SHARKS_FLL_CODING_URL, BABY_SHARKS_PYTHON_URL, BABY_SHARKS_ENGINEE
  *  static/build/ (this repo's own copy, same file fll-camp already
  *  downloaded and shipped from its public/build/) -- not a FIRST publication,
  *  so the link-only rule for PrimeLessons / FLL Tutorials / Baby Sharks does
- *  not apply to it. */
+ *  not apply to it.
+ *
+ *  THE PATH IS WRITTEN DOWN ONCE, HERE. Five surfaces reach this manual now
+ *  (the /app/build screen, the signed-in home card, the student screen, the
+ *  Skill Hub's tile and ROBOT4's resource link) and every one of them imports
+ *  a constant from this file rather than spelling a path of its own.
+ *  `tests/build-manual-entry.test.ts` goes red if a second file types either
+ *  path as a literal. */
 export const COMP_BOT_MANUAL_URL = '/build/comp-bot-manual.pdf';
+
+/** THE IN-APP DESTINATION THAT OPENS THE MANUAL, and what every entry point
+ *  links at. Entry points do NOT link straight at the PDF: the file is 23 MB,
+ *  so the tap that starts pulling it has to be the one on a screen that has
+ *  already said how big it is. A card cannot say that and still be a card. */
+export const COMP_BOT_MANUAL_ROUTE = '/app/build';
+
+/** How many steps the build is. Said on every entry point, because the number
+ *  is what tells a nine-year-old what they are about to open. */
+export const COMP_BOT_MANUAL_STEPS = 225;
+
+/** THE SIZE IN PLAIN WORDS, NEXT TO THE CONTROL, NOT IN A TOOLTIP. The file is
+ *  22,972,648 bytes. A student on a phone on school wifi is about to pull all
+ *  of it, so the number goes where the thumb is. */
+export const COMP_BOT_MANUAL_SIZE = 'about 23 MB';
 
 /** Browse topics, in display order, for the Resource Library's topic bands. */
 export const TOPICS = [

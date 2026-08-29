@@ -1,5 +1,10 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import {
+		COMP_BOT_MANUAL_ROUTE,
+		COMP_BOT_MANUAL_SIZE,
+		COMP_BOT_MANUAL_STEPS
+	} from '$lib/content/resources';
 	import { watchTables } from '$lib/console/live.svelte';
 	import StudentScreen from '$lib/student/StudentScreen.svelte';
 	import { SessionClock } from '$lib/student/clock.svelte';
@@ -199,3 +204,59 @@
 	onStuck={raiseBlocker}
 	onDismissFailure={(id) => queue.dismiss(id)}
 />
+
+<!--
+	THE ROBOT MANUAL, ON THE SCREEN A STUDENT ACTUALLY OPENS. Until this bundle
+	the only route to it was Skill Hub, then Build & Programming, then ROBOT4,
+	then a resource link, and a nine-year-old who never opens the Hub never met
+	it at all.
+
+	IT SITS AFTER StudentScreen AND NOT BEFORE IT, on purpose. The check-in
+	branch of that component is deliberately one question and one button and
+	nothing else, and a band above it would be a second button on the one screen
+	whose whole design is that it has one. Below, it reads as a seventh entry in
+	the destinations list a student already scrolls to.
+
+	THE PROPER HOME IS StudentScreen'S OWN `destinations` SNIPPET -- one more
+	`buildHref` prop beside the five it already takes -- but that component
+	belongs to another lane this bundle, so the link lives here instead. Moving
+	it in is a one-line change and should happen the next time that file is open.
+
+	The bottom padding clears the fixed I'M STUCK bar, which is only rendered on
+	the checked-in branch but is `position: fixed` when it is.
+-->
+<section class="build" data-accent={data.student.accent}>
+	<a class="build__go" href={COMP_BOT_MANUAL_ROUTE}>Build our robot</a>
+	<p class="build__note">
+		All {COMP_BOT_MANUAL_STEPS} steps for this season's robot. It is a big file, {COMP_BOT_MANUAL_SIZE},
+		so it only opens when you tap.
+	</p>
+</section>
+
+<style>
+	.build {
+		background: var(--surface-0);
+		padding: 0 var(--space-3) 7rem;
+	}
+	/* The same slab the student runtime's own destination links are: a link a
+	   nine-year-old taps is a button, not a line of text. */
+	.build__go {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 3.5rem;
+		border-radius: var(--radius-control);
+		border: 2px solid var(--boundary);
+		background: var(--surface-1);
+		color: var(--text-1);
+		text-decoration: none;
+		font-size: var(--fs-h3);
+		font-weight: var(--fw-bold);
+	}
+	.build__note {
+		margin: var(--space-2) 0 0;
+		color: var(--text-2);
+		font-size: var(--fs-small);
+		text-align: center;
+	}
+</style>
