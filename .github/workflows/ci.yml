@@ -40,21 +40,6 @@ on:
 permissions:
   contents: read
 
-env:
-  # PLACEHOLDER VALUES, COMMITTED HERE ON PURPOSE -- never a real credential.
-  #
-  # `svelte-check` type-checks against `$env/static/public`, which
-  # `svelte-kit sync` GENERATES from whatever PUBLIC_-prefixed vars are in
-  # process.env at sync time. It does not read their VALUES, only their
-  # PRESENCE: src/routes/+layout.ts and src/hooks.server.ts import
-  # PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY by name, and with neither
-  # set the generated module exports nothing, which is a type error at both
-  # import sites. A fake URL and a fake key satisfy the type checker exactly
-  # as well as real ones. The test suite does not read these two: it reads
-  # `.env.test` (vitest.config.ts), which names the local stack.
-  PUBLIC_SUPABASE_URL: 'https://ci-placeholder.supabase.co'
-  PUBLIC_SUPABASE_ANON_KEY: 'ci-placeholder-anon-key'
-
 jobs:
   test:
     if: github.event_name != 'schedule'
@@ -100,10 +85,47 @@ jobs:
 
       # The three steps below run even if an earlier one fails, so one push
       # reports every failure rather than only the first.
+      #
+      # PLACEHOLDER VALUES, COMMITTED HERE ON PURPOSE -- never a real
+      # credential.
+      #
+      # `npm run check` runs `svelte-kit sync` before svelte-check, and sync
+      # GENERATES `$env/static/public` from whatever PUBLIC_-prefixed names are
+      # in process.env at that moment. It does not read their VALUES, only
+      # their PRESENCE: src/routes/+layout.ts, src/hooks.server.ts and
+      # src/lib/server/service-client.ts import PUBLIC_SUPABASE_URL and
+      # PUBLIC_SUPABASE_ANON_KEY by name, and with neither set the generated
+      # module declares nothing, which is a type error at all three import
+      # sites. A fake URL and a fake key satisfy the type checker exactly as
+      # well as real ones. `npm ci` runs `prepare`, which syncs before this
+      # step's env exists and therefore writes the empty module; this step's
+      # own sync regenerates it from the two names below, measured in both
+      # directions.
+      #
+      # THE STEP SCOPE IS LOAD BEARING, NOT TIDINESS, and the sentence that
+      # used to stand here -- that the test suite does not read these two --
+      # was the defect. It reads EXACTLY these two: tests/db/harness.ts calls
+      # required('PUBLIC_SUPABASE_URL') and
+      # required('PUBLIC_SUPABASE_ANON_KEY') and points every client at them.
+      # vitest.config.ts supplies them from `.env.test` through dotenv's
+      # `config()`, WHICH DOES NOT REPLACE A NAME process.env ALREADY CARRIES.
+      # While these placeholders sat in a workflow-level `env:` block the test
+      # step inherited them, dotenv skipped those two lines of `.env.test`, and
+      # the db project aimed at a hostname that does not resolve: 30 of 48
+      # files red on `fetch failed`, every one downstream of `signIn`, against
+      # a stack that had booted, applied all 25 migrations and seeded.
+      # Measured rather than reasoned: with the name preset, dotenv reports
+      # "injected env (3)" and the preset value stands; with it unset,
+      # "injected env (4)" and 127.0.0.1:54321. Setting them here, on the one
+      # step that needs them, is what keeps those two answers apart. The Test
+      # suite step below fails loudly if they ever come back.
       - name: Type and a11y check
         id: check
         if: always()
         continue-on-error: true
+        env:
+          PUBLIC_SUPABASE_URL: 'https://ci-placeholder.supabase.co'
+          PUBLIC_SUPABASE_ANON_KEY: 'ci-placeholder-anon-key'
         run: npm run check
 
       # The WHOLE suite: the `pure` project (unit tests over src/lib with no
@@ -115,7 +137,20 @@ jobs:
         id: test
         if: always()
         continue-on-error: true
-        run: npm test
+        run: |
+          set -euo pipefail
+          # THE GUARD, NOT A COURTESY. dotenv's `config()` in vitest.config.ts
+          # will not replace a name process.env already carries, so anything
+          # that sets these two for this step silently re-points every database
+          # test away from the local stack, and the failure surfaces as
+          # `fetch failed` inside `signIn` in tests/db/harness.ts rather than
+          # as the configuration mistake it is. Refuse here, where the message
+          # can name it.
+          if [ -n "${PUBLIC_SUPABASE_URL:-}" ] || [ -n "${PUBLIC_SUPABASE_ANON_KEY:-}" ]; then
+            echo "::error::PUBLIC_SUPABASE_URL or PUBLIC_SUPABASE_ANON_KEY is set in this step's environment. The suite reads exactly these two names (tests/db/harness.ts) and vitest.config.ts fills them from .env.test with dotenv, which does not replace a name already in process.env: the database tests would run against that value instead of the local stack and fail as 'fetch failed' in signIn. Scope those placeholders to the step that needs them, the way the Type and a11y check step above does. Do not set them for the whole workflow."
+            exit 1
+          fi
+          npm test
 
       # `npm run history:verify` (docs/history/_tools/verify-split.mjs)
       # reassembles the 27 pre-split docs/history/record-*.md files and
