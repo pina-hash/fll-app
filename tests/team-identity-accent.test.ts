@@ -32,6 +32,11 @@ import {
 	type SeededMentor,
 	type SeededTeam
 } from './db/harness';
+import type { Database } from '../src/lib/supabase/database.types';
+
+// The eleven colours, from the generated types rather than retyped here: a
+// bare string is not assignable to a teams.accent write or to p_accent.
+type TeamAccent = Database['public']['Enums']['team_accent'];
 
 const service = serviceClient();
 
@@ -212,7 +217,7 @@ describe('choosing: any member proposes, the Run Captain or a mentor confirms', 
 
 describe('THE RACE: two teams pick the same colour at the same moment', () => {
 	/**
-	 * Two real connections, two open transactions. Both read that 'sage' is
+	 * Two real connections, two open transactions. Both read that the colour is
 	 * free BEFORE either writes, which is the only way to reproduce the race
 	 * a screen-level check would lose. Then both write and both try to
 	 * commit.
@@ -267,10 +272,54 @@ describe('THE RACE: two teams pick the same colour at the same moment', () => {
 		}
 	}
 
+	/**
+	 * Ask which colour NOBODY holds, and (below) hand it to a team and prove
+	 * it landed.
+	 *
+	 * 0025 gives the four seeded teams lime, purple, teal and orange before any
+	 * test runs, so a typed literal is a bet against the seed: the setup write is
+	 * refused by teams_accent_unique_live, PostgREST answers 23505 rather than
+	 * throwing, and a case that ignores the error goes on to measure a colour its
+	 * team never held. Asking which are free is what the RPC itself does, and
+	 * checking the write here is what makes a refusal fail on this line by name.
+	 */
+	async function firstFreeColour() {
+		const free = await sql<{ accent: TeamAccent }[]>`
+			select a.accent::text as accent
+			from unnest(enum_range(null::public.team_accent)) as a(accent)
+			where not exists (
+				select 1 from public.teams t
+				where t.accent = a.accent and t.archived_at is null
+			)
+			order by a.accent
+			limit 1`;
+		expect(free, 'the palette has no free colour left; this case needs one').toHaveLength(1);
+		return free[0].accent;
+	}
+
+	async function takeAFreeColour(teamId: string) {
+		const colour = await firstFreeColour();
+		const { data, error } = await service
+			.from('teams')
+			.update({ accent: colour })
+			.eq('id', teamId)
+			.select('id');
+		// An RLS-filtered or constraint-refused write is not a throw: ask for the
+		// row back and treat an empty array as a refusal.
+		expect(error, `the setup write of ${colour} was refused`).toBeNull();
+		expect(data, 'the setup write matched no team').toHaveLength(1);
+		return colour;
+	}
+
 	test('exactly one wins, and the loser is refused by the unique index', async () => {
 		await service.from('teams').update({ accent: null }).in('id', [teamA.teamId, teamB.teamId]);
 
-		const results = await concurrentPick('sage', 'sage');
+		// LOOKED UP, NOT TYPED, for 0025's reason: this case named sage, which the
+		// hand-out order reaches tenth, so it is free today only because the club
+		// runs four teams and not ten.
+		const colour = await firstFreeColour();
+
+		const results = await concurrentPick(colour, colour);
 		const winners = results.filter((r) => r.ok);
 		const losers = results.filter((r) => !r.ok);
 		expect(winners).toHaveLength(1);
@@ -280,7 +329,8 @@ describe('THE RACE: two teams pick the same colour at the same moment', () => {
 
 		// One row holds it, and it is one of the two.
 		const held = await sql<{ id: string }[]>`
-			select id from public.teams where accent = 'sage' and archived_at is null`;
+			select id from public.teams
+			where accent = ${colour}::public.team_accent and archived_at is null`;
 		expect(held).toHaveLength(1);
 		expect([teamA.teamId, teamB.teamId]).toContain(held[0].id);
 	});
@@ -315,14 +365,26 @@ describe('THE RACE: two teams pick the same colour at the same moment', () => {
 	});
 
 	test('the RPC turns that 23505 into a sentence naming the winner', async () => {
-		await service.from('teams').update({ accent: null }).eq('id', teamB.teamId);
-		await service.from('teams').update({ accent: 'purple' }).eq('id', teamA.teamId);
+		const cleared = await service
+			.from('teams')
+			.update({ accent: null })
+			.in('id', [teamA.teamId, teamB.teamId])
+			.select('id');
+		expect(cleared.error, 'both teams must start this case with no colour').toBeNull();
+
+		// THE COLOUR IS LOOKED UP, NOT TYPED, for the same reason as the positive
+		// control above: 0025 hands four of the eleven to the seeded teams before
+		// this file runs, so a typed literal the seed already holds is REFUSED by
+		// teams_accent_unique_live right here. teamA would then hold nothing, the
+		// RPC below would correctly name the seeded holder, and the case would be
+		// measuring the seed instead of the function. Do not retype a colour here.
+		const taken = await takeAFreeColour(teamA.teamId);
 
 		// Confirming a colour another team already holds is the same collision
 		// arriving a moment later, and it is the message a child sees.
 		const { error } = await mentor.client.rpc('team_confirm_accent', {
 			p_team_id: teamB.teamId,
-			p_accent: 'purple'
+			p_accent: taken
 		});
 		expect(error?.message).toContain(teamA.name);
 		expect(error?.message).toContain('Pick another one');
@@ -330,18 +392,30 @@ describe('THE RACE: two teams pick the same colour at the same moment', () => {
 	});
 
 	test('an archived team releases its colour', async () => {
-		await service.from('teams').update({ accent: 'bark' }).eq('id', teamA.teamId);
+		const cleared = await service
+			.from('teams')
+			.update({ accent: null })
+			.in('id', [teamA.teamId, teamB.teamId])
+			.select('id');
+		expect(cleared.error, 'both teams must start this case with no colour').toBeNull();
+
+		// LOOKED UP, NOT TYPED, for 0025's reason: this case named bark, which the
+		// hand-out order reaches sixth, so it is free today only because the club
+		// runs four teams. A fifth would take it and the setup write below would be
+		// refused rather than the write two lines further down.
+		const colour = await takeAFreeColour(teamA.teamId);
+
 		// Taken while the team is live.
 		const blocked = await captureError(
-			() => sql`update public.teams set accent = 'bark' where id = ${teamB.teamId}`
+			() => sql`update public.teams set accent = ${colour}::public.team_accent where id = ${teamB.teamId}`
 		);
 		expect(blocked.code).toBe('23505');
 
 		// Archived, the index no longer covers the row, so the colour is free.
 		await service.from('teams').update({ archived_at: new Date().toISOString() }).eq('id', teamA.teamId);
-		await sql`update public.teams set accent = 'bark' where id = ${teamB.teamId}`;
+		await sql`update public.teams set accent = ${colour}::public.team_accent where id = ${teamB.teamId}`;
 		const held = await sql<{ n: number }[]>`
-			select count(*)::int as n from public.teams where accent = 'bark'`;
+			select count(*)::int as n from public.teams where accent = ${colour}::public.team_accent`;
 		expect(held[0].n).toBe(2);
 		await service.from('teams').update({ archived_at: null, accent: null }).eq('id', teamA.teamId);
 	});

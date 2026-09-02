@@ -3,10 +3,20 @@
 Operating rules for working in this repository. Everything here changes how a
 task is done, whatever the task is.
 
-**The per-bundle historical record lives in [`docs/HISTORY.md`](docs/HISTORY.md)**
--- what each migration and code-only bundle changed, why, what was measured, and
-what was left undone. Read it when you need the REASON a rule below exists
-before changing it. Do not read it end to end.
+**The per-bundle historical record lives in [`docs/history/`](docs/history/), ONE
+FILE PER ENTRY** -- what each migration and code-only bundle changed, why, what
+was measured, and what was left undone. Read it when you need the REASON a rule
+below exists before changing it. **`grep -r` over that directory is how you find
+an entry**; every file's front matter carries its date, branch, migration
+numbers and subsystems as plain text, and `npm run history:index` prints the
+by-subsystem and by-migration indexes. Do not read it end to end.
+`docs/HISTORY.md` is a pointer to it now and is never appended to again; see
+"History" below.
+
+**Last reviewed 2026-09-02**, by the bundle that brought this repo into
+conformance with the IDEA repo workflow standard's section 2: CI, the
+integrate and deploy workflows, the history split, `docs/decisions/`, the
+prompt ledger and the browser harness.
 
 ---
 
@@ -57,15 +67,48 @@ sessions from a console; students (ages 9-13) work a team board from tablets.
 
 ```bash
 npm run dev                     # dev server (http://localhost:5173)
-npx svelte-check                # type + a11y check -- baseline 0 errors, 0 warnings
-npx vitest run                  # full suite; NEEDS the local stack running
+npm run check                   # svelte-check -- baseline 0 errors, 0 warnings
+npm test                        # the whole suite; NEEDS the local stack running
+npm run test:pure               # the 16 files that need no stack and no Docker
 npm run build                   # dies on Windows in the adapter's closeBundle with a symlink EPERM (see traps)
+npm run history:verify          # the docs/history/ split is still lossless (CI runs this)
+npm run history:index           # print the by-subsystem and by-migration indexes; never commit them
+npm run verify:browser          # the visual pass: real Chromium over the /dev routes
 supabase start                  # local stack: applies the chain + seed.sql
 supabase db reset               # re-apply the chain + seed from scratch
 supabase migration up           # apply pending files to the running local stack
 supabase db push                # apply pending files to the linked project (never the seed)
 supabase gen types typescript --local > src/lib/supabase/database.types.ts
 ```
+
+**THE SUITE IS TWO PROJECTS AND THE SPLIT WAS MEASURED, NOT REASONED.** Run at
+0f2e3fa with nothing listening on 54321/54322: **16 files passed in full and
+32 failed on `ECONNREFUSED`**, which is the definition `vitest.config.ts` uses.
+`pure` (343 tests, 6.3s) is everything that needs no Supabase client and no
+Postgres, so it runs on a machine with no Docker; `db` is the rest. 16 + 32 =
+48, the whole suite, no overlap. **A file moves between the lists by hand when
+it changes what it imports**, and the mistake that costs anything is loud: a db
+file listed as pure fails visibly without the stack.
+
+**The visual pass and the status check, neither of which is in CI:**
+
+```bash
+npm run verify:browser -- --selftest    # 68 negative controls; exits 1 if a check is broken
+npm run verify:browser -- --break low-contrast --route route-planner
+node tools/browser-verify/routes/_tools/verify-loader-guards.mjs   # no browser needed
+
+# Standing branches, main against integration, the migration high-water mark.
+# FETCH tools/idea-status.py FROM idea-app FIRST; do not vendor a copy here,
+# because a second copy is the copy that goes stale.
+python3 /tmp/status.py --repo pina-hash/fll-app
+```
+
+**`--repo` DOES NOT EXIST IN `tools/idea-status.py` YET**, checked against
+`pina-hash/idea-app` at `d6811eb` on 2026-09-02: that script hardcodes
+`REPO = "https://github.com/pina-hash/idea-app.git"` and its argument parser
+takes only `--since` and `--keep`. The line above is the INTENDED invocation,
+written down so it is ready when idea-app's own prompt 0005 lands the flag.
+Until then the script reports on idea-app whatever you pass it.
 
 ### Supabase CLI credentials
 
@@ -101,7 +144,7 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
 
 ### Machine and toolchain
 
-- **Docker is not installed on Windows; the local stack runs inside WSL2 Ubuntu.** Docker Engine and the Supabase CLI (2.115.0, pinned to match the Windows CLI) are installed there; run `supabase start|db reset|migration up|gen types` from WSL in `/mnt/c/fll-app-sk`. Ports forward to Windows, so `npm run dev` and `npx vitest run` on Windows talk to `127.0.0.1:54321/54322` as usual.
+- **Docker is not installed on Windows; the local stack runs inside WSL2 Ubuntu.** Docker Engine and the Supabase CLI (2.115.0, pinned to match the Windows CLI) are installed there; run `supabase start|db reset|migration up|gen types` from WSL in `/mnt/c/fll-app-sk`. Ports forward to Windows, so `npm run dev` and `npm test` on Windows talk to `127.0.0.1:54321/54322` as usual.
 - **`scripts/wsl-supabase.sh` is the wrapper that satisfies the credential rule**: it cds to the repo, exports `SUPABASE_ACCESS_TOKEN` from `.env`, and execs the CLI. Call it as `MSYS_NO_PATHCONV=1 wsl.exe -d Ubuntu -- bash /mnt/c/fll-app-sk/scripts/wsl-supabase.sh <args>`.
 - **`scripts/seed-local-session.mjs` fills the local stack with a plausible Friday session** (rosters, roles with deliberate gaps, a started meeting, attendance, tasks, blockers) through the real RPCs, so the console has something to show. Local only.
 - **WSL shuts the VM down when no session is open, which kills the containers mid-run** (Postgres logs "database system was interrupted"). Keep a session open (`wsl.exe -d Ubuntu -- sleep infinity` in the background) for the length of any test or migration work. Every `supabase` call is `MSYS_NO_PATHCONV=1 wsl.exe -d Ubuntu -- bash /mnt/c/...script.sh` -- pass a script path, not an inline command; inline quoting is mangled across the Windows/WSL boundary, and Git Bash rewrites `/mnt/c/...` unless `MSYS_NO_PATHCONV=1` is set.
@@ -110,9 +153,104 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
 
 ---
 
+## Branches
+
+**Work happens on a `claude/**` branch and reaches `main` through
+`integration`. Nothing pushes to `main` except a person pressing Deploy.**
+`.github/workflows/README.md` is the operator's copy of this; what follows is
+the rule.
+
+- **A session develops on the branch its prompt names, commits, and pushes
+  that branch. It never merges to `main` and never force-pushes.** This
+  replaced the older rule that said to commit straight to `main` and not
+  create branches, which was correct when one session worked at a time and is
+  what made two bundles collide in `docs/HISTORY.md`.
+- **`integrate.yml` merges a `claude/**` branch into `integration` as soon as
+  CI is GREEN ON ITS TIP, and deletes it.** There is no "done" flag: push when
+  you are finished, because a work-in-progress commit that passes CI is
+  integrated. A branch still standing means its CI failed, its CI never ran on
+  that commit, or its merge conflicted. All three want a person.
+- **`integration` is the branch to look at.** It is long-lived, always has the
+  latest `main` merged into it, and carries every finished bundle not yet
+  deployed. It gets no CI run from `integrate.yml`'s own push (a push made
+  with `GITHUB_TOKEN` starts no workflow); `ci.yml`'s nightly job dispatches
+  one at 04:30 UTC, and `deploy.yml` dispatches one if it needs a fresh
+  answer.
+- **DEPLOYING IS A DECISION ABOUT A ROOM FULL OF CHILDREN, SO A PERSON MAKES
+  IT.** `deploy.yml` is `workflow_dispatch` only and requires the sentence
+  `every migration on integration is applied to production` typed in full.
+  **In this repo that sentence means applied by `supabase db push`, with its
+  row in `supabase_migrations.schema_migrations`** -- see the apply path at
+  the top of Database conventions, and note that idea-app's copy of
+  `integrate.yml`, which this repo carries byte for byte, describes ITS
+  migration path (hand application) in its header comment. That paragraph is
+  not this repo's rule.
+- **A migration is applied BEFORE the code that calls it is deployed.** CI
+  cannot see this: the suite runs against a local stack with every migration
+  applied, so a branch whose migration has never touched production is green.
+- **Four branches stood when this workflow landed (2026-09-02) and the first
+  sweep leaves all four alone**, which is correct rather than broken:
+  `claude/planner-mat-dimensions-a5nt7m` and
+  `claude/robot-build-manual-access-513wpq` are already contained in `main`
+  and skip as "already in integration";
+  `claude/merge-branches-migration-script-0w3t1u` and
+  `claude/notebook-write-permissions-sbwtjq` have no CI run on their tip,
+  because they were pushed before `ci.yml` existed, and skip as "CI is
+  unknown". Pushing any commit to either of the last two gives it a run.
+- **A branch name can be taken twice**, because the sweep deletes a branch
+  after merging it and a later session's harness can mint the same slug. If
+  that happens, the merged history entry keeps its filename and the new one
+  takes a suffix.
+- **Never rewrite history on a branch somebody else may have checked out**: no
+  rebase, no amend, no force-push. Merge `origin/integration` in and resolve
+  on your own branch.
+
+---
+
+## History
+
+**Three directories, three different questions, and none of them is a TODO
+list.**
+
+| Directory | Answers |
+| --- | --- |
+| [`docs/history/`](docs/history/) | What a bundle changed and why. One file per entry, written at the end of the bundle. |
+| [`docs/decisions/`](docs/decisions/) | What is UNDECIDED, what the code does anyway, and what would settle it. |
+| [`docs/prompt-ledger/`](docs/prompt-ledger/) | What work is already in flight, so two chats do not issue rival prompts. Written BEFORE the prompt is handed over. |
+
+- **A shipped bundle writes ONE NEW FILE in `docs/history/`**: front matter
+  (`title`, `date`, `branches`, `migrations`, `subsystems`), then what
+  changed, the load-bearing decisions and why, what was measured, what is
+  explicitly NOT verified, and what was deferred. **Do not repeat the title as
+  a `## ` heading in the body**: the heading is derived from `title` when the
+  record is reassembled, and a second copy is a second thing to keep in step.
+- **`npm run history:verify` proves the 2026-09-02 split of the old
+  `docs/HISTORY.md` still lossless**, byte for byte, against the pre-split
+  commit and a pinned sha256. CI runs it. `record_order` belongs only to the
+  27 `record-*.md` files that split produced; a new entry never takes one.
+- **`npm run history:index` prints the indexes and nothing commits them.** A
+  committed index is one line every session edits, which is the shared write
+  point the split removed. The old file's hand-maintained migration table is
+  why: it stopped at 0016 while the chain stood at 0025.
+- **Something is promoted into `CLAUDE.md` only when it changes how a FUTURE
+  UNRELATED task should be done.** When a rule here changes, edit it in place
+  and put the reasoning in the history entry; never two versions of one rule.
+- **A question this repo cannot answer from inside itself goes in
+  `docs/decisions/`, with the default the code already runs on.** Not a TODO
+  and not an ADR: an ADR records what was decided, and these record what is
+  not. A decision that turns into code cites its file from the code.
+- **A prompt gets a ledger entry BEFORE it is issued**, naming the paths it
+  owns and whether it may take a migration number. An entry written afterwards
+  records history; an entry written first prevents a collision. Two sessions
+  cannot both take the next migration number.
+- **Commit subjects are plain changelog copy.** Commit and push every session;
+  do not leave work uncommitted.
+
+---
+
 ## Verification standard
 
-- **The full suite once, at the end.** During development run only the files the change touches.
+- **The full suite once, at the end** (`npm test`). During development run only the files the change touches, and `npm run test:pure` is the subset that needs no stack at all -- useful on a machine with no Docker, and never a substitute for the full run.
 - **Assert both directions on any visibility or gating claim.** An empty result from a denied read is indistinguishable from an empty table: the same row is shown to exist through the service role in the same test.
 - **Mutate in the PERMISSIVE direction to prove a boundary test bites.** `using (true)` reproduces the real leak; a policy commented out fails closed and reddens nothing. Restore the file byte-identically (md5) and re-verify green. The cross-team proof was mutated this way when it shipped (HISTORY: 0007).
 - **A CLAIM ABOUT WHAT A SCREEN LOOKS LIKE IS MEASURED ON EVERY SCREEN, NOT
@@ -138,18 +276,67 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
 - **`svelte-check` at the baseline: 0 errors, 0 warnings.** Re-derive it with `npx svelte-kit sync && npx svelte-check`; a session that measures a different number corrects this line in the same change.
 - **A session that creates migration files lists their full repo paths at the end of its response**, one line per file, in apply order, and states what SQL undoes each one (every file carries a `TO UNDO` section; quote it).
 
+### Testing
+
+- **Vitest against the REAL local stack** (`supabase start`), not an embedded Postgres: the claims here are about GoTrue (a bcrypt hash written from SQL signs in), PostgREST (a column with no grant is refused with 42501) and Realtime, and only those services can confirm them.
+- **Layout:** flat `tests/<area>-<concern>.test.ts`, one concern per file; `tests/db/harness.ts` is the only helper. `.env.test` (committed, local defaults only) is loaded by `vitest.config.ts`.
+- **TWO VITEST PROJECTS, `pure` AND `db`, AND THE LISTS ARE HAND-MAINTAINED ON PURPOSE.** `vitest.config.ts` names the 16 pure files; everything else under `tests/` is `db`. The split was measured by running the suite with no stack (see Commands), not inferred from imports, and a file changes list only when a person moves it. CI runs both.
+- **Three ways in, use the right one:** `sql` (postgres.js as `postgres`, bypasses RLS -- seeding and catalog assertions only); `asRole`/`asUser` (one transaction with `request.jwt.claims` + `set local role`, for SQLSTATE-level assertions); `signIn` (a real GoTrue session through Kong/PostgREST, for end-to-end proof).
+- **Files run serially (`fileParallelism: false`) against one shared database.** Each file seeds its own mentor/teams/students with a run-unique suffix through the REAL RPCs and removes them in `afterAll` via `cleanupRun()`. Keep the flag.
+- **Seed helpers go through the real RPCs** (`team_create`, `student_create`), never raw inserts, except `seedMentor`, which performs the exact `auth.users` insert GoTrue performs for a Google sign-in so the trigger is what makes the mentor.
+- **Every denial test has a positive control** (the service role sees the row; the same statement as the owner succeeds). Expected codes: `42501` (RLS / privilege), `23P01` (exclusion), `23503` (foreign key), `23514` (check), `23505` (unique).
+
 ---
 
-## Database conventions
+## Conventions
 
-### Migrations
+### Database conventions
+
+**THE APPLY PATH, FIRST, BECAUSE EVERY OTHER RULE IN THIS SECTION ASSUMES IT.**
+
+A MIGRATION APPLIED BY HAND LEAVES THE LEDGER DISAGREEING WITH THE DATABASE,
+AND NOTHING NOTICES UNTIL SOMEBODY GOES LOOKING. 0019, 0020 and 0021 were each
+applied outside the chain, by a dashboard SQL editor or a direct execute rather
+than `supabase db push`, three times in a row across three separate sessions.
+Each time `supabase_migrations.schema_migrations` stopped short of the real
+schema while the SQL itself was fully and correctly present, and
+`migration list --linked` reported the file as unapplied against a database
+that already had it. The fix each time was
+`supabase migration repair --status applied <version>`, which writes only the
+ledger row and no DDL, after confirming from the schema itself (not from the
+ledger) that the migration's objects, rewrites and grants actually match what
+the file specifies. **A migration is delivered by running `supabase db push`,
+or it is not delivered.** Committing the file and reporting it shipped is not
+the same claim as pushing it; say so if the push has not happened. If
+`db push` is blocked (a permission classifier, a missing credential,
+anything), stop and hand back the exact command rather than reaching for the
+dashboard, the Management API's query endpoint, or any other path that writes
+SQL without writing the ledger row alongside it -- that path is the one that
+created this problem in the first place.
+
+**A MIGRATION FILE AND ITS TEST SHIP IN ONE COMMIT.** The file that adds a
+policy, a grant or an RPC, and the test that asserts both directions of it,
+are one change: CI runs the suite against a stack with the chain applied, so a
+migration arriving without its test is a green run that proves nothing about
+the thing that just landed.
+
+**`scripts/land-migration.sh` is the landing script** -- one command to apply a
+migration and land its branch. It is NOT on `main` as of 2026-09-02: it lives
+on `claude/merge-branches-migration-script-0w3t1u`, unmerged, and
+`claude/notebook-write-permissions-sbwtjq` (which carries 0026) is waiting on
+it. Until that branch lands, the apply path above is run by hand.
+
+**`deploy.yml`'s typed confirmation means exactly the paragraph above**: every
+migration on `integration` applied by `db push`, with its ledger row. Nothing
+else counts as applied.
+
+#### Migrations
 
 - SQL lives in `supabase/migrations/`, sequentially numbered `NNNN_<area>_<what>.sql`. **Applied by the Supabase CLI**, never pasted: `supabase migration up` locally, `supabase db push` to the linked project. The CLI records each file in `supabase_migrations.schema_migrations`.
-- **A MIGRATION APPLIED BY HAND LEAVES THE LEDGER DISAGREEING WITH THE DATABASE, AND NOTHING NOTICES UNTIL SOMEBODY GOES LOOKING.** 0019, 0020 and 0021 were each applied outside the chain, by a dashboard SQL editor or a direct execute rather than `supabase db push`, three times in a row across three separate sessions. Each time `supabase_migrations.schema_migrations` stopped short of the real schema while the SQL itself was fully and correctly present, and `migration list --linked` reported the file as unapplied against a database that already had it. The fix each time was `supabase migration repair --status applied <version>`, which writes only the ledger row and no DDL, after confirming from the schema itself (not from the ledger) that the migration's objects, rewrites and grants actually match what the file specifies. **A migration is delivered by running `supabase db push`, or it is not delivered.** Committing the file and reporting it shipped is not the same claim as pushing it; say so if the push has not happened. If `db push` is blocked (a permission classifier, a missing credential, anything), stop and hand back the exact command rather than reaching for the dashboard, the Management API's query endpoint, or any other path that writes SQL without writing the ledger row alongside it -- that path is the one that created this problem in the first place.
 - **Migrations are an immutable applied record.** Never rewrite an applied file to change behaviour; write a new one.
 - **Idempotent where practical** (`create or replace`, `if not exists`, `drop policy if exists` before `create policy`, a catalog guard around `create type`). A failed first attempt is retried over a half-built schema.
 - **A migration REFUSES rather than destroys.** If a precondition is unmet, raise with the counts and what to do about it. Report counts with `raise notice`.
-- **Every file carries a header essay** (filename, SHOUTED thesis, WHY, what it does not do) and a `TO UNDO` section in prose-SQL. The header is where the reasoning lives; HISTORY.md cites it.
+- **Every file carries a header essay** (filename, SHOUTED thesis, WHY, what it does not do) and a `TO UNDO` section in prose-SQL. The header is where the reasoning lives; the entry in `docs/history/` cites it.
 - **THE SIGNATURE TRAP.** A function gaining a parameter is `drop function`ed at its exact old argument types FIRST. Two overloads differing only by a defaulted trailing parameter make PostgREST unable to resolve the call. `tests/schema-catalog.test.ts` asserts `pg_proc` holds exactly one row per RPC.
 - **`ON UPDATE SET NULL` TAKES NO COLUMN LIST.** Postgres accepts `on delete set null (col)` but refuses `on update set null (col)`; a bare `on update set null` nulls EVERY column of the key, which on a `(student_id, team_id)` composite means `team_id`, which is NOT NULL. When a later table has to react to a student changing team, teach `_student_detach_from_team()` (0013, replaced by 0015) instead. That helper is where "what has to let go of a student who is leaving" is written, and any new table naming a student belongs in it.
 - **Language-SQL helper bodies are validated at creation.** `0001` defines `is_mentor()` and friends before `mentors`/`students` exist, under `set check_function_bodies = off` (restored at the end of that section). A new SQL-language function that reads a table must come AFTER the table, or inside such a guard.
@@ -176,7 +363,7 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
   length, and widening the enum is a decision about the mat.
 - **DATES GO THROUGH `_app_today()` / `_app_day_start()`, NEVER `current_date`.** The season's timezone is `America/Los_Angeles`, pinned in `_app_timezone()` (0009) and mirrored by `SEASON_TZ` in `src/lib/console/clock.ts`. A Friday session runs 16:30-18:00 local, which is 23:30-01:00 UTC: `current_date` splits half of every Friday meeting onto the next day. Where a meeting is in scope, prefer its own window (`started_at` to `now()`) over any date at all.
 
-### RLS and grants
+#### RLS and grants
 
 - **Every table has RLS enabled and at least one policy** (RLS on with no policy is deny-all, which would silently break a feature). One policy per operation, `to authenticated`, named as a lowercase sentence in double quotes, `drop policy if exists` first. `with check` mirrors `using` on UPDATE.
 - **`anon` holds no table grant anywhere and can execute exactly FIVE functions**: `team_login_roster`, `student_claim_seat` (0019, which replaced `student_self_enroll` one for one), `team_size_cap` (0013), `parent_view` and `parent_photo_path` (0014). Each is a door the spec asked for, and the list in `tests/schema-catalog.test.ts` is what makes a sixth a decision rather than an accident. Every one of them is SECURITY DEFINER, builds any address or path it needs rather than accepting one, and answers a caller it does not like with NULL rather than an error.
@@ -189,14 +376,14 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
 - **AN RLS-FILTERED WRITE IS NOT AN ERROR, AND "no error" IS NOT "it landed".** An UPDATE or DELETE whose rows RLS excludes comes back from PostgREST as 204 with zero rows and `error === null`. Any client that reports success from the absence of an error will tell a student their work saved when it did not. Ask for the rows back (`.select()`) and treat an empty array as a refusal. A denied READ is empty for the same reason, which is deliberate (see Auth); a denied WRITE has to be noticed.
 - **Divergence from idea-app, deliberate:** idea-app has zero client write grants; this repo's feature tables accept RLS-governed direct writes (tasks, blockers, evidence, attendance, role assignments, meetings) because the spec calls for it and because a local-first write queue replays idempotent upserts against tables, not RPCs. Auth-sensitive writes (anything touching `auth.users`: student creation, PIN reset, deactivation; team creation, which mints a code) stay behind SECURITY DEFINER RPCs that re-check the caller in their own body.
 
-### RPC shape
+#### RPC shape
 
 `<area>_<verb>_<object>`, SECURITY DEFINER, `set search_path = ''`, `revoke all ... from public`, `grant execute ... to authenticated` (or `to anon` / `to anon, authenticated` for a public door), returns `jsonb`. `p_*` parameters, `v_*` locals, `%rowtype` captures, `for update` before a state check. Errors: `raise exception '<sentence in the user's own terms, ending in a period.>'` -- no ERRCODE, no table names. A student-facing write takes no identity parameter; the caller is `auth.uid()`.
 
 - **A GATE WRITTEN AS `if not (...)` MUST BE WRAPPED IN `coalesce(..., false)`.** `current_student_team_id()` and `current_board_team_id()` are NULL for a caller who is not that thing, so `p_team_id = <null>` is NULL, `false or NULL` is NULL, and `not NULL` is NULL -- which PL/pgSQL's IF treats as "no" and falls straight THROUGH the gate. In a `using` clause NULL and false behave identically, which is why every policy in this schema gets away with the bare form; inside an IF they do not. `match_run_history` (0015) leaked a rival team's history this way until a browser check caught it.
 - **A DEFINER RPC THAT MUST RE-CHECK ITS OWN CALLER STILL RE-CHECKS, even when a trigger or a policy would catch it anyway.** `student_claim_seat` and `student_move_team` count seats themselves under the team row lock so the message names the team the mentor just picked; the cap trigger is the backstop beneath them. When the trigger was gutted in the permissive mutation, those two paths still refused -- which is the belt and braces working, and why the trigger has its own raw-insert proof.
 
-### Realtime
+#### Realtime
 
 `meetings`, `meeting_phases`, `tasks`, `blockers`, `attendance` (0008) and `students`, `teams` (0013) are in `supabase_realtime` with **replica identity full** (mentors hard-delete on the work surface, and a DELETE event with only a key cannot be filtered by `team_id`). Publishing grants no read: RLS is evaluated per subscriber. Adding a table is the idempotent `do $$` block in `0008`; copy it.
 
@@ -204,7 +391,7 @@ supabase gen types typescript --local > src/lib/supabase/database.types.ts
 - **On regaining connectivity, REFETCH.** Resubscribing, the `online` event and a tab becoming visible all trigger a fetch. A missed phase change leaves a table of nine-year-olds on the wrong task for twenty minutes; a redundant fetch costs a few hundred bytes.
 - **A payload that drives a clock carries `server_now`.** The client stores the skew and ticks off the corrected time; a tablet four minutes fast would otherwise show four minutes of phantom overrun.
 
-### Soft delete
+#### Soft delete
 
 A nullable `timestamptz` per noun -- `mentors.deactivated_at`, `students.deactivated_at`, `teams.archived_at`, `student_parent_access.revoked_at`, and from 0019-0020 `student_claim_codes.claimed_at`/`voided_at`, `meetings.cancelled_at` and `notebook_entries.deleted_at` -- and **the filter is stated where the read is**: the identity helpers (so a deactivated account loses every policy at once), `team_login_roster`, `auth_whoami`, `student_create`. A new read over one of those tables states its own `... is null`. Deactivating a student also bans the auth user and drops its sessions (`student_deactivate`); the stamp alone would leave the PIN working. It also frees their seat against the six-seat cap, which is why "deactivate then re-add" is the answer the console offers whenever a move is refused.
 
@@ -212,7 +399,7 @@ A nullable `timestamptz` per noun -- `mentors.deactivated_at`, `students.deactiv
 - **A CANCELLED MEETING IS EXCLUDED IN ONE PLACE.** `_resolve_current_meeting_id()` (0010, taught about `cancelled_at` in 0020) is what `meeting_current()`, `board_live_summary()`, `strategy_can_edit()` and `notebook_can_edit()` all ask. Four surfaces, one line. A read that lists meetings directly states its own filter.
 - **A DELETED ROW DOES NOT TAKE ITS FILE WITH IT, AND SQL CANNOT MAKE IT.** `storage.protect_delete()` in this Postgres image refuses a direct `delete from storage.objects`, and the row is only metadata anyway, so a trigger would hide an orphan rather than remove one. The pairing therefore lives in ONE module per bucket (`src/lib/planner/field-image.ts` for `mat`, the console's evidence delete for `evidence`): remove the object through the Storage API, then delete the row, and report a refusal if either half does not land. **STILL UNSOLVED, WRITTEN DOWN RATHER THAN HIDDEN:** a task cascade deletes `evidence` rows with no client in the loop, and those objects are not removed.
 
-### Local-first write queue (built: `src/lib/student/queue.svelte.ts`)
+#### Local-first write queue (built: `src/lib/student/queue.svelte.ts`)
 
 - Every insert grant includes `id`: the device mints the uuid, so a replayed insert is a conflict, not a duplicate, and a queued update already knows its target.
 - `updated_at` is server-stamped on every mutable table; clients never send it.
@@ -225,7 +412,7 @@ A nullable `timestamptz` per noun -- `mentors.deactivated_at`, `students.deactiv
 
 ---
 
-## Auth
+### Auth
 
 THREE populations, one Auth instance. The boundary for all of them is `0002`'s trigger on `auth.users` (replaced in `0010`); everything in the dashboard is a convenience. PARENTS ARE NOT A FOURTH POPULATION: they hold no identity at all (see below).
 
@@ -248,18 +435,7 @@ THREE populations, one Auth instance. The boundary for all of them is `0002`'s t
 
 ---
 
-## Testing
-
-- **Vitest against the REAL local stack** (`supabase start`), not an embedded Postgres: the claims here are about GoTrue (a bcrypt hash written from SQL signs in), PostgREST (a column with no grant is refused with 42501) and Realtime, and only those services can confirm them.
-- **Layout:** flat `tests/<area>-<concern>.test.ts`, one concern per file; `tests/db/harness.ts` is the only helper. `.env.test` (committed, local defaults only) is loaded by `vitest.config.ts`.
-- **Three ways in, use the right one:** `sql` (postgres.js as `postgres`, bypasses RLS -- seeding and catalog assertions only); `asRole`/`asUser` (one transaction with `request.jwt.claims` + `set local role`, for SQLSTATE-level assertions); `signIn` (a real GoTrue session through Kong/PostgREST, for end-to-end proof).
-- **Files run serially (`fileParallelism: false`) against one shared database.** Each file seeds its own mentor/teams/students with a run-unique suffix through the REAL RPCs and removes them in `afterAll` via `cleanupRun()`. Keep the flag.
-- **Seed helpers go through the real RPCs** (`team_create`, `student_create`), never raw inserts, except `seedMentor`, which performs the exact `auth.users` insert GoTrue performs for a Google sign-in so the trigger is what makes the mentor.
-- **Every denial test has a positive control** (the service role sees the row; the same statement as the owner succeeds). Expected codes: `42501` (RLS / privilege), `23P01` (exclusion), `23503` (foreign key), `23514` (check), `23505` (unique).
-
----
-
-## App conventions
+### App conventions
 
 - **Svelte 5 runes** (`$props`, `$state`, `$derived`); forced on for project files in `vite.config.ts`.
 - **Server-only code lives in `$lib/server/*`** (`service-client.ts`, the one service-role reader). SvelteKit refuses to bundle it client-side, which is what makes it a boundary.
@@ -273,7 +449,7 @@ THREE populations, one Auth instance. The boundary for all of them is `0002`'s t
 
 ---
 
-## Visual theme
+### Visual theme
 
 The token layer is `src/lib/design-system/` (pure CSS custom properties:
 `fonts`, `colors`, `typography`, `effects`, `motion`, `team-accents`, entered
@@ -490,7 +666,7 @@ the two bullets on the alias rule below.
   fixed-width preview frame) states `min-width: 0` or
   `grid-template-columns: minmax(0, 1fr)`, or the page scrolls sideways.
 
-## Skill Hub content
+### Skill Hub content
 
 The Skill Hub (the Robot Game Missions, Core Values, Innovation Project, Build
 & Programming, the Mechanisms Library, Meet the Robot, and the Video and
@@ -530,7 +706,7 @@ the rest of `/app` is.
 
 ---
 
-## The code generator
+### The code generator
 
 `src/lib/codegen/` turns a robot configuration into SPIKE Prime word-block
 `.llsp3` projects. `/app/me/codegen` is the student surface,
@@ -613,7 +789,7 @@ SHAPE works the registry governs and the spec is corrected.
   DEFINED ONCE", applied on the client because this derivation is a screen's
   arithmetic and not a database read.
 
-## The field picture
+### The field picture
 
 The route planner can draw the real field layout under its schematic. That
 picture is FIRST and LEGO copyrighted and this repo is public, so the rules
@@ -690,7 +866,7 @@ below are about DISTRIBUTION first and accuracy second. Both are load-bearing.
 
 ---
 
-## FIRST branding
+### FIRST branding
 
 The app is a FIRST LEGO League Challenge tool and reads as one. The rules
 below come from three documents that were downloaded and read, not
@@ -768,11 +944,3 @@ behind every rule with its page number.
 - **A TEAM ACCENT NEVER TOUCHES A MARK.** `BrandLogo` resets the accent
   variables on its own wrapper so one cannot be inherited, and the accent
   palette is measured to sit at least 27.9 dE from every official colour.
-
----
-
-## Keeping the documentation current
-
-- **A shipped bundle appends its record to `docs/HISTORY.md`**, at the end: what changed, the load-bearing decisions and why, what was measured, what is explicitly NOT verified, what was deferred.
-- **Something is promoted into `CLAUDE.md` only when it changes how a FUTURE UNRELATED task should be done.** When a rule here changes, edit it in place and put the reasoning in the history entry; never two versions of one rule.
-- **Commit subjects are plain changelog copy.** Commit and push every session to `main`; do not leave work uncommitted and do not create branches.
