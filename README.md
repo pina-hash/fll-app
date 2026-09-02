@@ -76,19 +76,33 @@ mentor has created a student through `student_create`.
 ## Tests
 
 ```bash
-npx vitest run
+npm test                       # both projects; the db half needs the local stack
+npm run test:pure              # the 16 files that need no stack and no Docker
 ```
 
-The suite needs the local stack running. Files run serially against one
-shared database; each file creates run-tagged rows and removes them.
+The suite is two vitest projects. `db` needs the local stack running; files run
+serially against one shared database, and each creates run-tagged rows and
+removes them. `pure` is the subset that touches no Supabase client and no
+Postgres, measured by running the whole suite with nothing listening. Both run
+in CI, which boots a real stack on the runner.
 
 ## Other scripts
 
 ```bash
-npx svelte-check               # type + a11y check (baseline: 0 errors, 0 warnings)
+npm run check                  # svelte-check (baseline: 0 errors, 0 warnings)
 npm run build                  # production build
+npm run history:verify         # the docs/history/ split is still lossless
+npm run history:index          # print the record's indexes (never committed)
+npm run verify:browser         # the visual pass: real Chromium over the /dev routes
 supabase gen types typescript --local > src/lib/supabase/database.types.ts
 ```
+
+## Branches and deploys
+
+Work happens on a `claude/**` branch. CI checks it; `integrate.yml` merges it
+into `integration` once green and deletes it; a person presses **Deploy** to
+merge `integration` into `main`, which is what ships. `.github/workflows/README.md`
+is the operator's guide and `CLAUDE.md`'s "Branches" section is the rule.
 
 ## The console
 
@@ -178,10 +192,16 @@ src/
     dev/student-screen/        dev-only harness, 404 in a build
 supabase/
   config.toml                  local stack config
-  migrations/0001..0010        the schema, in apply order
+  migrations/0001..0025        the schema, in apply order
   seed.sql                     local development seed
 tests/
   db/harness.ts                sql / asRole / signIn / seed helpers
   *.test.ts                    one concern per file
-docs/HISTORY.md                per-bundle engineering record
+tools/browser-verify/          the visual pass, driven over the dev routes
+.github/workflows/             CI, the integrate sweep, the deploy button
+docs/
+  history/                     the per-bundle engineering record, one file per entry
+  decisions/                   open questions, with the default the code runs on
+  prompt-ledger/               what work is already in flight
+  HISTORY.md                   a pointer at history/; never appended to again
 ```
