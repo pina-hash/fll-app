@@ -1,17 +1,25 @@
 // tests/build-manual-entry.test.ts
 //
-// THE ROBOT BUILD MANUAL HAS ONE PATH AND FOUR DOORS, AND THE PATH IS WRITTEN
+// THE ROBOT BUILD MANUAL HAS ONE PATH AND FIVE DOORS, AND THE PATH IS WRITTEN
 // DOWN ONCE.
 //
 // The 225-step competition build manual is the document these four teams open
 // more than any other, and for five bundles the only way to it was Skill Hub,
 // then Build & Programming, then ROBOT4, then a resource link: four taps with
-// the word "build" appearing nowhere above the last one. This bundle gave it a
-// destination of its own and three entry points into that destination. The
-// failure mode a fifth door invites is somebody typing the path again, so this
-// file asserts the single-source rule structurally, the way
+// the word "build" appearing nowhere above the last one. An earlier bundle gave
+// it a destination of its own and three entry points into that destination, and
+// a later one added the console nav tab and moved the student door inside the
+// student screen. The failure mode another door invites is somebody typing the
+// path again, so this file asserts the single-source rule structurally, the way
 // tests/codegen-ports.test.ts asserts that only one file assigns a movement
 // pair.
+//
+// THE STUDENT DOOR IS THE COMPONENT, NOT THE PAGE THAT MOUNTS IT. It shipped as
+// a slab that src/routes/app/(student)/me/+page.svelte rendered below
+// StudentScreen, because the lane that added it did not own the component. It
+// is now the seventh entry in that component's own `destinations` snippet, so
+// the assertions below follow it there. The page is still scanned for a typed
+// path, because it is still where the href is passed in.
 //
 // It also asserts the SIZE rule, which is a product rule and not a style one:
 // the file is 23 MB and these are school tablets, so no entry point may embed
@@ -33,18 +41,30 @@ import { ROBOT_ITEMS } from '$lib/content/categories';
 
 const ROOT = process.cwd();
 
-/** The destination screen, plus the three surfaces that lead to it. */
+/** The destination screen, plus the three surfaces that lead to it and say
+ *  what it is before the tap. */
 const ENTRY_POINTS = {
 	destination: 'src/routes/app/build/+page.svelte',
 	home: 'src/routes/app/+page.svelte',
-	student: 'src/routes/app/(student)/me/+page.svelte',
+	student: 'src/lib/student/StudentScreen.svelte',
 	hub: 'src/routes/app/library/+page.svelte'
 } as const;
+
+/**
+ * Doors that link the route without describing the manual, so they carry none
+ * of the copy the entry points above are held to, and the page that mounts the
+ * student screen and passes it the href. They are here for one reason: a path
+ * literal must not hide in them either.
+ */
+const ALSO_SCANNED = [
+	'src/routes/app/+layout.svelte',
+	'src/routes/app/(student)/me/+page.svelte'
+];
 
 const SOURCE_OF_TRUTH = 'src/lib/content/resources.ts';
 
 /** Every file a path literal could hide in. */
-const SCANNED = [SOURCE_OF_TRUTH, ...Object.values(ENTRY_POINTS)];
+const SCANNED = [SOURCE_OF_TRUTH, ...Object.values(ENTRY_POINTS), ...ALSO_SCANNED];
 
 function read(rel: string): string {
 	return readFileSync(join(ROOT, rel), 'utf8');
