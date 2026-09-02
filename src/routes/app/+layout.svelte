@@ -3,6 +3,7 @@
 	import BrandLogo from '$lib/brand/BrandLogo.svelte';
 	import FirstName from '$lib/brand/FirstName.svelte';
 	import { SEASON } from '$lib/brand/rules';
+	import { COMP_BOT_MANUAL_ROUTE } from '$lib/content/resources';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
@@ -29,6 +30,15 @@
 		{ href: '/app/plan', label: 'Plan' },
 		{ href: '/app/codegen', label: 'Robot code' },
 		{ href: '/app/notebook', label: 'Notebook' },
+		/*
+		 * THE BUILD MANUAL SITS BESIDE THE HUB, NOT INSIDE IT. Until this bundle
+		 * the Skill Hub's tile was the only way a mentor reached /app/build from
+		 * the console, and the console's nav is the one place a mentor looks
+		 * without being told where to look. The route is the screen that states
+		 * the 23 MB before the tap, never the file itself, which is why this is
+		 * COMP_BOT_MANUAL_ROUTE and not a path typed a second time.
+		 */
+		{ href: COMP_BOT_MANUAL_ROUTE, label: 'Build' },
 		{ href: '/app/library', label: 'Library' }
 	];
 
