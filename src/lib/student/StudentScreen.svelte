@@ -18,6 +18,11 @@
 	 * stumble on. "Nobody is in this seat" rather than "role unfilled".
 	 */
 	import { formatClock, phaseClock } from '$lib/console/clock';
+	import {
+		COMP_BOT_MANUAL_ROUTE,
+		COMP_BOT_MANUAL_SIZE,
+		COMP_BOT_MANUAL_STEPS
+	} from '$lib/content/resources';
 	import { ROLE_LABEL, type BoardMeeting, type TeamAccent } from '$lib/console/types';
 	import { STUCK_REASONS, type MyRole, type StudentTask } from './types';
 	import type { ConnectionState } from './queue.svelte';
@@ -47,6 +52,7 @@
 		notebookHref?: string;
 		codegenHref?: string;
 		libraryHref?: string;
+		buildHref?: string;
 	}
 
 	let {
@@ -72,7 +78,8 @@
 		matchHref = '/app/me/match',
 		notebookHref = '/app/me/notebook',
 		codegenHref = '/app/me/codegen',
-		libraryHref = '/app/library'
+		libraryHref = '/app/library',
+		buildHref = COMP_BOT_MANUAL_ROUTE
 	}: Props = $props();
 
 	let running = $derived(Boolean(meeting?.started_at && !meeting?.ended_at));
@@ -157,19 +164,32 @@
 	{/if}
 
 	<!--
-		THE SIX PLACES A STUDENT CAN GO, WRITTEN DOWN ONCE.
+		THE SEVEN PLACES A STUDENT CAN GO, WRITTEN DOWN ONCE.
 
 		They used to live only in the final branch, which needs a meeting to be
-		RUNNING and the student to be CHECKED IN. None of the five pages behind
-		them gates on a meeting in its server load, so all five worked perfectly
+		RUNNING and the student to be CHECKED IN. None of the pages behind them
+		gates on a meeting in its server load, so all of them worked perfectly
 		well outside a session and were reachable only by typing the URL. A
 		nine-year-old on a Wednesday got a screen that said "come back later" and
 		offered nothing.
 
-		A SNIPPET RATHER THAN TWO COPIES, because two lists of six links drift:
-		the sixth one here was already indented one tab further than its five
-		siblings, which is what a hand-maintained duplicate looks like just
-		before it starts disagreeing.
+		A SNIPPET RATHER THAN TWO COPIES, because two lists of links drift: the
+		last one here was already indented one tab further than its siblings,
+		which is what a hand-maintained duplicate looks like just before it
+		starts disagreeing.
+
+		THE SEVENTH IS THE BUILD MANUAL, AND IT ARRIVED HERE FROM OUTSIDE THE
+		COMPONENT. It shipped as a slab that /app/me rendered below this screen,
+		because the lane that added it did not own this file. That put the one
+		document all four teams open every session outside the one list a
+		student actually reads. It is a destination like the other six now, and
+		the page above passes its href like any other.
+
+		THE CHECK-IN BRANCH STILL DOES NOT SHOW IT, and that is the point of
+		this snippet living where it does: that branch is one question and one
+		button, and a second thing to tap on it is the design it exists to
+		refuse. A student reaches the manual before the meeting starts and again
+		once they are checked in.
 	-->
 	{#snippet destinations()}
 		<div class="sr__links">
@@ -178,7 +198,20 @@
 			<a class="sr__teamlink" href={matchHref}>Time a practice run</a>
 			<a class="sr__teamlink" href={notebookHref}>Write in our notebook</a>
 			<a class="sr__teamlink" href={codegenHref}>Make our robot code</a>
+			<a class="sr__teamlink" href={buildHref}>Build our robot</a>
 			<a class="sr__teamlink" href={libraryHref}>Look something up</a>
+			<!--
+				THE SIZE WARNING RIDES WITH THE LINK, NOT INSIDE ITS LABEL. The manual
+				is 23 MB on school wifi, and a student is owed that fact before the
+				tap rather than after it. It cannot go in the label: these slabs are
+				one short sentence each and a nine-year-old reads the first line only.
+				So it sits under the list as a note, which is where the slab this
+				replaced already put it.
+			-->
+			<p class="sr__buildnote">
+				All {COMP_BOT_MANUAL_STEPS} steps for this season's robot. It is a big file, {COMP_BOT_MANUAL_SIZE},
+				so it only opens when you tap.
+			</p>
 		</div>
 	{/snippet}
 
@@ -662,6 +695,14 @@
 	   already was: on .sr__teamlink's own margin-top, not on a gap here. */
 	.sr__links {
 		width: 100%;
+	}
+	/* The note is body copy about a file, not a status, so it takes the ink
+	   ladder rather than --warning. Centred because the list above it is. */
+	.sr__buildnote {
+		margin: var(--space-2) 0 0;
+		color: var(--text-2);
+		font-size: var(--fs-small);
+		text-align: center;
 	}
 
 	/* A link a nine-year-old taps is a button, not a line of text. */
