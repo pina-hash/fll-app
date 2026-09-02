@@ -9,7 +9,13 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vitest run",
+		"test:pure": "vitest run --project pure",
+		"test:watch": "vitest",
+		"verify:browser": "node tools/browser-verify/run.mjs",
+		"history:index": "node docs/history/_tools/index.mjs",
+		"history:verify": "node docs/history/_tools/verify-split.mjs"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-vercel": "^6.3.4",
@@ -17,6 +23,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/node": "^26.2.0",
 		"dotenv": "^17.4.2",
+		"playwright-core": "1.56.1",
 		"postgres": "^3.4.9",
 		"svelte": "^5.56.1",
 		"svelte-check": "^4.6.0",

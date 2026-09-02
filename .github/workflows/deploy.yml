@@ -1,0 +1,142 @@
+name: Deploy
+
+# The one workflow that moves `main`, and it moves it only when a PERSON
+# presses the button and types the sentence. integrate.yml collects green
+# session branches onto `integration`; this merges `integration` into `main`
+# with `--no-ff`, never with force, and only after two checks:
+#
+#   1. The typed confirmation. In this repo the sentence means: every
+#      migration file on `integration` has been applied to the linked
+#      production project by `supabase db push`, so that
+#      `supabase_migrations.schema_migrations` carries its row. Not by the
+#      dashboard SQL editor, not by a direct execute -- CLAUDE.md (Database
+#      conventions) records three migrations that were hand-applied and left
+#      the ledger disagreeing with the database. A push to `main` deploys
+#      Vercel, and code that calls an RPC the database does not have yet is
+#      an outage at the first Friday session.
+#   2. CI green on `integration`'s tip. `integration` is pushed by
+#      integrate.yml with GITHUB_TOKEN, which starts no workflow, so this job
+#      looks for a completed CI run at that exact sha and, if there is none,
+#      dispatches one and waits for it.
+#
+# The shape follows the deploy workflow idea-app's prompt ledger specifies
+# (workflow_dispatch, a typed confirmation, CI on the tip, --no-ff into main).
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: >-
+          Type exactly: every migration on integration is applied to production
+          -- meaning applied by `supabase db push` with its ledger row in
+          supabase_migrations.schema_migrations, never by the dashboard SQL
+          editor.
+        required: true
+        type: string
+
+# One deploy at a time. A second press waits rather than racing the first.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  deploy:
+    # The sentence is checked here AND in the first step: a typo in the input
+    # skips the whole job, and the step is the belt under that brace.
+    if: inputs.confirm == 'every migration on integration is applied to production'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the typed confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "every migration on integration is applied to production" ]; then
+            echo "::error::the confirmation sentence did not match; nothing was merged"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Require green CI on integration's tip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CI_WORKFLOW_FILE: ci.yml
+        run: |
+          set -euo pipefail
+          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          if ! git rev-parse --verify --quiet refs/remotes/origin/integration >/dev/null; then
+            echo "::error::integration does not exist; there is nothing to deploy"
+            exit 1
+          fi
+          tip="$(git rev-parse refs/remotes/origin/integration)"
+          echo "integration tip: $tip"
+
+          conclusion_at_tip() {
+            gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/$CI_WORKFLOW_FILE/runs" \
+                -f branch=integration -f status=completed -f per_page=50 2>/dev/null \
+              | jq -r --arg sha "$tip" \
+                  '[.workflow_runs[] | select(.head_sha == $sha)]
+                     | sort_by(.run_number) | last | .conclusion // "none"'
+          }
+
+          conclusion="$(conclusion_at_tip)"
+          if [ "$conclusion" != success ]; then
+            echo "::notice::no successful CI run at ${tip:0:7} yet (found: $conclusion); dispatching one and waiting"
+            gh workflow run "$CI_WORKFLOW_FILE" --ref integration
+            # Poll for up to 40 minutes. The run has to boot a Supabase stack
+            # and run the whole suite; a typical run is well inside that.
+            i=0
+            while [ "$i" -lt 80 ]; do
+              sleep 30
+              conclusion="$(conclusion_at_tip)"
+              if [ "$conclusion" = success ]; then break; fi
+              if [ "$conclusion" != none ] && [ "$conclusion" != null ]; then
+                echo "::error::CI on integration at ${tip:0:7} finished with '$conclusion'; nothing was merged"
+                exit 1
+              fi
+              i=$((i + 1))
+            done
+          fi
+          if [ "$conclusion" != success ]; then
+            echo "::error::CI on integration at ${tip:0:7} did not report success in time; nothing was merged"
+            exit 1
+          fi
+          echo "CI at ${tip:0:7}: $conclusion"
+          echo "INTEGRATION_TIP=$tip" >> "$GITHUB_ENV"
+
+      - name: Merge integration into main with --no-ff and push
+        run: |
+          set -euo pipefail
+          git checkout -B main origin/main
+          if git merge-base --is-ancestor "$INTEGRATION_TIP" HEAD; then
+            echo "::notice::main already contains integration at ${INTEGRATION_TIP:0:7}; nothing to deploy"
+            exit 0
+          fi
+          # --no-ff so the deploy is one merge commit that reverts as one, the
+          # repo's own merge convention. A conflict here means somebody moved
+          # main by hand since the last sweep; it is resolved on integration
+          # by a person, never here, and never by force.
+          if ! git merge --no-ff --no-edit -m "Deploy integration into main" "$INTEGRATION_TIP"; then
+            git merge --abort || true
+            echo "::error::integration conflicts with main. Merge origin/main into integration by hand, let the sweep pick it up, and press this button again. Nothing was pushed."
+            exit 1
+          fi
+          # NEVER --force. A rejected push means main moved during this run;
+          # the honest response is to stop and let a person press again.
+          git push origin HEAD:refs/heads/main
+          {
+            echo "## Deployed"
+            echo
+            echo "Merged \`integration\` at \`${INTEGRATION_TIP:0:7}\` into \`main\` at \`$(git rev-parse --short HEAD)\`."
+          } >> "$GITHUB_STEP_SUMMARY"
