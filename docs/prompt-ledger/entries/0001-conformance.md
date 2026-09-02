@@ -18,3 +18,12 @@
   `claude/merge-branches-migration-script-0w3t1u`, unmerged). The build-manual
   door (nav entry, redirect, student link) is a separate lane. The four standing
   `claude/**` branches are not merged, rebased or deleted.
+
+  AS SHIPPED, four claims in the issuing prompt were contradicted by the tree
+  and the bundle proceeded without them: the standard document
+  `docs/standards/IDEA_REPO_WORKFLOW_STANDARD.md` does not exist in idea-app on
+  either branch, `tools/idea-status.py` has no `--repo` flag, idea-app has no
+  `docs/decisions/` to copy and no `deploy.yml` to copy. Section 2 is therefore
+  reconstructed from this prompt's own enumeration; the history entry
+  `docs/history/idea-standard-conformance-y51l0n.md` lists all seven
+  contradictions and what was built instead.
