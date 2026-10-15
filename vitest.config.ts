@@ -49,6 +49,7 @@ const PURE = [
 	'tests/student-role-projection.test.ts',
 	'tests/theme-contrast.test.ts',
 	'tests/theme-toggle.test.ts',
+	'tests/volunteer-guide.test.ts',
 	// The codegen control suite lives beside the emitter it breaks on purpose
 	// and needs no database at all (src/lib/codegen/__tests__/).
 	'src/**/*.test.ts'

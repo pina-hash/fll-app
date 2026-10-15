@@ -35,6 +35,13 @@
 			The official {COMP_BOT_MANUAL_STEPS}-step manual for this season's robot
 		</span>
 	</a>
+	<a class="tile tile--volunteer" href="/app/library/volunteer">
+		<span class="tile__icon">🧑‍🏫</span>
+		<span class="tile__label">Volunteer Guide</span>
+		<span class="tile__tagline muted small">
+			Keep teams on the sheets, and look up any mission in the official rulebook
+		</span>
+	</a>
 	<a class="tile" href="/app/library/missions">
 		<span class="tile__icon">{MISSIONS_TILE.icon}</span>
 		<span class="tile__label">{MISSIONS_TILE.label}</span>
@@ -88,7 +95,8 @@
 	/* The one tile that is not a Skill Hub category reads as the one that is
 	   not: an ink ring, the treatment .btn--picked already uses for "this one
 	   is different", rather than a second green active state. */
-	.tile--build {
+	.tile--build,
+	.tile--volunteer {
 		border-color: var(--text-2);
 	}
 </style>
