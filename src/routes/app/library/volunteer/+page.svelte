@@ -20,6 +20,20 @@
 	function reset() {
 		ticked = {};
 	}
+
+	// Find a mission by number or by any part of its name. "7", "07" and
+	// "fungus" all land on the same card.
+	let query = $state('');
+	let shown = $derived.by(() => {
+		const q = query.trim().toLowerCase().replace(/^0+(?=\d)/, '');
+		if (!q) return MISSION_CONTENT;
+		return MISSION_CONTENT.filter(
+			(m) =>
+				String(Number(m.code.slice(1))) === q ||
+				m.code.slice(1).startsWith(q) ||
+				m.title.toLowerCase().includes(q)
+		);
+	});
 </script>
 
 <svelte:head><title>Volunteer Guide</title></svelte:head>
@@ -32,7 +46,22 @@
 	writing things down, get confused, and fall apart. Your job is to keep every team on the sheets.
 </p>
 
-<section>
+<nav class="jump" aria-label="Jump to">
+	<a class="jump__tile" href="#missions">
+		<span class="jump__big">A student asked about a mission</span>
+		<span class="jump__small">Find it, open the official rules</span>
+	</a>
+	<a class="jump__tile" href="#check">
+		<span class="jump__big">Check on a team</span>
+		<span class="jump__small">Seven yes or no questions</span>
+	</a>
+	<a class="jump__tile" href="#sheets">
+		<span class="jump__big">What should a sheet look like?</span>
+		<span class="jump__small">Game Plan, Iteration Log, More Rounds</span>
+	</a>
+</nav>
+
+<section id="sheets">
 	<h2>The three sheets</h2>
 	<p class="muted small">Tap a sheet to see what a good one looks like and what to ask.</p>
 	{#each VOLUNTEER_SHEETS as sheet (sheet.id)}
@@ -57,7 +86,7 @@
 	{/each}
 </section>
 
-<section>
+<section id="check">
 	<h2>Two-minute team check</h2>
 	<p class="muted small">Tap each one the team is doing. Anything left open is where to help.</p>
 	<ul class="check">
@@ -70,7 +99,7 @@
 			</li>
 		{/each}
 	</ul>
-	<p class="count">
+	<p class="count" aria-live="polite">
 		<strong>{done} of {TEAM_CHECK.length}</strong>
 		{#if done === TEAM_CHECK.length}
 			- this team is on track.
@@ -81,7 +110,7 @@
 	<button class="btn btn--secondary" type="button" onclick={reset}>Clear for the next team</button>
 </section>
 
-<section>
+<section id="missions">
 	<h2>Missions</h2>
 	<p class="muted small">
 		A student asks how a mission works? Open the official rulebook at that mission. The summary
@@ -104,14 +133,27 @@
 		override the rulebook, and FIRST changes them during the season. If a rule looks different
 		from the rulebook, check the updates.
 	</p>
+	<label class="search">
+		<span class="search__label">Find a mission</span>
+		<input
+			type="search"
+			inputmode="search"
+			placeholder="Type a number or a name, like 7 or fungus"
+			bind:value={query}
+			autocomplete="off"
+		/>
+	</label>
+	{#if shown.length === 0}
+		<p class="muted">No mission matches "{query}". Clear the box to see all 15.</p>
+	{/if}
 	<ul class="missions">
-		{#each MISSION_CONTENT as m (m.code)}
+		{#each shown as m (m.code)}
 			{@const page = MISSION_RULEBOOK_PAGE[m.code]}
 			<li class="mission">
 				<span class="mission__num">{m.code.slice(1)}</span>
 				<span class="mission__title">{m.title}</span>
 				<span class="mission__links">
-				<a class="btn btn--secondary mission__link" href={`/app/library/missions/${m.code}`}>Summary</a>
+				<a class="btn btn--secondary mission__link" href={`/app/library/missions/${m.code}`}>Quick summary</a>
 				{#if page}
 					<a
 						class="btn btn--primary mission__link"
@@ -119,7 +161,7 @@
 						target="_blank"
 						rel="noopener noreferrer"
 					>
-						Rulebook p{page}
+						Official rules, p{page}
 					</a>
 				{/if}
 				</span>
@@ -272,5 +314,71 @@
 	}
 	.sheet[open] .sheet__chev {
 		transform: rotate(-135deg);
+	}
+	section {
+		scroll-margin-top: var(--space-4);
+	}
+	.jump {
+		display: grid;
+		gap: var(--space-2);
+		margin: var(--space-4) 0 0;
+	}
+	.jump__tile {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-height: 64px;
+		justify-content: center;
+		padding: var(--space-3) var(--space-4);
+		border: 1px solid var(--boundary);
+		border-radius: var(--radius-control);
+		background: var(--surface-2);
+		text-decoration: none;
+	}
+	.jump__big {
+		font-weight: var(--fw-bold);
+		color: var(--text-1);
+		font-size: var(--fs-body);
+	}
+	.jump__small {
+		color: var(--text-2);
+		font-size: 0.875rem;
+	}
+	.search {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		margin-top: var(--space-3);
+	}
+	.search__label {
+		font-weight: var(--fw-bold);
+		color: var(--text-1);
+	}
+	.search input {
+		min-height: 48px;
+		padding: 0 var(--space-3);
+		font: inherit;
+		border: 1px solid var(--boundary);
+		border-radius: var(--radius-control);
+		background: var(--surface-2);
+		color: var(--text-1);
+	}
+	.count {
+		position: sticky;
+		bottom: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		background: var(--surface-2);
+		border: 1px solid var(--boundary);
+		border-radius: var(--radius-control);
+	}
+	.mission__num {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		border-radius: 50%;
+		background: var(--accent);
+		color: var(--accent-ink);
 	}
 </style>
