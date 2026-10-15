@@ -38,7 +38,10 @@
 	{#each VOLUNTEER_SHEETS as sheet (sheet.id)}
 		<details class="card sheet">
 			<summary>
-				<span class="sheet__name">{sheet.name}</span>
+				<span class="sheet__head">
+					<span class="sheet__name">{sheet.name}</span>
+					<span class="sheet__chev" aria-hidden="true"></span>
+				</span>
 				<span class="muted small">{sheet.when}</span>
 			</summary>
 			<p>{sheet.purpose}</p>
@@ -75,7 +78,7 @@
 			- start with the first one left open.
 		{/if}
 	</p>
-	<button class="btn" type="button" onclick={reset}>Clear for the next team</button>
+	<button class="btn btn--secondary" type="button" onclick={reset}>Clear for the next team</button>
 </section>
 
 <section>
@@ -88,10 +91,10 @@
 		<a class="btn btn--primary" href={RULEBOOK_URL} target="_blank" rel="noopener noreferrer">
 			Official rulebook
 		</a>
-		<a class="btn" href={rulebookLink(RULEBOOK_MAP_PAGE)} target="_blank" rel="noopener noreferrer">
+		<a class="btn btn--secondary" href={rulebookLink(RULEBOOK_MAP_PAGE)} target="_blank" rel="noopener noreferrer">
 			Mat map (page {RULEBOOK_MAP_PAGE})
 		</a>
-		<a class="btn" href={RULEBOOK_INTERACTIVE_URL} target="_blank" rel="noopener noreferrer">
+		<a class="btn btn--secondary" href={RULEBOOK_INTERACTIVE_URL} target="_blank" rel="noopener noreferrer">
 			Interactive rulebook
 		</a>
 	</div>
@@ -107,10 +110,11 @@
 			<li class="mission">
 				<span class="mission__num">{m.code.slice(1)}</span>
 				<span class="mission__title">{m.title}</span>
-				<a class="mission__link" href={`/app/library/missions/${m.code}`}>Summary</a>
+				<span class="mission__links">
+				<a class="btn btn--secondary mission__link" href={`/app/library/missions/${m.code}`}>Summary</a>
 				{#if page}
 					<a
-						class="mission__link mission__link--official"
+						class="btn btn--primary mission__link"
 						href={rulebookLink(page)}
 						target="_blank"
 						rel="noopener noreferrer"
@@ -118,6 +122,7 @@
 						Rulebook p{page}
 					</a>
 				{/if}
+				</span>
 			</li>
 		{/each}
 	</ul>
@@ -188,12 +193,6 @@
 	.count {
 		margin: var(--space-3) 0;
 	}
-	.official {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-2);
-		margin: var(--space-3) 0;
-	}
 	.warn {
 		color: var(--warning);
 	}
@@ -207,10 +206,10 @@
 	}
 	.mission {
 		display: grid;
-		grid-template-columns: 2.25rem minmax(0, 1fr) auto auto;
+		grid-template-columns: 2.25rem minmax(0, 1fr);
 		align-items: center;
 		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
+		padding: var(--space-3);
 		border: 1px solid var(--boundary);
 		border-radius: var(--radius-control);
 	}
@@ -223,25 +222,55 @@
 		font-weight: var(--fw-bold);
 		color: var(--text-1);
 	}
+	.mission__links {
+		grid-column: 1 / -1;
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--space-2);
+	}
 	.mission__link {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
+		text-decoration: none;
 		min-height: 44px;
-		padding: 0 var(--space-2);
-		color: var(--link);
+		justify-content: center;
+		text-align: center;
 		white-space: nowrap;
 	}
-	.mission__link--official {
-		font-weight: var(--fw-bold);
+	.official {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--space-2);
+		margin: var(--space-3) 0;
 	}
-	@media (max-width: 26rem) {
-		.mission {
-			grid-template-columns: 2.25rem minmax(0, 1fr);
-		}
-		.mission__link {
-			grid-column: 2;
-			justify-content: flex-start;
-		}
+	.official :global(.btn--primary) {
+		grid-column: 1 / -1;
+	}
+	.official :global(.btn) {
+		text-decoration: none;
+		min-height: 44px;
+		justify-content: center;
+		text-align: center;
+	}
+	.sheet summary {
+		list-style: none;
+	}
+	.sheet summary::-webkit-details-marker {
+		display: none;
+	}
+	.sheet__head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-2);
+	}
+	.sheet__chev {
+		width: 0.6rem;
+		height: 0.6rem;
+		border-right: 2px solid var(--text-2);
+		border-bottom: 2px solid var(--text-2);
+		transform: rotate(45deg);
+		transition: transform 0.15s;
+	}
+	.sheet[open] .sheet__chev {
+		transform: rotate(-135deg);
 	}
 </style>
