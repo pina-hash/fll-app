@@ -37,8 +37,8 @@
 </script>
 
 <svelte:head><title>Volunteer Guide</title></svelte:head>
+<div class="wrap">
 
-<a class="back" href="/app/library">Back to the Skill Hub</a>
 <p class="eyebrow">Volunteers</p>
 <h1>Volunteer Guide</h1>
 <p class="lead">
@@ -113,8 +113,7 @@
 <section id="missions">
 	<h2>Missions</h2>
 	<p class="muted small">
-		A student asks how a mission works? Open the official rulebook at that mission. The summary
-		in the app is a quick reminder, not the official wording.
+		A student asks how a mission works? Open the official rules at that mission.
 	</p>
 	<div class="official">
 		<a class="btn btn--primary" href={RULEBOOK_URL} target="_blank" rel="noopener noreferrer">
@@ -153,7 +152,6 @@
 				<span class="mission__num">{m.code.slice(1)}</span>
 				<span class="mission__title">{m.title}</span>
 				<span class="mission__links">
-				<a class="btn btn--secondary mission__link" href={`/app/library/missions/${m.code}`}>Quick summary</a>
 				{#if page}
 					<a
 						class="btn btn--primary mission__link"
@@ -170,8 +168,15 @@
 	</ul>
 </section>
 
+</div>
+
 <style>
-	.back {
+	.wrap {
+		max-width: 40rem;
+		margin: 0 auto;
+		padding: var(--space-4);
+	}
+	.unused {
 		display: inline-block;
 		margin-bottom: var(--space-3);
 		color: var(--link);
@@ -267,7 +272,7 @@
 	.mission__links {
 		grid-column: 1 / -1;
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: 1fr;
 		gap: var(--space-2);
 	}
 	.mission__link {

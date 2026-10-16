@@ -35,7 +35,7 @@
 			The official {COMP_BOT_MANUAL_STEPS}-step manual for this season's robot
 		</span>
 	</a>
-	<a class="tile tile--volunteer" href="/app/library/volunteer">
+	<a class="tile tile--volunteer" href="/volunteer">
 		<span class="tile__icon">🧑‍🏫</span>
 		<span class="tile__label">Volunteer Guide</span>
 		<span class="tile__tagline muted small">

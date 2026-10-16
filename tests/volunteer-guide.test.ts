@@ -64,7 +64,7 @@ describe('volunteer guide: content shape', () => {
 
 	test('no em dashes in anything a volunteer reads', () => {
 		const src = readFileSync('src/lib/content/volunteer.ts', 'utf8');
-		const page = readFileSync('src/routes/app/library/volunteer/+page.svelte', 'utf8');
+		const page = readFileSync('src/routes/volunteer/+page.svelte', 'utf8');
 		expect(src.includes('—')).toBe(false);
 		expect(page.includes('—')).toBe(false);
 	});
