@@ -1,0 +1,15 @@
+# App conventions
+
+Moved verbatim from `CLAUDE.md` (Conventions) on 2026-10-19, so `CLAUDE.md` stays under 3,000 words. `CLAUDE.md` links here; keep this file current in the same change as anything it describes.
+
+### App conventions
+
+- **Svelte 5 runes** (`$props`, `$state`, `$derived`); forced on for project files in `vite.config.ts`.
+- **Server-only code lives in `$lib/server/*`** (`service-client.ts`, the one service-role reader). SvelteKit refuses to bundle it client-side, which is what makes it a boundary.
+- **`src/lib/auth/student-identity.ts` is pure** and mirrors the database; change the address or slug rule in `0004`'s `_student_email`/`_student_slug_base` and here in the same bundle, and the mirror test holds them together.
+- **Generated types** (`src/lib/supabase/database.types.ts`) are regenerated after every migration bundle and committed.
+- **Sign-out is a POST** (`/auth/signout`); never a GET a prefetch could fire.
+- **MENTOR-ONLY SURFACES LIVE IN `src/routes/app/(mentor)/`**, whose `+layout.server.ts` answers 403 to a student. A new console page goes inside that group and inherits the guard rather than writing its own. The route guard is the OUTER boundary; the inner one is the database, where every console RPC re-checks `is_mentor()` in its own body. Neither is trusted alone, and `tests/console-mentor-only.test.ts` asserts both directions.
+- **THE THREE POPULATIONS EACH HAVE THEIR OWN ROUTE SHAPE.** Mentors live in `src/routes/app/(mentor)/` (403 to anyone else). Students live in `src/routes/app/(student)/` (mentors are redirected to their console, board devices are refused). The shared iPad lives at `src/routes/board/`, OUTSIDE `/app`, because `/app` bounces an unauthenticated request to the personal login screen and a kiosk must never do that mid-meeting. `src/routes/app/+layout.svelte` renders bare for students and boards: they carry their own header and fill the screen. `src/routes/p/[token]/` is outside `/app` for exactly the same reason: a parent with no account must never be sent to a login screen.
+- **A dev-only surface is guarded by `dev` from `$app/environment` and answers 404 otherwise** (`src/routes/dev/live-board/`, `route-planner/`, `student-screen/`, `match-timer/`). A harness mounts the REAL component with fixture props; if it renders its own copy of the markup it is testing nothing. Prove the link the way HISTORY 0009 did: change something observable inside the component, watch the harness move, restore byte-identically. Prove the GUARD by inverting it (`if (dev)`), confirming 404, and restoring byte-identically -- md5 both files before and after.
+- **TWO CLOCKS, OPPOSITE REQUIREMENTS, NO SHARED CODE.** The phase timer (`src/lib/console/clock.ts`, `src/lib/student/clock.svelte.ts`) ticks off a SERVER-corrected wall clock, because a tablet four minutes fast would show four minutes of phantom overrun on a shared session. The match timer (`src/lib/match/rules.ts`, `MatchTimer.svelte`) is 150 seconds measured with `performance.now()` and asks the server nothing, because it is started by a thumb and has to stay exact and continuous in a gym with no signal. Do not unify them.
